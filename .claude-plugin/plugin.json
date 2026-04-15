@@ -1,5 +1,6 @@
 {
   "name": "llm-wiki",
+  "version": "0.2.0",
   "description": "Build and maintain an LLM-curated personal knowledge base in your project — Andrej Karpathy's LLM Wiki pattern, designed to scale to thousands of pages without becoming a context bottleneck.",
   "author": {
     "name": "Praney Behl"

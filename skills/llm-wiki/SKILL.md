@@ -82,6 +82,8 @@ python scripts/init_wiki.py <project-root> [--wiki-dir wiki] [--raw-dir raw]
 
 This creates the directory structure, drops in templates for `SCHEMA.md`, `index.md`, and `log.md`, and seeds a starter page convention document. After bootstrapping, briefly walk the user through the schema and ask whether they want to customize anything (e.g. domain-specific page types, custom tags) before the first ingest. The schema is meant to evolve — encourage editing it.
 
+Then propose wiring the wiki into the project's agent-memory file so the running agent remembers the wiki in future sessions without being told. The target file depends on the agent: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / OpenCode / Pi / OpenClaw, `GEMINI.md` for Gemini CLI, with `AGENTS.md` as the safe default if the user runs multiple agents or is unsure. Full workflow, canonical stanza, and a three-line short variant are in `references/agent-memory-integration.md`. Never write to the memory file without the user's approval — show them the proposed stanza, ask whether to append to an existing file or create a new one, and honour a "skip" answer without pushing.
+
 ## The ingest workflow (summary)
 
 The full workflow is in `references/ingest-workflow.md`; what follows is the shape of it. When a new source arrives, first write the source itself into `raw/` (verbatim; if it's a web article, use the markdown form). Then read the source — chunked if large — and write a single source-summary page in `wiki/sources/`, named after the source slug, with full frontmatter and citations back to the raw file. Then identify which existing entity and concept pages this source touches; for each, surgically update the relevant section using `str_replace` rather than rewriting. Identify any new entities or concepts the source introduces and create new pages for them, linking from related existing pages so they don't become orphans. Update `index.md` (or the relevant shard) with the new pages. Append a single line to `log.md` with the date, operation type, and source title. Discuss the takeaways with the user as a final step — what surprised them, what's worth following up on — and offer to file that discussion back as a synthesis page.
@@ -116,6 +118,7 @@ The reference files are the source of truth for the detailed procedures. Read th
 - `references/lint-workflow.md` — what to check, how to present findings, and the cadence
 - `references/page-conventions.md` — frontmatter schema, page naming, link syntax, page-type definitions, sizing rules
 - `references/scaling-playbook.md` — thresholds at which to shard the index, when to introduce the search script, signals that the wiki has outgrown its current conventions
+- `references/agent-memory-integration.md` — how to wire the wiki into the project's agent-memory file (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), canonical stanza and short variant, and the bootstrap conversation script
 
 ## Bundled scripts
 

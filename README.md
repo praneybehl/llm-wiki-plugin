@@ -16,7 +16,9 @@ The pattern shines for accumulating textual research over weeks or months — pa
 
 ## Installation
 
-Install with the Claude Code `/plugin` command. From any project:
+### Claude Code — full plugin
+
+The native path: the skill, the five `/wiki:*` slash commands, and the marketplace manifest all ship in one install.
 
 ```
 /plugin marketplace add praneybehl/llm-wiki-plugin
@@ -24,6 +26,40 @@ Install with the Claude Code `/plugin` command. From any project:
 ```
 
 Once installed, the plugin works in any project — the wiki itself lives in the project's working directory, not in the plugin.
+
+### Other coding agents — skill only
+
+The `llm-wiki` skill uses the standard [agentskills.io](https://agentskills.io) format, so it installs cleanly into any agent supported by the [`skills` CLI](https://github.com/vercel-labs/skills). Pick the `--agent` flag that matches your setup:
+
+```bash
+# Install globally so the skill is available across all projects
+npx skills add praneybehl/llm-wiki-plugin -a <agent> -g
+
+# Or install into the current project only
+npx skills add praneybehl/llm-wiki-plugin -a <agent>
+```
+
+| Agent | `--agent` value | Invoke via | Scripts run |
+|-------|-----------------|------------|:-----------:|
+| Claude Code | `claude-code` | `/wiki:*` slash commands (bundled) or natural language | ✅ |
+| Codex (OpenAI) | `codex` | `/skills` or `$llm-wiki` / natural language | ✅ |
+| Cursor | `cursor` | `/llm-wiki` or natural language | ✅ |
+| Gemini CLI | `gemini-cli` | `/skills` management commands / natural language | ⚠️ unverified |
+| OpenClaw | `openclaw` | auto-exposed as a user command | ⚠️ scripts don't auto-execute |
+| Pi Agent | `pi` | `/skill:llm-wiki` or natural language | ✅ |
+
+**Hermes Agent** (Nous Research) and other agentskills.io-compatible runtimes that aren't yet in the `npx skills` registry can still use this skill — clone the repo and symlink or copy `skills/llm-wiki/` into the agent's skills directory (e.g. `~/.hermes/skills/llm-wiki/`).
+
+```bash
+git clone https://github.com/praneybehl/llm-wiki-plugin.git
+ln -s "$(pwd)/llm-wiki-plugin/skills/llm-wiki" ~/.hermes/skills/llm-wiki
+```
+
+A few things to know when using the skill outside Claude Code:
+
+- **Slash commands are Claude Code-only.** The five `/wiki:*` commands live in `commands/wiki/` as Claude Code plugin manifests. In other agents, invoke the skill by natural language ("add this paper to the wiki", "what does the wiki say about X", "lint the wiki") — the SKILL.md handles the rest.
+- **Script execution varies.** OpenClaw doesn't run bundled Python scripts the way Claude Code does, so BM25 search, lint, and stats degrade to model-driven behavior. Gemini CLI's script-execution semantics are not fully documented — test before relying on it. For the full feature set, use Claude Code, Codex, Cursor, or Pi.
+- **The wiki itself is agent-agnostic.** It's just a directory of markdown files. You can ingest with one agent and query with another; nothing in `wiki/` ties it to a specific runtime.
 
 ## Quick start
 

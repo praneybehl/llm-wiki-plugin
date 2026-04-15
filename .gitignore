@@ -8,3 +8,4 @@ __pycache__/
 *.swo
 .wiki-search-cache.json
 .claude/settings.local.json
+launch-posts.md

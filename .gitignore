@@ -7,3 +7,4 @@ __pycache__/
 *.swp
 *.swo
 .wiki-search-cache.json
+.claude/settings.local.json

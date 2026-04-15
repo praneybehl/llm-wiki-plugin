@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "llm-wiki",
+  "version": "0.1.0",
+  "description": "LLM Wiki — a Claude Code plugin for building scalable, LLM-curated personal knowledge bases.",
+  "owner": {
+    "name": "Praney"
+  },
+  "plugins": [
+    {
+      "name": "llm-wiki",
+      "description": "Build and maintain an LLM-curated personal knowledge base in your project. Implements Andrej Karpathy's LLM Wiki pattern with sharded indexes, atomic pages, BM25 search, and a structural lint script — designed to scale to thousands of pages without becoming a context bottleneck.",
+      "source": ".",
+      "category": "productivity",
+      "keywords": ["knowledge-base", "wiki", "notes", "research", "second-brain"]
+    }
+  ]
+}

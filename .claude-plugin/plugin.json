@@ -1,0 +1,23 @@
+{
+  "name": "llm-wiki",
+  "version": "0.1.0",
+  "description": "Build and maintain an LLM-curated personal knowledge base in your project — Andrej Karpathy's LLM Wiki pattern, designed to scale to thousands of pages without becoming a context bottleneck.",
+  "author": {
+    "name": "Praney"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/praneybehl/llm-wiki-plugin",
+  "repository": "https://github.com/praneybehl/llm-wiki-plugin",
+  "keywords": [
+    "knowledge-base",
+    "wiki",
+    "notes",
+    "research",
+    "second-brain",
+    "obsidian",
+    "markdown",
+    "rag-alternative",
+    "llm-wiki"
+  ],
+  "category": "productivity"
+}

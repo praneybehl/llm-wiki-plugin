@@ -6,10 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-15
+
 ### Added
 
 - Documented multi-agent installation. The `llm-wiki` skill is agentskills.io-format and installs into Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi Agent, and Hermes Agent via `npx skills add` (or manual symlink for runtimes outside the `skills` CLI registry). README now includes a per-agent install table with the exact `--agent` flag, invocation pattern, and script-execution caveats. OpenCode reads `.claude/skills/` directly, so Claude Code users don't need a second install. The `/wiki:*` slash commands and marketplace manifest remain Claude Code-only.
 - Agent-memory integration during init. `/wiki:init` now proposes adding a canonical LLM Wiki stanza to the project's agent-memory file so the running agent remembers the wiki in future sessions without being re-told. The target file is agent-aware: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / OpenCode / Pi / OpenClaw, `GEMINI.md` for Gemini CLI, with `AGENTS.md` as the safe default for multi-agent projects. Full workflow, canonical stanza, three-line short variant, and the "never write without consent" protocol are in the new `references/agent-memory-integration.md`.
+
+### Notes for upgraders
+
+- Existing Claude Code installs pick up this release via `/plugin marketplace update` followed by `/plugin install llm-wiki@llm-wiki` (Claude Code detects the new version in the marketplace entry).
+- Existing `npx skills add` installs for other agents can be refreshed with `npx skills update llm-wiki` or by running the same `npx skills add praneybehl/llm-wiki-plugin -a <agent>` command again.
+- No wiki-format or schema changes; existing wikis keep working unchanged.
 
 ## [0.1.0] — 2026-04-15
 
@@ -32,5 +40,6 @@ Initial release.
 - Surgical `str_replace` edits over rewrites to keep ingest token-cheap and diffs clean.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.2.0
 [0.1.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.1.0

@@ -1,0 +1,31 @@
+# Changelog
+
+All notable changes to this plugin are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.1.0] — 2026-04-15
+
+Initial release.
+
+### Added
+
+- `llm-wiki` skill implementing Andrej Karpathy's LLM Wiki pattern as a Claude Code skill, with progressive-disclosure references for architecture, ingest workflow, query workflow, lint workflow, page conventions, and the scaling playbook.
+- Five slash commands: `/wiki:init` (bootstrap a wiki in the current project), `/wiki:ingest` (process a new source), `/wiki:query` (answer a question with citations), `/wiki:lint` (structural and semantic health check), `/wiki:stats` (size, link density, and scaling thresholds).
+- Four bundled Python scripts (stdlib only, Python 3.10+): `init_wiki.py`, `wiki_search.py` (BM25 with frontmatter filters, backlinks, and hub finding), `wiki_lint.py` (orphans, broken links, oversized pages, frontmatter validation, stale pages, page suggestions), `wiki_stats.py` (size and shape report with scaling-threshold recommendations).
+- Templates for `SCHEMA.md`, `index.md`, `log.md`, and a generic page — copied into the user's wiki on bootstrap and then evolved under their editing.
+- Marketplace manifest (`.claude-plugin/marketplace.json`) so the repo doubles as a single-plugin marketplace, installable via `/plugin marketplace add praneybehl/llm-wiki-plugin`.
+
+### Scalability design
+
+- Atomic page sizing enforced by lint (400-line soft cap, 800-line hard cap).
+- Sharded indexes pattern documented and supported by `wiki_stats.py` threshold detection (triggers at ~150 pages or 300 index lines).
+- YAML frontmatter required on every page so `wiki_search.py` can filter without reading bodies.
+- Index-first navigation discipline documented in the query workflow; BM25 search as explicit fallback.
+- Surgical `str_replace` edits over rewrites to keep ingest token-cheap and diffs clean.
+- Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
+
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.1.0

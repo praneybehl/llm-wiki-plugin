@@ -2,7 +2,7 @@
   "name": "llm-wiki",
   "description": "Build and maintain an LLM-curated personal knowledge base in your project — Andrej Karpathy's LLM Wiki pattern, designed to scale to thousands of pages without becoming a context bottleneck.",
   "author": {
-    "name": "Praney"
+    "name": "Praney Behl"
   },
   "license": "MIT",
   "homepage": "https://github.com/praneybehl/llm-wiki-plugin",

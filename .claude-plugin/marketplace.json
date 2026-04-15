@@ -1,7 +1,7 @@
 {
   "name": "llm-wiki",
   "owner": {
-    "name": "Praney"
+    "name": "Praney Behl"
   },
   "metadata": {
     "description": "LLM Wiki — a Claude Code plugin for building scalable, LLM-curated personal knowledge bases.",
@@ -14,7 +14,7 @@
       "description": "Build and maintain an LLM-curated personal knowledge base in your project. Implements Andrej Karpathy's LLM Wiki pattern with sharded indexes, atomic pages, BM25 search, and a structural lint script — designed to scale to thousands of pages without becoming a context bottleneck.",
       "version": "0.1.0",
       "author": {
-        "name": "Praney"
+        "name": "Praney Behl"
       },
       "homepage": "https://github.com/praneybehl/llm-wiki-plugin",
       "repository": "https://github.com/praneybehl/llm-wiki-plugin",

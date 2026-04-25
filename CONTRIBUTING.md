@@ -101,14 +101,79 @@ For feature requests, please describe the underlying use case as well as the pro
 
 ## Releasing (maintainers)
 
-The release flow is:
+### Where the version lives
 
-1. Move `[Unreleased]` entries in `CHANGELOG.md` under a new version heading.
-2. Bump `version` in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`.
-3. Tag the commit (`git tag -a v0.x.0 -m "Release v0.x.0"`) and push tags.
-4. Create a GitHub Release pointing at the tag, with the changelog entry as the body.
+The plugin's version is declared in three JSON fields and one CHANGELOG heading. **Bump them together** — `claude plugin validate` will reject mismatches between the plugin manifest and the marketplace entry.
 
-Users get the new version via `/plugin marketplace update` followed by `/plugin install` re-run.
+| Location | Field | Notes |
+|----------|-------|-------|
+| `.claude-plugin/plugin.json` | `version` | Authoritative — Claude Code resolves the installed version from here first. |
+| `.claude-plugin/marketplace.json` | `metadata.version` | Top-level marketplace version. |
+| `.claude-plugin/marketplace.json` | `plugins[0].version` | Per-plugin entry; must match `plugin.json`. |
+| `CHANGELOG.md` | `## [X.Y.Z] — YYYY-MM-DD` heading + the `[X.Y.Z]: …/releases/tag/vX.Y.Z` link line | Human-facing record. |
+
+`skills/llm-wiki/SKILL.md` does **not** carry a version field. Skills are versioned by the enclosing plugin's `plugin.json` — leave SKILL.md frontmatter alone unless you're changing `name` or `description`.
+
+The bundled scripts and slash commands also have no version metadata; the plugin version covers them.
+
+### SemVer policy
+
+- **Major** (`1.0.0` → `2.0.0`): breaking changes to wiki structure, frontmatter schema, or script CLI flags that existing wikis cannot accommodate without manual migration.
+- **Minor** (`0.3.0` → `0.4.0`): additive features (new commands, new optional frontmatter, new scripts) that pre-existing wikis can ignore. Always pair with an `--upgrade`-style flow (or extend the existing one in `init_wiki.py`) so users on older wikis can pick up the new files idempotently without losing customisations.
+- **Patch** (`0.3.0` → `0.3.1`): bug fixes, doc-only changes, internal refactors with identical observable behaviour.
+
+If a feature can be made backward-compatible (e.g. a new frontmatter field with a sensible default), prefer that over a breaking change.
+
+### Release checklist
+
+1. **Move `[Unreleased]` entries** in `CHANGELOG.md` under a new `## [X.Y.Z] — YYYY-MM-DD` heading. Add the corresponding `[X.Y.Z]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/vX.Y.Z` line at the bottom and update `[Unreleased]: …/compare/vX.Y.Z...HEAD`.
+2. **Bump `version` to `X.Y.Z`** in:
+   - `.claude-plugin/plugin.json`
+   - `.claude-plugin/marketplace.json` (both `metadata.version` and `plugins[0].version`)
+3. **If the release adds files or schema sections** users on older wikis would otherwise miss, extend `scripts/init_wiki.py`:
+   - Add new template files to `template_map` (idempotent — `init_wiki.py` skips files that already exist).
+   - Add a marker entry to `SCHEMA_SECTION_MARKERS` for any new SCHEMA.md section so `--upgrade` surfaces it as a manual merge.
+   - Update the `/wiki:upgrade` slash command if the manual steps change.
+4. **Validate the manifests** (catches version mismatches and schema errors):
+   ```bash
+   claude plugin validate .
+   ```
+   Should print `✔ Validation passed`.
+5. **Smoke-test** the bundled scripts against a temp fixture (`init_wiki.py` into `/tmp`, seed a couple of pages, run lint + extract + query). For graph changes, exercise every lint branch with a fixture page that triggers each finding type.
+6. **Commit in two parts** to mirror prior history:
+   ```bash
+   git commit -m "feat: <one-line summary>"      # the substantive changes
+   git commit -m "release: vX.Y.Z"               # the version bumps + CHANGELOG
+   ```
+7. **Push and tag**:
+   ```bash
+   git push origin main
+   git tag -a vX.Y.Z -m "vX.Y.Z — <one-line summary>"
+   git push origin vX.Y.Z
+   ```
+   The repo uses simple `vX.Y.Z` tags (matches `v0.1.0` and `v0.2.0`). The `claude plugin tag` command would create `llm-wiki--vX.Y.Z` instead — that's also valid for Claude Code installs, but keep this repo on the `vX.Y.Z` convention for consistency.
+8. **Create the GitHub Release**:
+   ```bash
+   gh release create vX.Y.Z --title "vX.Y.Z — <summary>" \
+     --notes "$(cat <<'EOF'
+     <release notes — usually a tightened version of the CHANGELOG entry>
+     EOF
+     )"
+   ```
+
+### How users pick up the new version
+
+- **Claude Code:** `/plugin marketplace update` followed by `/plugin install llm-wiki@llm-wiki`. Claude Code compares the resolved `version` against the cached one and refreshes when they differ.
+- **Other agents installed via `npx skills add`:** `npx skills update llm-wiki`, or re-run the original `npx skills add praneybehl/llm-wiki-plugin -a <agent>` command.
+- **Existing wikis bootstrapped under an older plugin version:** users run `/wiki:upgrade` (or `python skills/llm-wiki/scripts/init_wiki.py . --upgrade` from the CLI). The upgrade flow is idempotent for files and walked-through for SCHEMA.md merges.
+
+### What does NOT need to change on every release
+
+- `skills/llm-wiki/SKILL.md` frontmatter (no version field)
+- Slash command files in `commands/wiki/` (no version field)
+- Reference docs in `skills/llm-wiki/references/` (unless the change introduces new content)
+- Asset templates in `skills/llm-wiki/assets/` (unless the change introduces new templates)
+- `LICENSE`, `README.md` (unless the user-facing summary changed)
 
 ## License
 

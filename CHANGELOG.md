@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-04-25
+
+### Added
+
+- **Optional graph layer.** Pages can now declare typed `graph:` metadata in frontmatter (`node_id`, `node_type`, `aliases`, `relationships[]` with `predicate`, `object`, `source`, `evidence`, `confidence`, `status`). A bundled extractor compiles the wiki into `wiki/graph/`: `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml`. Markdown remains canonical — the graph can be deleted and rebuilt at any time. Typed semantic edges require an explicit source-page slug and evidence quote; the extractor never invents them.
+- **Three new scripts** (require PyYAML; existing scripts remain stdlib-only):
+  - `wiki_graph_extract.py` — compile pages → `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml`. Emits typed edges from frontmatter, low-confidence `mentions` edges from body wikilinks, `sourced_from` edges from frontmatter `sources:` lists, and `summarizes_raw` edges from source-page `raw:` fields. Output is deterministic and sorted.
+  - `wiki_graph_lint.py` — validate typed edges against `wiki/graph/ontology.yaml`: unknown predicates, missing evidence, broken object refs, alias collisions, invalid `confidence`/`status`, broken `contradicts`/`supersedes`.
+  - `wiki_graph_query.py` — `neighbors`, `edges`, `path`, `facts` queries against `graph.sqlite`. Returns structured rows with source slug, confidence/status, evidence snippet, and page path.
+- **Graph templates.** `init_wiki.py` now seeds `wiki/graph/ontology.yaml` (starter ontology with implicit + typed predicates), `wiki/graph/README.md` (canonical-vs-generated explainer), and `wiki/graph/.gitignore` (ignores `graph.sqlite` and `graph.graphml` by default). The wiki's top-level `SCHEMA.md` template now documents the optional `graph:` frontmatter, lint cadence for the graph layer, and the generated-artifact tracking policy.
+- **`/wiki:graph <action>` slash command.** Dispatches to `extract`, `lint`, `neighbors`, `edges`, `path`, or `facts`. The `/wiki:ingest`, `/wiki:lint`, and `/wiki:query` commands now wire the graph step in conditionally — only when `wiki/graph/ontology.yaml` exists.
+- **`/wiki:upgrade` slash command and `init_wiki.py --upgrade` flag.** Brings a wiki bootstrapped under v0.2.0 up to v0.3.0 conventions. Adds the missing `wiki/graph/` files idempotently and surfaces SCHEMA.md sections that need to be merged by hand. Never overwrites SCHEMA.md — the schema is co-evolved with the user; the slash command walks them through each addition with `str_replace` and per-section approval.
+- **`references/graph-workflow.md`.** Full reference for the graph layer: ontology format, frontmatter schema, when to add a typed edge vs a plain wikilink, the extract/lint/query loop, the generated-artifact policy, and anti-patterns.
+
+### Changed
+
+- `wiki_lint.py`, `wiki_search.py`, and `wiki_stats.py` now skip the `wiki/graph/` directory the same way they skip `wiki/indexes/` — generated artifacts and the ontology don't pollute structural lint or search ranking.
+- `references/architecture.md`, `references/ingest-workflow.md`, `references/query-workflow.md`, and `references/lint-workflow.md` now document the optional graph layer alongside the original three layers/operations.
+
+### Notes for upgraders
+
+- **From an older Claude Code install:** run `/plugin marketplace update` then `/plugin install llm-wiki@llm-wiki` to pull v0.3.0.
+- **Upgrading an existing wiki:** the easiest path is `/wiki:upgrade` — it runs `python skills/llm-wiki/scripts/init_wiki.py . --upgrade`, idempotently adds the `wiki/graph/` files, and walks you through the SCHEMA.md additions interactively (one section at a time, per-edit approval; SCHEMA.md is never overwritten silently). The CLI version of the same: `python skills/llm-wiki/scripts/init_wiki.py . --upgrade`.
+- **Pre-graph wikis remain fully valid.** The graph layer is opt-in. The new lint/extract/query scripts no-op when `wiki/graph/ontology.yaml` is absent; the existing scripts and slash commands behave identically when no page carries `graph:` metadata.
+- **Refreshing other-agent installs:** `npx skills update llm-wiki`, or re-run the original `npx skills add praneybehl/llm-wiki-plugin -a <agent>` command.
+- The graph scripts require PyYAML (`pip install pyyaml`). The existing four scripts are still stdlib-only.
+
 ## [0.2.0] — 2026-04-15
 
 ### Added
@@ -40,6 +67,7 @@ Initial release.
 - Surgical `str_replace` edits over rewrites to keep ingest token-cheap and diffs clean.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.3.0
 [0.2.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.2.0
 [0.1.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.1.0

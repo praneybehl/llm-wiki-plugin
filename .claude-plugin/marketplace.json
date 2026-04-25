@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "LLM Wiki — a Claude Code plugin for building scalable, LLM-curated personal knowledge bases.",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "llm-wiki",
       "source": "./",
-      "description": "Build and maintain an LLM-curated personal knowledge base in your project. Implements Andrej Karpathy's LLM Wiki pattern with sharded indexes, atomic pages, BM25 search, and a structural lint script — designed to scale to thousands of pages without becoming a context bottleneck.",
-      "version": "0.2.0",
+      "description": "Build and maintain an LLM-curated personal knowledge base in your project. Implements Andrej Karpathy's LLM Wiki pattern with sharded indexes, atomic pages, BM25 search, a structural lint script, and an optional compiled graph layer (typed edges with explicit source/evidence, SQLite + GraphML export, neighbors/edges/path/facts queries) — designed to scale to thousands of pages without becoming a context bottleneck.",
+      "version": "0.3.0",
       "author": {
         "name": "Praney Behl"
       },

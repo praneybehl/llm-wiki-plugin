@@ -6,7 +6,7 @@ Build and maintain an LLM-curated personal knowledge base in your project. An im
 
 Most ways of using LLMs with documents look like RAG: you upload files, the LLM retrieves chunks at query time, generates an answer, and nothing accumulates. Every question re-derives knowledge from raw fragments. Karpathy's LLM Wiki pattern flips this — when a new source arrives, the LLM compiles it once into a persistent, structured wiki of markdown pages, and subsequent queries read the pre-synthesized wiki rather than the raw sources. Knowledge compounds.
 
-This plugin packages the pattern as a Claude Code skill plus four slash commands (`/wiki:init`, `/wiki:ingest`, `/wiki:query`, `/wiki:lint`, `/wiki:stats`) and a small set of bundled Python scripts (BM25 search, structural lint, stats with scaling thresholds). You curate sources and ask questions; Claude does the bookkeeping.
+This plugin packages the pattern as a Claude Code skill plus six slash commands (`/wiki:init`, `/wiki:ingest`, `/wiki:query`, `/wiki:lint`, `/wiki:stats`, `/wiki:graph`) and a small set of bundled Python scripts (BM25 search, structural lint, stats with scaling thresholds, plus an optional compiled graph layer). You curate sources and ask questions; Claude does the bookkeeping.
 
 ## Why use it
 
@@ -72,6 +72,8 @@ In a project where you want to keep a wiki:
 /wiki:init
 ```
 
+Already have a wiki from an earlier plugin version? Run `/wiki:upgrade` instead — it adds the new files idempotently and walks you through any SCHEMA.md merges by hand.
+
 This bootstraps `wiki/` and `raw/` directories with a `SCHEMA.md`, `index.md`, `log.md`, and a page template. Walk through the schema and customize it for your domain — page types, tag taxonomy, any conventions specific to what you're tracking.
 
 As part of the same step, the skill will propose wiring the wiki into your project's agent-memory file so the agent remembers it in future sessions without being told. The target file depends on which agent you use: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / OpenCode / Pi / OpenClaw, `GEMINI.md` for Gemini CLI. If you run multiple agents in the same project, use `AGENTS.md` and symlink `CLAUDE.md` to it. The skill never writes to a memory file without your approval — see `skills/llm-wiki/references/agent-memory-integration.md` for the canonical stanza and a three-line short variant.
@@ -104,11 +106,13 @@ This catches orphan pages, broken wikilinks, oversized pages, missing frontmatte
 
 | Command | What it does |
 |---------|--------------|
-| `/wiki:init` | Bootstrap a new wiki structure in the current project. |
-| `/wiki:ingest <source>` | Process a new source into the wiki. |
-| `/wiki:query <question>` | Answer a question from the wiki with citations. |
-| `/wiki:lint` | Structural and semantic health check. |
+| `/wiki:init` | Bootstrap a new wiki structure in the current project (now includes `wiki/graph/`). |
+| `/wiki:ingest <source>` | Process a new source into the wiki; refreshes the graph layer when present. |
+| `/wiki:query <question>` | Answer a question from the wiki with citations; consults `graph.sqlite` for relational questions when available. |
+| `/wiki:lint` | Structural and semantic health check; also runs graph lint when `wiki/graph/ontology.yaml` exists. |
 | `/wiki:stats` | Show wiki size, link density, and which scaling threshold the wiki is at. |
+| `/wiki:graph <action>` | `extract` / `lint` / `neighbors` / `edges` / `path` / `facts` against the compiled graph layer. |
+| `/wiki:upgrade` | Upgrade an existing wiki to the current plugin version (idempotent file ops + walked SCHEMA.md merge). |
 
 You don't have to use the commands — Claude triggers the underlying skill on natural-language requests too ("add this paper to my wiki", "what does the wiki say about diffusion", "lint the wiki"). The commands are there when you want explicit invocation.
 
@@ -120,7 +124,9 @@ The wiki has three layers and three operations.
 
 **The three operations** are *ingest* (compile a new source into the wiki, touching ten or fifteen pages in one pass), *query* (navigate the wiki to answer a question, with the option to file the answer back as a new synthesis page), and *lint* (periodic health check on structural and semantic integrity).
 
-For the full architecture write-up including page types, frontmatter conventions, the rationale behind each design choice, and the workflow procedures, see the reference docs inside the skill at `skills/llm-wiki/references/`.
+There is also an **optional fourth layer**: the graph at `wiki/graph/`. Pages can declare typed `graph:` metadata in frontmatter (e.g. `founded`, `proposed`, `depends_on`) with an explicit source-page slug and evidence quote. A bundled extractor compiles every page into `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, and `graph.graphml`. **Markdown stays canonical** — the graph can be deleted and rebuilt at any time. Use `/wiki:graph` for relational queries that the index alone can't answer cheaply ("what's connected to X", "who proposed Y", "shortest path A → B").
+
+For the full architecture write-up including page types, frontmatter conventions, the rationale behind each design choice, and the workflow procedures, see the reference docs inside the skill at `skills/llm-wiki/references/`. The graph layer is documented in `skills/llm-wiki/references/graph-workflow.md`.
 
 ## How it scales
 
@@ -152,7 +158,7 @@ Failure modes to know about, all discussed in `skills/llm-wiki/SKILL.md`: silent
 
 Once the wiki is set up, you can read and edit pages with any markdown viewer. [Obsidian](https://obsidian.md) is a particularly good fit because of its graph view, `[[wikilinks]]` syntax, and Web Clipper extension, but it isn't required — the wiki is just a directory of markdown files in your project.
 
-The bundled scripts (`init_wiki.py`, `wiki_search.py`, `wiki_lint.py`, `wiki_stats.py`) are pure stdlib Python 3.10+, no dependencies. They live in `skills/llm-wiki/scripts/` after install.
+The bundled scripts (`init_wiki.py`, `wiki_search.py`, `wiki_lint.py`, `wiki_stats.py`) are pure stdlib Python 3.10+, no dependencies. The optional graph-layer scripts (`wiki_graph_extract.py`, `wiki_graph_lint.py`, `wiki_graph_query.py`) require PyYAML — install once with `pip install pyyaml`. All seven live in `skills/llm-wiki/scripts/` after install.
 
 ## Credits
 

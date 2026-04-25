@@ -33,6 +33,14 @@ The schema is **co-evolved** with the user. On bootstrap it starts from the defa
 
 The schema is the first file you read when entering an existing wiki. Its conventions override the defaults documented in the skill.
 
+### The graph (optional, compiled)
+
+The wiki may carry a fourth layer at `wiki/graph/`: a compiled, queryable view of the typed `graph:` metadata in page frontmatter and the body wikilinks. It contains a hand-edited `ontology.yaml` (the contract: which node types and predicates exist) plus generated artifacts (`nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml`) produced by `wiki_graph_extract.py`. **Markdown is canonical**; the graph can be deleted and regenerated from the markdown without losing knowledge.
+
+Its purpose is to make typed, provenance-backed relationships machine-queryable — "who founded what", "what does Konvy depend on", "shortest path from A to B" — without giving up the editability and human-legibility of markdown. Typed edges require an explicit `source` (a source-page slug) and `evidence` quote; the extractor never invents them. Plain `[[wikilinks]]` in the body produce low-confidence `mentions` edges, which are useful for navigation but not for evidence.
+
+Use the graph layer when the user's questions are predominantly relational and the cost of maintaining typed metadata is paying for itself. Skip it for purely textual wikis. Full reference: `graph-workflow.md`.
+
 ## The three operations
 
 ### Ingest

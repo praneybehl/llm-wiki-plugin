@@ -24,6 +24,17 @@ python scripts/wiki_search.py "your query terms" --top 10
 
 This returns the top-N pages by BM25 score, with optional filters on frontmatter (`--type concept`, `--tag llms`, `--since 2026-01-01`). Use the search script *as a fallback*, not as the default — index-first is cheaper and produces more interpretable results when it works.
 
+## Step 2b: Graph-assisted lookup (only if `wiki/graph/graph.sqlite` exists)
+
+For relational questions ("what's connected to X", "who proposed Y", "trace the path from A to B"), query the compiled graph after the index pass and before reading pages:
+
+```bash
+python scripts/wiki_graph_query.py wiki/ neighbors --node <node-id>
+python scripts/wiki_graph_query.py wiki/ facts    --about <node-id>
+```
+
+Use the structured neighbors/facts to pick the right wiki pages to read — but never answer from graph rows alone for high-stakes claims. The graph accelerates navigation; the wiki page and its raw source remain the evidence. If `graph.sqlite` is older than the most recent `## [YYYY-MM-DD] ingest |` entry in `log.md`, regenerate first with `wiki_graph_extract.py`. Full reference: `references/graph-workflow.md`.
+
 ## Step 3: Read the candidate pages
 
 Read each candidate page in full. While reading, note any `[[wikilinks]]` to other pages that look relevant — those are pre-curated leads. Follow the most promising ones, but don't recursively chase every link or you'll exhaust your context window on tangentially-relevant pages.

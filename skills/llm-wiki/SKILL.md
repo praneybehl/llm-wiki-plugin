@@ -28,6 +28,20 @@ The three operations are **ingest** (a new source arrives; the LLM reads it, wri
 
 For the canonical write-up of these operations, read `references/architecture.md`. For the step-by-step procedures, read `references/ingest-workflow.md`, `references/query-workflow.md`, and `references/lint-workflow.md` as needed.
 
+## Graph layer (compiled, optional)
+
+Pages can carry typed `graph:` metadata in frontmatter. A bundled extractor compiles every page into `wiki/graph/`: `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml`. **Markdown is canonical**; the graph is a regenerable index. Pages without `graph:` still appear as nodes (derived from their `type`/`kind`) and contribute low-confidence `mentions` edges from body wikilinks. Typed semantic edges (e.g. `founded`, `proposed`, `depends_on`) require an explicit source and evidence quote — never emit one inferred from training data.
+
+The conventions for the graph layer (predicate vocabulary, node id format, required fields) live in `wiki/graph/ontology.yaml`. The full reference is `references/graph-workflow.md`. Run the bundled scripts after substantive ingests:
+
+```bash
+python scripts/wiki_graph_lint.py wiki/      # check ontology + evidence + alias collisions
+python scripts/wiki_graph_extract.py wiki/   # rebuild nodes.jsonl, edges.jsonl, graph.sqlite, graph.graphml
+python scripts/wiki_graph_query.py wiki/ neighbors --node product:konvy
+```
+
+If `wiki/graph/ontology.yaml` does not exist, the wiki is pre-graph and you should treat the graph step as a no-op — don't fabricate it.
+
 ## Default project layout
 
 Unless the user's `SCHEMA.md` says otherwise, the wiki lives in the project at this layout:
@@ -119,6 +133,7 @@ The reference files are the source of truth for the detailed procedures. Read th
 - `references/page-conventions.md` — frontmatter schema, page naming, link syntax, page-type definitions, sizing rules
 - `references/scaling-playbook.md` — thresholds at which to shard the index, when to introduce the search script, signals that the wiki has outgrown its current conventions
 - `references/agent-memory-integration.md` — how to wire the wiki into the project's agent-memory file (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), canonical stanza and short variant, and the bootstrap conversation script
+- `references/graph-workflow.md` — the optional graph layer: ontology, frontmatter schema, when to add typed edges vs plain wikilinks, and the extract/lint/query flow
 
 ## Bundled scripts
 
@@ -128,6 +143,9 @@ The scripts are intentionally minimal — they exist so the LLM doesn't reinvent
 - `scripts/wiki_search.py` — BM25 search over wiki pages with optional frontmatter filters; fallback when index navigation doesn't surface the right pages
 - `scripts/wiki_lint.py` — structural health check (orphans, broken links, oversized pages, frontmatter validation, stale dates)
 - `scripts/wiki_stats.py` — quick summary of wiki size, page count by type, link density; useful for deciding when to shard the index
+- `scripts/wiki_graph_extract.py` — compile `graph:` metadata + body wikilinks into `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml` (requires PyYAML)
+- `scripts/wiki_graph_lint.py` — validate typed edges against `graph/ontology.yaml`: unknown predicates, missing evidence, broken object refs, alias collisions
+- `scripts/wiki_graph_query.py` — neighbors / edges / facts / shortest-path queries over `graph.sqlite`
 
 ## Templates
 
@@ -137,3 +155,6 @@ The templates in `assets/` are starting points — they get copied into the user
 - `assets/index.md.template` — the empty index file
 - `assets/log.md.template` — the empty log file
 - `assets/page.md.template` — a generic wiki page with the frontmatter scaffold
+- `assets/ontology.yaml.template` — starter graph ontology copied to `wiki/graph/ontology.yaml`
+- `assets/graph_README.md.template` — explainer for `wiki/graph/` (canonical vs generated files)
+- `assets/graph_gitignore.template` — `.gitignore` for `wiki/graph/` (ignores `graph.sqlite` and `graph.graphml` by default)

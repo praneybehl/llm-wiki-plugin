@@ -23,6 +23,7 @@ FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "log.md", "README.md"}
+SKIP_TOP_LEVEL_DIRS = {"indexes", "graph"}
 
 
 def parse_type(text: str) -> str | None:
@@ -67,6 +68,8 @@ def main():
             index_lines = text.count("\n") + 1
             continue
         if rel.parts[0] in SKIP_TOP_LEVEL_FILES:
+            continue
+        if rel.parts[0] in SKIP_TOP_LEVEL_DIRS:
             continue
         if rel.name.startswith("."):
             continue

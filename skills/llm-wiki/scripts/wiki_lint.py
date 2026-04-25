@@ -40,7 +40,7 @@ CAPITALIZED_PHRASE_RE = re.compile(r"\b([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+
 
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
-SKIP_TOP_LEVEL_DIRS = {"indexes"}
+SKIP_TOP_LEVEL_DIRS = {"indexes", "graph"}
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str, bool]:

@@ -94,9 +94,19 @@ Add entries for any new pages to `wiki/index.md` (or the appropriate shard). Eac
 
 If `index.md` exceeds 300 lines after this update, that's the signal to shard. Do it now while the structure is fresh — see `scaling-playbook.md` for the procedure.
 
+## Step 8b: Refresh the graph layer (only if `wiki/graph/ontology.yaml` exists)
+
+If the wiki has the optional graph layer:
+
+1. Add typed `graph.relationships[]` only when the source explicitly supports them (predicate, source-page slug, evidence quote, confidence, status). When uncertain, prefer a plain `[[wikilink]]` in the body — the body wikilink already produces a `mentions` edge.
+2. Run `python scripts/wiki_graph_lint.py wiki/`. Triage findings with the user before extracting; do not silently rewrite typed edges.
+3. Run `python scripts/wiki_graph_extract.py wiki/` to regenerate `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml`.
+
+Skip this entire step if the ingest added no `graph:` metadata and created no new pages — the compiled artifacts are unchanged. Full reference: `references/graph-workflow.md`.
+
 ## Step 9: Append to the log
 
-One line in `wiki/log.md`, with the prefix `## [YYYY-MM-DD] ingest | <source-title>`. Optionally add a sub-line listing the pages touched. The log is parsed by simple unix tools (`grep "^## \[" log.md | tail -10`), so the prefix matters.
+One line in `wiki/log.md`, with the prefix `## [YYYY-MM-DD] ingest | <source-title>`. Optionally add a sub-line listing the pages touched. If the graph layer was refreshed, add a second sub-line: `   graph: +N nodes, +M typed edges`. The log is parsed by simple unix tools (`grep "^## \[" log.md | tail -10`), so the prefix matters.
 
 ## Step 10: Close the loop with the user
 

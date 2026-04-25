@@ -12,6 +12,14 @@ A health check on the wiki. Best run on a cadence — after every N ingests, wee
 python scripts/wiki_lint.py wiki/
 ```
 
+If the wiki has the optional graph layer (`wiki/graph/ontology.yaml` exists), also run:
+
+```bash
+python scripts/wiki_graph_lint.py wiki/
+```
+
+This catches typed-edge problems independently of the structural lint: unknown predicates, missing evidence, broken object references, alias collisions, invalid `confidence`/`status` values, broken `contradicts`/`supersedes` references. Triage findings the same way as structural lint — propose fixes, don't apply them silently. After approved fixes, run `wiki_graph_extract.py` to refresh the compiled artifacts.
+
 This produces a report covering:
 
 - **Orphan pages** — pages with no inbound `[[wikilinks]]` from anywhere else in the wiki. Orphans are usually a sign that an ingest forgot to update a parent page. They become invisible because the index-first navigation can't surface them.

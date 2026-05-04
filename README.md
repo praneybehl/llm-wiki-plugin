@@ -154,6 +154,22 @@ This is a markdown-based personal knowledge base, not a database. If your domain
 
 Failure modes to know about, all discussed in `skills/llm-wiki/SKILL.md`: silent corruption (a misreading of one source becomes an authoritative-looking wiki page that influences subsequent ingests — mitigated by mandatory `sources:` frontmatter and lint), the wiki-reads-its-own-output drift (Claude treating prior wiki pages as ground truth rather than checking against raw sources — mitigated by the ingest workflow's instruction to re-read raw sources when updating claims), and the maintenance ratchet (lint reports growing faster than you can review — mitigated by the scalability discipline, but if it happens, the schema needs revision).
 
+## Integrations
+
+### Paperclip — `paperclip-plugin-llm-wiki`
+
+For teams that run their work in [Paperclip](https://github.com/paperclipai/paperclip), there's an optional plugin at [`integrations/paperclip/plugin/`](./integrations/paperclip/plugin/) that surfaces the wiki inside Paperclip's UI as a read-only context lens — five surfaces (sidebar, full-page view, issue-detail tab with relevant wiki context, dashboard health widget, and an agent-callable `wiki.query` tool). The plugin doesn't replace the skill; it's the **human-side** companion that brings the wiki into view at decision time inside Paperclip's board.
+
+Install (once published):
+
+```bash
+pnpm paperclipai plugin install paperclip-plugin-llm-wiki
+```
+
+The plugin is read-only by design. Editing still happens through agents on heartbeat (via the skill) or the operator's existing markdown environment (Obsidian, Claude Code, etc.).
+
+See [`integrations/paperclip/README.md`](./integrations/paperclip/README.md) for the operator's perspective (when to install the plugin vs. just the skill, troubleshooting), [`integrations/paperclip/SPEC.md`](./integrations/paperclip/SPEC.md) for the v0.1 design, and [`integrations/paperclip/FEASIBILITY.md`](./integrations/paperclip/FEASIBILITY.md) for the validation report against the live Paperclip plugin SDK.
+
 ## Tooling
 
 Once the wiki is set up, you can read and edit pages with any markdown viewer. [Obsidian](https://obsidian.md) is a particularly good fit because of its graph view, `[[wikilinks]]` syntax, and Web Clipper extension, but it isn't required — the wiki is just a directory of markdown files in your project.

@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Paperclip integration: `paperclip-plugin-llm-wiki` (npm v0.0.1).** A new sub-deliverable under `integrations/paperclip/plugin/` that surfaces the LLM Wiki inside Paperclip's UI as a read-only context lens. Five surfaces: a Company sidebar, a full-page view at `/companies/:c/plugins/llm-wiki`, an issue-detail tab that auto-surfaces relevant wiki pages by BM25 over title + description, a dashboard health widget (page count, lint status, link density, scaling-threshold messages), and a `wiki.query` agent-callable tool for HTTP/webhook adapters that don't run the skill directly. The plugin is strictly read-only — writes still happen through agents on heartbeat (via the skill) or through the operator's existing markdown environment.
+- **Algorithmic parity between the plugin and the canonical Python scripts.** The plugin's TypeScript ports of `wiki_search.py`, `wiki_lint.py`, and `wiki_stats.py` are mechanically tested for byte-for-byte parity against a fixed fixture corpus — same BM25 constants (k1=1.5, b=0.75), same IDF formula, same skip rules. Snapshot regeneration script: `python3 integrations/paperclip/plugin/tests/fixtures/_gen_bm25_expectations.py`. Search results from the plugin and from agent heartbeat will not drift.
+- **`integrations/paperclip/SPEC.md`** — v0.1 plugin design proposal with verbatim references to the live Paperclip plugin SDK.
+- **`integrations/paperclip/FEASIBILITY.md`** — Phase 0 validation report against `paperclipai/paperclip@master`. Documents the 14 SPEC errata that surfaced during validation (e.g., manifest field is `categories` not `category`; tool result is `{ content?, data?, error? }` not `{ content, structured }`; `ErrorBoundary` is not re-exported from `@paperclipai/plugin-sdk/ui`).
+- **CI job** for the plugin package gated to changes under `integrations/paperclip/**`. Runs `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test`, `pnpm run build`, and verifies that `dist/` is included in the publish tarball (the most-cited Paperclip plugin publishing failure mode).
+
+### Changed
+
+- Top-level README and the repo layout now document the Paperclip integration. The `SPEC.md` proposal that was at the repo root in pre-release work has moved to `integrations/paperclip/SPEC.md` for co-location with the package it describes.
+- The skill itself, the seven slash commands, the Python scripts, and the wiki schema are unchanged in this release. Existing wikis and existing skill installs are unaffected — the plugin is purely additive.
+
+### Notes
+
+- The Paperclip plugin SDK uses calver, not semver. The plugin pins `@paperclipai/plugin-sdk` at exactly `2026.428.0` as a peer dependency (per the SDK's own published versioning convention). Updating to a newer SDK should be a deliberate bump that re-runs Phase 0 validation against the new SDK source.
+- Plugin discovery UI in Paperclip is currently invisible — install via the CLI or the local-path HTTP endpoint until the upstream discovery surface ships ([`paperclipai/paperclip` issue #2678](https://github.com/paperclipai/paperclip/issues/2678)).
+- The validator bug in [`paperclipai/paperclip` issue #2276](https://github.com/paperclipai/paperclip/issues/2276) may falsely reject plugins declaring `dashboardWidget` until the upstream fix lands. Workaround documented in [`integrations/paperclip/README.md`](./integrations/paperclip/README.md).
+
 ## [0.3.0] — 2026-04-25
 
 ### Added

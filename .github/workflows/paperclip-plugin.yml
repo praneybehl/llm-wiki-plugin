@@ -36,3 +36,15 @@ jobs:
       - run: pnpm typecheck
 
       - run: pnpm test
+
+      - run: pnpm run build
+
+      - name: Verify dist/ is in the publish tarball
+        run: |
+          pnpm exec npm pack --dry-run 2>&1 | tee /tmp/pack-output.txt
+          for entry in dist/manifest.js dist/worker.js dist/ui/index.js; do
+            if ! grep -q "$entry" /tmp/pack-output.txt; then
+              echo "::error::missing $entry in publish tarball"
+              exit 1
+            fi
+          done

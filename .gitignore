@@ -9,3 +9,5 @@ __pycache__/
 .wiki-search-cache.json
 .claude/settings.local.json
 launch-posts.md
+.leankg/
+.remember/

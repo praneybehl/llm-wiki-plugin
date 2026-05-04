@@ -1,0 +1,52 @@
+{
+  "name": "paperclip-plugin-llm-wiki",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Surface the LLM Wiki inside Paperclip — search, browse, and read company knowledge in context.",
+  "author": "Praney Behl",
+  "license": "MIT",
+  "homepage": "https://github.com/praneybehl/llm-wiki-plugin/tree/main/integrations/paperclip",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/praneybehl/llm-wiki-plugin.git",
+    "directory": "integrations/paperclip/plugin"
+  },
+  "keywords": [
+    "paperclip",
+    "paperclip-plugin",
+    "llm-wiki",
+    "knowledge-base",
+    "wiki"
+  ],
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "paperclipPlugin": {
+    "manifest": "./dist/manifest.js",
+    "worker": "./dist/worker.js",
+    "ui": "./dist/ui/"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@paperclipai/plugin-sdk": "2026.428.0",
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@paperclipai/plugin-sdk": "2026.428.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -198,6 +198,285 @@ describe("symlink containment — worker loadIndex", () => {
   });
 });
 
+// ────────────────────────────────────────────────────────────────────────
+// Fix 1b — wiki root and direct loadIndex reads
+// ────────────────────────────────────────────────────────────────────────
+
+describe("symlink containment — wiki root itself", () => {
+  // The recursive walkers anchor on the wiki root's realpath, but if the
+  // wiki root itself is a symlink that escapes the workspace, the walkers
+  // happily walk the escape destination — every entry under it has a
+  // realpath under the escape destination, which IS the wiki root. We
+  // need an additional check that the resolved wiki root is contained
+  // within the workspace's realpath.
+
+  let evilTmp: string;
+  let evilWorkspace: string;
+  let evilExternal: string;
+
+  beforeAll(() => {
+    evilTmp = mkdtempSync(join(tmpdir(), "symlink-root-"));
+    evilWorkspace = join(evilTmp, "workspace");
+    evilExternal = join(evilTmp, "external");
+    mkdirSync(evilWorkspace, { recursive: true });
+    mkdirSync(evilExternal, { recursive: true });
+    writeFileSync(
+      join(evilExternal, "exposed.md"),
+      `---
+type: concept
+title: Exposed
+tags: [x]
+created: 2026-05-05
+updated: 2026-05-05
+---
+
+content with the ${SECRET_MARKER} marker
+`,
+      "utf-8",
+    );
+    // The wiki "directory" is actually a symlink to a directory outside
+    // the workspace. From a lexical path.relative() standpoint, "wiki"
+    // is under workspace; only realpath catches the escape.
+    symlinkSync(evilExternal, join(evilWorkspace, "wiki"));
+  });
+
+  afterAll(() => {
+    rmSync(evilTmp, { recursive: true, force: true });
+  });
+
+  async function evilHarness(): Promise<TestHarness> {
+    const harness = createTestHarness({
+      manifest: manifestSrc as PaperclipPluginManifestV1,
+      capabilities: manifestSrc.capabilities,
+      config: { wiki_path: "wiki" },
+    });
+    harness.seed({ projects: [project] });
+    const ctx = harness.ctx as PluginContext & {
+      projects: Record<string, unknown>;
+    };
+    const ws: PluginWorkspace = {
+      id: "ws-1",
+      projectId: PROJECT_ID,
+      name: "primary",
+      path: evilWorkspace,
+      isPrimary: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    ctx.projects.getPrimaryWorkspace = async () => ws;
+    ctx.projects.getWorkspaceForIssue = async () => ws;
+    ctx.projects.list = async () => [project];
+    await plugin.definition.setup(harness.ctx);
+    return harness;
+  }
+
+  it("readPage returns error when the wiki root is a symlink escape", async () => {
+    const harness = await evilHarness();
+    const result = await harness.getData<{ body?: string; error?: string }>(
+      "readPage",
+      { companyId: COMPANY_ID, projectId: PROJECT_ID, slug: "exposed" },
+    );
+    expect(result.error).toBeTruthy();
+    expect(JSON.stringify(result)).not.toContain(SECRET_MARKER);
+  });
+
+  it("searchWiki returns nothing when the wiki root is a symlink escape", async () => {
+    const harness = await evilHarness();
+    const result = await harness.getData<{
+      results: { slug: string }[];
+    }>("searchWiki", {
+      companyId: COMPANY_ID,
+      projectId: PROJECT_ID,
+      query: SECRET_MARKER.toLowerCase(),
+    });
+    expect(result.results).toEqual([]);
+  });
+
+  it("loadIndex returns no pages when the wiki root is a symlink escape", async () => {
+    const harness = await evilHarness();
+    const result = await harness.getData<{
+      index: string;
+      shards: unknown[];
+      pages: unknown[];
+    }>("loadIndex", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    expect(result.pages).toEqual([]);
+    expect(result.index).toBe("");
+    expect(result.shards).toEqual([]);
+  });
+
+  it("wikiHealth reports wikiPathMissing when the wiki root is a symlink escape", async () => {
+    const harness = await evilHarness();
+    const result = await harness.getData<{
+      wikiPathMissing: boolean;
+      pageCount: number;
+    }>("wikiHealth", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    expect(result.wikiPathMissing).toBe(true);
+    expect(result.pageCount).toBe(0);
+  });
+});
+
+describe("symlink containment — direct index.md and indexes/*.md reads", () => {
+  // loadIndex reads index.md and indexes/*.md without going through the
+  // contained walker. Symlinks at those paths must be checked separately.
+
+  let escapeTmp: string;
+  let escapeWorkspace: string;
+  let escapeWiki: string;
+  let escapeExternal: string;
+
+  beforeAll(() => {
+    escapeTmp = mkdtempSync(join(tmpdir(), "symlink-index-"));
+    escapeWorkspace = join(escapeTmp, "workspace");
+    escapeWiki = join(escapeWorkspace, "wiki");
+    escapeExternal = join(escapeTmp, "external");
+    mkdirSync(escapeWiki, { recursive: true });
+    mkdirSync(escapeExternal, { recursive: true });
+    mkdirSync(join(escapeWiki, "indexes"));
+
+    writeFileSync(
+      join(escapeWiki, "innocent.md"),
+      `---
+type: concept
+title: Innocent
+tags: [x]
+created: 2026-05-05
+updated: 2026-05-05
+---
+
+innocent body
+`,
+      "utf-8",
+    );
+
+    // Create a real index.md so loadIndex's read is exercised on a
+    // contained file too (positive case).
+    writeFileSync(join(escapeWiki, "index.md"), "# real index\n", "utf-8");
+
+    // Now stage the escape: a normal index.md exists, but ALSO replace
+    // it with a symlink to a file outside the workspace. We need a
+    // separate fixture without a real index.md so the symlink scenario
+    // is unambiguous — see the per-test setup below.
+
+    writeFileSync(
+      join(escapeExternal, "secret-index.md"),
+      `the ${SECRET_MARKER} (in the external secret-index file)\n`,
+      "utf-8",
+    );
+    writeFileSync(
+      join(escapeExternal, "shard-secret.md"),
+      `the ${SECRET_MARKER} (in the external shard file)\n`,
+      "utf-8",
+    );
+  });
+
+  afterAll(() => {
+    rmSync(escapeTmp, { recursive: true, force: true });
+  });
+
+  async function escapeHarness(): Promise<TestHarness> {
+    const harness = createTestHarness({
+      manifest: manifestSrc as PaperclipPluginManifestV1,
+      capabilities: manifestSrc.capabilities,
+      config: { wiki_path: "wiki" },
+    });
+    harness.seed({ projects: [project] });
+    const ctx = harness.ctx as PluginContext & {
+      projects: Record<string, unknown>;
+    };
+    const ws: PluginWorkspace = {
+      id: "ws-1",
+      projectId: PROJECT_ID,
+      name: "primary",
+      path: escapeWorkspace,
+      isPrimary: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    ctx.projects.getPrimaryWorkspace = async () => ws;
+    ctx.projects.getWorkspaceForIssue = async () => ws;
+    ctx.projects.list = async () => [project];
+    await plugin.definition.setup(harness.ctx);
+    return harness;
+  }
+
+  it("reads the real index.md in the happy path", async () => {
+    const harness = await escapeHarness();
+    const result = await harness.getData<{
+      index: string;
+      pages: { slug: string }[];
+    }>("loadIndex", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    expect(result.index).toBe("# real index\n");
+    expect(result.pages.map((p) => p.slug)).toContain("innocent");
+  });
+
+  it("does not return content from a symlinked index.md that escapes the wiki", async () => {
+    // Replace the real index.md with a symlink.
+    rmSync(join(escapeWiki, "index.md"));
+    symlinkSync(
+      join(escapeExternal, "secret-index.md"),
+      join(escapeWiki, "index.md"),
+    );
+
+    const harness = await escapeHarness();
+    const result = await harness.getData<{ index: string }>(
+      "loadIndex",
+      { companyId: COMPANY_ID, projectId: PROJECT_ID },
+    );
+
+    // Restore for downstream tests.
+    rmSync(join(escapeWiki, "index.md"));
+    writeFileSync(join(escapeWiki, "index.md"), "# real index\n", "utf-8");
+
+    expect(result.index).toBe("");
+    expect(result.index).not.toContain(SECRET_MARKER);
+  });
+
+  it("does not return content from symlinked indexes/foo.md shards that escape the wiki", async () => {
+    // Plant an escape shard.
+    symlinkSync(
+      join(escapeExternal, "shard-secret.md"),
+      join(escapeWiki, "indexes", "by-secret.md"),
+    );
+    // Plant a normal shard for contrast.
+    writeFileSync(
+      join(escapeWiki, "indexes", "by-type.md"),
+      "# real shard\n",
+      "utf-8",
+    );
+
+    const harness = await escapeHarness();
+    const result = await harness.getData<{
+      shards: { name: string; text: string }[];
+    }>("loadIndex", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+
+    // Cleanup.
+    rmSync(join(escapeWiki, "indexes", "by-secret.md"));
+    rmSync(join(escapeWiki, "indexes", "by-type.md"));
+
+    expect(result.shards).toHaveLength(1);
+    expect(result.shards[0]?.name).toBe("by-type");
+    for (const s of result.shards) {
+      expect(s.text).not.toContain(SECRET_MARKER);
+    }
+  });
+
+  it("does not return shards when the indexes/ directory itself is a symlink escape", async () => {
+    rmSync(join(escapeWiki, "indexes"), { recursive: true });
+    symlinkSync(escapeExternal, join(escapeWiki, "indexes"));
+
+    const harness = await escapeHarness();
+    const result = await harness.getData<{
+      shards: { name: string; text: string }[];
+    }>("loadIndex", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+
+    // Cleanup: restore a real directory.
+    rmSync(join(escapeWiki, "indexes"));
+    mkdirSync(join(escapeWiki, "indexes"));
+
+    expect(result.shards).toEqual([]);
+  });
+});
+
 describe("symlink containment — lib walkers", () => {
   it("collectPages excludes files whose realpath escapes the wiki root", () => {
     const pages = collectPages(wikiRoot);

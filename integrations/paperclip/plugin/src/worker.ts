@@ -167,7 +167,7 @@ async function resolveWikiRoot(
   const root = path.resolve(workspace.path, wikiPath);
   if (!isInside(workspace.path, root)) return null;
   if (!fs.existsSync(root)) return null;
-  return root;
+  return resolvedContainedRoot(workspace.path, root);
 }
 
 async function resolveWikiRootForIssue(
@@ -189,7 +189,34 @@ async function resolveWikiRootForIssue(
   const root = path.resolve(ws.path, wikiPath);
   if (!isInside(ws.path, root)) return null;
   if (!fs.existsSync(root)) return null;
-  return root;
+  return resolvedContainedRoot(ws.path, root);
+}
+
+/**
+ * Final containment gate for the wiki root: the lexical path.relative()
+ * check above only catches `..` escapes in `wiki_path`, not symlinks.
+ * If the wiki directory itself is a symlink that points outside the
+ * workspace (e.g. `wiki` → `/etc`), every realpathContained() call
+ * downstream would happily anchor on the escape destination. Resolve
+ * both ends here and reject if the wiki root's realpath isn't under
+ * the workspace's realpath. Returns the resolved realpath on success
+ * so all subsequent walkers anchor on the canonical path.
+ */
+function resolvedContainedRoot(
+  workspaceRoot: string,
+  wikiRoot: string,
+): string | null {
+  let realWorkspace: string;
+  let realRoot: string;
+  try {
+    realWorkspace = fs.realpathSync(workspaceRoot);
+    realRoot = fs.realpathSync(wikiRoot);
+  } catch {
+    return null;
+  }
+  if (realRoot === realWorkspace) return realRoot;
+  if (!realRoot.startsWith(realWorkspace + path.sep)) return null;
+  return realRoot;
 }
 
 /**
@@ -337,20 +364,33 @@ const plugin = definePlugin({
       const root = await resolveWikiRoot(ctx, companyId, projectId);
       if (!root) return { index: "", shards: [], pages: [] };
 
+      // Direct reads for index.md and indexes/*.md must go through the
+      // realpath containment check too — collectPages only protects the
+      // page tree. A symlinked wiki/index.md that points outside the
+      // wiki would otherwise leak its target.
       let index = "";
-      try {
-        index = fs.readFileSync(path.join(root, "index.md"), "utf-8");
-      } catch {
-        // index.md is optional
+      const indexFull = path.join(root, "index.md");
+      if (realpathContained(root, indexFull) !== null) {
+        try {
+          index = fs.readFileSync(indexFull, "utf-8");
+        } catch {
+          // index.md is optional
+        }
       }
 
       const shards: { name: string; text: string }[] = [];
       const shardDir = path.join(root, "indexes");
-      if (isInside(root, shardDir)) {
+      // realpathContained also rejects when the shard directory itself is
+      // a symlink that points outside the wiki.
+      if (
+        isInside(root, shardDir) &&
+        realpathContained(root, shardDir) !== null
+      ) {
         try {
           for (const name of fs.readdirSync(shardDir).sort()) {
             if (!name.endsWith(".md")) continue;
             const full = path.join(shardDir, name);
+            if (realpathContained(root, full) === null) continue;
             try {
               shards.push({
                 name: name.replace(/\.md$/, ""),

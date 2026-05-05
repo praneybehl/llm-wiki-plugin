@@ -8,7 +8,6 @@ import {
   extractHeadings,
 } from "./OutlinePanel.js";
 import { wikiHref, type WikiLocation } from "../href.js";
-import { recordRecent } from "../recent.js";
 import { SetupView } from "../setup/SetupView.js";
 
 /**
@@ -205,11 +204,6 @@ function PageRead({
 
   React.useEffect(() => {
     if (page === null) return;
-    const title =
-      typeof page.meta.title === "string" && page.meta.title.length > 0
-        ? page.meta.title
-        : page.slug;
-    recordRecent({ slug: page.slug, title });
     const host = articleHostRef.current;
     const article = host?.querySelector("article.llm-wiki-page") ?? host;
     onPageLoaded({

@@ -203,86 +203,18 @@ describe("WikiContextTab", () => {
 // ────────────────────────────────────────────────────────────────────────
 
 describe("WikiSidebar (launcher surface)", () => {
-  const indexPayload = {
-    index: "",
-    shards: [],
-    pages: [
-      {
-        slug: "transformer",
-        title: "Transformer",
-        type: "entity",
-        relPath: "entities/transformer.md",
-      },
-      {
-        slug: "attention-mechanism",
-        title: "Attention Mechanism",
-        type: "concept",
-        relPath: "concepts/attention-mechanism.md",
-      },
-    ],
-  };
-  const healthPayload = {
-    pageCount: 2,
-    indexLines: 0,
-    linkDensity: 1,
-    scalingMessages: [],
-    lintStatus: "pass" as const,
-    lintFindings: { totalPages: 2 },
-    wikiPathMissing: false,
-    lintCheckIntervalMinutes: 60,
-  };
-
-  function mockProviders(opts?: { wikiPathMissing?: boolean }) {
-    vi.mocked(usePluginData).mockImplementation((key) => {
-      if (key === "loadIndex") return dataResult(indexPayload) as never;
-      if (key === "wikiHealth") {
-        return dataResult({
-          ...healthPayload,
-          wikiPathMissing: opts?.wikiPathMissing ?? false,
-        }) as never;
-      }
-      return dataResult(null) as never;
-    });
-  }
-
-  it("renders the Open link to the wiki workspace", () => {
-    mockProviders();
+  it("renders a single nav link to the wiki workspace", () => {
     const { container } = render(<WikiSidebar context={baseHostContext} />);
-    const open = container.querySelector("a[data-testid='wiki-open']");
-    expect(open?.getAttribute("href")).toBe("/co/llm-wiki");
+    const link = container.querySelector("a[data-testid='wiki-open']");
+    expect(link?.getAttribute("href")).toBe("/co/llm-wiki");
   });
 
-  it("renders a Browse list grouped by frontmatter type", () => {
-    mockProviders();
+  it("renders no search input, recent list, or browse list", () => {
     const { container } = render(<WikiSidebar context={baseHostContext} />);
+    expect(container.querySelector("input[type='search']")).toBeNull();
     expect(
-      container.querySelector("a[data-testid='wiki-browse-concept']"),
-    ).not.toBeNull();
-    expect(
-      container.querySelector("a[data-testid='wiki-browse-entity']"),
-    ).not.toBeNull();
-  });
-
-  it("renders a search input that submits to ?q=…", () => {
-    mockProviders();
-    const { container } = render(<WikiSidebar context={baseHostContext} />);
-    const input = container.querySelector(
-      "input[type='search']",
-    ) as HTMLInputElement;
-    expect(input).toBeDefined();
-    const form = input.closest("form")!;
-    act(() => {
-      fireEvent.change(input, { target: { value: "transformer" } });
-      fireEvent.submit(form);
-    });
-    expect(window.location.search).toBe("?q=transformer");
-  });
-
-  it("shows a Set up CTA when wikiPathMissing is true", () => {
-    mockProviders({ wikiPathMissing: true });
-    const { container } = render(<WikiSidebar context={baseHostContext} />);
-    const setup = container.querySelector("a[data-testid='wiki-setup-cta']");
-    expect(setup?.getAttribute("href")).toBe("/co/llm-wiki?view=setup");
+      container.querySelector("[data-testid^='wiki-browse-']"),
+    ).toBeNull();
   });
 });
 

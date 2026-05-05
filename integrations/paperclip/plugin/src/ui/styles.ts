@@ -40,8 +40,8 @@ const WIKI_STYLES = `
 }
 
 .llm-wiki-search-input {
-  flex: 1 1 auto;
-  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0.4rem 0.6rem;
   border-radius: 6px;
   border: 1px solid currentColor;
@@ -359,85 +359,22 @@ const WIKI_STYLES = `
 .llm-wiki-health-setup a:hover,
 .llm-wiki-health-setup-link:hover { opacity: 1; }
 
-/* Sidebar launcher. */
+/* Sidebar launcher — single navigation link. */
 .llm-wiki-launcher {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-  padding: 0.6rem;
+  padding: 0.4rem 0.6rem;
   font-size: inherit;
   color: inherit;
-  box-sizing: border-box;
 }
-.llm-wiki-launcher-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-.llm-wiki-launcher-title {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-.llm-wiki-launcher-open {
-  color: inherit;
-  text-decoration: none;
-  opacity: 0.75;
-  font-size: 0.85rem;
-}
-.llm-wiki-launcher-open:hover { opacity: 1; }
-.llm-wiki-launcher-search { margin: 0; }
-.llm-wiki-launcher-section h3 {
-  margin: 0 0 0.3rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  opacity: 0.55;
-}
-.llm-wiki-launcher-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.05rem;
-}
-.llm-wiki-launcher-list a {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.3rem 0.45rem;
-  border-radius: 4px;
-  color: inherit;
-  text-decoration: none;
-  font-size: 0.85rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.llm-wiki-launcher-list a:hover { background: rgba(127, 127, 127, 0.12); }
-.llm-wiki-launcher-type { flex: 1 1 auto; }
-.llm-wiki-launcher-count { flex: 0 0 auto; opacity: 0.55; }
-.llm-wiki-launcher-health {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  display: flex;
+.llm-wiki-launcher-link {
+  display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-}
-.llm-wiki-launcher-setup-cta {
-  display: block;
-  text-align: center;
-  padding: 0.55rem 0.7rem;
-  border-radius: 6px;
-  border: 1px solid currentColor;
-  text-decoration: none;
   color: inherit;
-  font-size: 0.85rem;
+  text-decoration: none;
+  font-size: 0.9rem;
   opacity: 0.85;
 }
-.llm-wiki-launcher-setup-cta:hover { opacity: 1; }
+.llm-wiki-launcher-link:hover { opacity: 1; }
 
 /* Three-column workspace (page slot). */
 .llm-wiki-workspace {

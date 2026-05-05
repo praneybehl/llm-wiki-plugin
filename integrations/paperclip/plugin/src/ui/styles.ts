@@ -339,14 +339,24 @@ const WIKI_STYLES = `
 }
 .llm-wiki-setup-copy pre code { background: none; padding: 0; }
 
-/* Health indicator setup link. */
+/* Health indicator setup banner. */
+.llm-wiki-health-setup {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.06);
+  font-size: 0.8rem;
+}
+.llm-wiki-health-setup a,
 .llm-wiki-health-setup-link {
-  align-self: flex-start;
-  font-size: 0.75rem;
   color: inherit;
   text-decoration: none;
-  opacity: 0.7;
+  opacity: 0.75;
 }
+.llm-wiki-health-setup a:hover,
 .llm-wiki-health-setup-link:hover { opacity: 1; }
 
 /* Sidebar launcher. */

@@ -5,6 +5,40 @@ import { ErrorBoundary } from "./ErrorBoundary.js";
 import { injectWikiStyles } from "./styles.js";
 import { wikiHref } from "./href.js";
 
+/**
+ * Operators see this on the dashboard. Four auto-detectable signals
+ * answer "is your wiki set up well enough that agents will get good
+ * results?":
+ *
+ *   1. Wiki resolvable (path exists)
+ *   2. Wiki has at least one page
+ *   3. The plugin's wiki.query agent tool is registered (always true
+ *      once the plugin loads — counts toward N because operators
+ *      should know it's already wired and not have to do anything)
+ *   4. Lint status is "pass"
+ *
+ * The badge stays until the user dismisses it once the four are
+ * complete. Dismissal is sessionStorage-scoped so it doesn't leak
+ * across browser sessions; if anything regresses (lint fails on a new
+ * page, etc.) it reappears.
+ */
+
+const SETUP_DISMISSED_KEY = "llm-wiki:setup-dismissed";
+
+interface SetupStep {
+  label: string;
+  ok: boolean;
+}
+
+function setupSteps(data: WikiHealth): SetupStep[] {
+  return [
+    { label: "Wiki resolved", ok: !data.wikiPathMissing },
+    { label: "At least one page", ok: data.pageCount > 0 },
+    { label: "Tool registered", ok: true },
+    { label: "Lint passing", ok: data.lintStatus === "pass" },
+  ];
+}
+
 interface WikiHealth {
   pageCount: number;
   indexLines: number;
@@ -87,13 +121,10 @@ function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
   return (
     <div className="llm-wiki-health" data-state="ok">
       <header>Wiki health</header>
-      <a
-        href={wikiHref(context.companyPrefix, { kind: "setup" })}
-        className="llm-wiki-health-setup-link"
-        data-testid="wiki-health-setup-link"
-      >
-        Open setup →
-      </a>
+      <SetupStatusBanner
+        data={data}
+        companyPrefix={context.companyPrefix}
+      />
       <dl className="llm-wiki-health-stats">
         <dt>Pages</dt>
         <dd>{data.pageCount}</dd>
@@ -118,6 +149,83 @@ function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
       ) : null}
     </div>
   );
+}
+
+function SetupStatusBanner({
+  data,
+  companyPrefix,
+}: {
+  data: WikiHealth;
+  companyPrefix: string | null;
+}): React.ReactElement | null {
+  const steps = setupSteps(data);
+  const completed = steps.filter((s) => s.ok).length;
+  const total = steps.length;
+  const allOk = completed === total;
+
+  const [dismissed, setDismissed] = React.useState<boolean>(() =>
+    isDismissed(),
+  );
+
+  if (allOk && dismissed) return null;
+
+  if (allOk) {
+    return (
+      <div
+        className="llm-wiki-health-setup llm-wiki-health-setup-ok"
+        data-testid="wiki-health-setup-banner"
+      >
+        <span
+          className="llm-wiki-status-badge"
+          data-lint-status="pass"
+          data-testid="wiki-health-setup-badge"
+        >
+          ✅ Setup complete
+        </span>
+        <button
+          type="button"
+          className="llm-wiki-back"
+          onClick={() => {
+            window.sessionStorage.setItem(SETUP_DISMISSED_KEY, "1");
+            setDismissed(true);
+          }}
+          data-testid="wiki-health-setup-dismiss"
+        >
+          Dismiss
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="llm-wiki-health-setup llm-wiki-health-setup-incomplete"
+      data-testid="wiki-health-setup-banner"
+    >
+      <span
+        className="llm-wiki-status-badge"
+        data-lint-status="warn"
+        data-testid="wiki-health-setup-badge"
+      >
+        🟡 Setup: {completed}/{total} steps complete
+      </span>
+      <a
+        href={wikiHref(companyPrefix, { kind: "setup" })}
+        data-testid="wiki-health-setup-link"
+      >
+        Open setup →
+      </a>
+    </div>
+  );
+}
+
+function isDismissed(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(SETUP_DISMISSED_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 export function WikiHealthIndicator(

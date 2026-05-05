@@ -1,9 +1,8 @@
 import * as React from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 import type { PluginHostContext } from "@paperclipai/plugin-sdk/ui";
 import { WikiPageView, type WikiPageData } from "../WikiPageView.js";
+import { WikiMarkdown } from "../WikiMarkdown.js";
 import {
   type OutlineHeading,
   extractHeadings,
@@ -74,6 +73,7 @@ export function Reader({
         <Landing
           loading={indexResult.loading}
           indexBody={indexResult.data?.index ?? ""}
+          companyPrefix={context.companyPrefix}
         />
       );
     case "folder":
@@ -105,9 +105,11 @@ export function Reader({
 function Landing({
   loading,
   indexBody,
+  companyPrefix,
 }: {
   loading: boolean;
   indexBody: string;
+  companyPrefix: string | null;
 }): React.ReactElement {
   return (
     <section className="llm-wiki-landing">
@@ -120,7 +122,7 @@ function Landing({
         </p>
       ) : (
         <article className="llm-wiki-landing-index">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{indexBody}</ReactMarkdown>
+          <WikiMarkdown body={indexBody} companyPrefix={companyPrefix} />
         </article>
       )}
     </section>

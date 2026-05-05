@@ -14,7 +14,12 @@
  * regenerate the snapshot.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+} from "node:fs";
 import { join, relative, sep } from "node:path";
 import {
   parseFrontmatter,
@@ -62,8 +67,36 @@ export interface TopLinkedRow {
   broken: boolean;
 }
 
+/**
+ * Returns true if `target`'s realpath stays under `realRoot`.
+ *
+ * Symlink containment: lstat first to detect symlinks; for any entry
+ * (symlink or not) compute realpath and verify it stays under the wiki
+ * root's realpath. This catches symlinks that point outside the wiki
+ * tree, which a plain path.relative() check would miss because Node's
+ * statSync follows symlinks transparently.
+ */
+function realpathContained(realRoot: string, target: string): string | null {
+  let realTarget: string;
+  try {
+    realTarget = realpathSync(target);
+  } catch {
+    return null;
+  }
+  if (realTarget === realRoot) return realTarget;
+  if (!realTarget.startsWith(realRoot + sep)) return null;
+  return realTarget;
+}
+
 function listMarkdownFilesSorted(root: string): string[] {
   const out: string[] = [];
+
+  let realRoot: string;
+  try {
+    realRoot = realpathSync(root);
+  } catch {
+    return out;
+  }
 
   function walk(dir: string): void {
     let entries: string[];
@@ -75,15 +108,39 @@ function listMarkdownFilesSorted(root: string): string[] {
     entries.sort();
     for (const name of entries) {
       const full = join(dir, name);
-      let st;
+      // lstat: don't follow symlinks here. We always go through
+      // realpathContained() which performs the actual containment check.
+      let lst;
       try {
-        st = statSync(full);
+        lst = lstatSync(full);
       } catch {
         continue;
       }
-      if (st.isDirectory()) {
+      const isSymlink = lst.isSymbolicLink();
+      // realpathContained: rejects entries whose real target escapes the
+      // wiki root. For non-symlinks this is essentially identity-checking.
+      if (realpathContained(realRoot, full) === null) continue;
+
+      // After containment is confirmed, follow the symlink (or use lstat
+      // for plain entries) to learn whether it's a directory or file.
+      let isDir: boolean;
+      let isFile: boolean;
+      if (isSymlink) {
+        try {
+          const stat = lstatSync(realpathSync(full));
+          isDir = stat.isDirectory();
+          isFile = stat.isFile();
+        } catch {
+          continue;
+        }
+      } else {
+        isDir = lst.isDirectory();
+        isFile = lst.isFile();
+      }
+
+      if (isDir) {
         walk(full);
-      } else if (st.isFile() && name.endsWith(".md")) {
+      } else if (isFile && name.endsWith(".md")) {
         out.push(full);
       }
     }

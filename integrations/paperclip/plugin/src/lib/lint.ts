@@ -17,13 +17,35 @@
  * deliberately not ported in v0.1; defer to v0.2 if operator demand surfaces.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+} from "node:fs";
 import { join, relative, sep } from "node:path";
 import {
   parseFrontmatter,
   extractWikilinks,
   type FrontmatterValue,
 } from "./frontmatter.js";
+
+/**
+ * Symlink containment helper — see src/lib/bm25.ts for the rationale.
+ * Returns the resolved realpath when contained, or null when the target's
+ * real location escapes `realRoot`.
+ */
+function realpathContained(realRoot: string, target: string): string | null {
+  let realTarget: string;
+  try {
+    realTarget = realpathSync(target);
+  } catch {
+    return null;
+  }
+  if (realTarget === realRoot) return realTarget;
+  if (!realTarget.startsWith(realRoot + sep)) return null;
+  return realTarget;
+}
 
 const DEFAULT_SOFT_CAP = 400;
 const DEFAULT_HARD_CAP = 800;
@@ -122,6 +144,14 @@ interface CollectedPage {
 
 function listMarkdownFilesSorted(root: string): string[] {
   const out: string[] = [];
+
+  let realRoot: string;
+  try {
+    realRoot = realpathSync(root);
+  } catch {
+    return out;
+  }
+
   function walk(dir: string): void {
     let entries: string[];
     try {
@@ -132,15 +162,33 @@ function listMarkdownFilesSorted(root: string): string[] {
     entries.sort();
     for (const name of entries) {
       const full = join(dir, name);
-      let st;
+      let lst;
       try {
-        st = statSync(full);
+        lst = lstatSync(full);
       } catch {
         continue;
       }
-      if (st.isDirectory()) {
+      const isSymlink = lst.isSymbolicLink();
+      if (realpathContained(realRoot, full) === null) continue;
+
+      let isDir: boolean;
+      let isFile: boolean;
+      if (isSymlink) {
+        try {
+          const stat = lstatSync(realpathSync(full));
+          isDir = stat.isDirectory();
+          isFile = stat.isFile();
+        } catch {
+          continue;
+        }
+      } else {
+        isDir = lst.isDirectory();
+        isFile = lst.isFile();
+      }
+
+      if (isDir) {
         walk(full);
-      } else if (st.isFile() && name.endsWith(".md")) {
+      } else if (isFile && name.endsWith(".md")) {
         out.push(full);
       }
     }

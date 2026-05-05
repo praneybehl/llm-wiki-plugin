@@ -20,12 +20,33 @@
  *   totalPages ≥ 500                                → "past 500" + "lint weekly"
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+} from "node:fs";
 import { join, relative, sep } from "node:path";
 import {
   parseFrontmatter,
   extractWikilinks,
 } from "./frontmatter.js";
+
+/**
+ * Symlink containment helper — see src/lib/bm25.ts for the rationale.
+ */
+function realpathContained(realRoot: string, target: string): string | null {
+  let realTarget: string;
+  try {
+    realTarget = realpathSync(target);
+  } catch {
+    return null;
+  }
+  if (realTarget === realRoot) return realTarget;
+  if (!realTarget.startsWith(realRoot + sep)) return null;
+  return realTarget;
+}
 
 const SKIP_TOP_LEVEL_FILES = new Set(["SCHEMA.md", "log.md", "README.md"]);
 const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph"]);
@@ -53,6 +74,14 @@ export interface StatsOptions {
 
 function listMarkdownFilesSorted(root: string): string[] {
   const out: string[] = [];
+
+  let realRoot: string;
+  try {
+    realRoot = realpathSync(root);
+  } catch {
+    return out;
+  }
+
   function walk(dir: string): void {
     let entries: string[];
     try {
@@ -63,15 +92,33 @@ function listMarkdownFilesSorted(root: string): string[] {
     entries.sort();
     for (const name of entries) {
       const full = join(dir, name);
-      let st;
+      let lst;
       try {
-        st = statSync(full);
+        lst = lstatSync(full);
       } catch {
         continue;
       }
-      if (st.isDirectory()) {
+      const isSymlink = lst.isSymbolicLink();
+      if (realpathContained(realRoot, full) === null) continue;
+
+      let isDir: boolean;
+      let isFile: boolean;
+      if (isSymlink) {
+        try {
+          const stat = lstatSync(realpathSync(full));
+          isDir = stat.isDirectory();
+          isFile = stat.isFile();
+        } catch {
+          continue;
+        }
+      } else {
+        isDir = lst.isDirectory();
+        isFile = lst.isFile();
+      }
+
+      if (isDir) {
         walk(full);
-      } else if (st.isFile() && name.endsWith(".md")) {
+      } else if (isFile && name.endsWith(".md")) {
         out.push(full);
       }
     }

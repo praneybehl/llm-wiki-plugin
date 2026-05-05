@@ -140,9 +140,36 @@ async function resolveWikiRootForIssue(
   return root;
 }
 
+/**
+ * Returns true if `target`'s realpath stays under `realRoot`.
+ *
+ * Defense beyond the path.relative() containment check: a symlink under
+ * the wiki could point to anywhere on disk and Node's statSync would
+ * follow it transparently. We lstat first, then realpath, and reject
+ * anything whose real location escapes the wiki root.
+ */
+function realpathContained(realRoot: string, target: string): string | null {
+  let realTarget: string;
+  try {
+    realTarget = fs.realpathSync(target);
+  } catch {
+    return null;
+  }
+  if (realTarget === realRoot) return realTarget;
+  if (!realTarget.startsWith(realRoot + path.sep)) return null;
+  return realTarget;
+}
+
 function resolvePageFile(root: string, slug: string): string | null {
   // Try direct match first, then a recursive walk (slugs aren't path-prefixed
   // in our data model — every page is unique by basename).
+  let realRoot: string;
+  try {
+    realRoot = fs.realpathSync(root);
+  } catch {
+    return null;
+  }
+
   const candidates: string[] = [];
 
   function walk(dir: string): void {
@@ -154,20 +181,40 @@ function resolvePageFile(root: string, slug: string): string | null {
     }
     for (const name of entries) {
       const full = path.join(dir, name);
-      let st;
+      let lst;
       try {
-        st = fs.statSync(full);
+        lst = fs.lstatSync(full);
       } catch {
         continue;
       }
-      if (st.isDirectory()) walk(full);
-      else if (st.isFile() && name === `${slug}.md`) candidates.push(full);
+      const isSymlink = lst.isSymbolicLink();
+      if (realpathContained(realRoot, full) === null) continue;
+
+      let isDir: boolean;
+      let isFile: boolean;
+      if (isSymlink) {
+        try {
+          const stat = fs.lstatSync(fs.realpathSync(full));
+          isDir = stat.isDirectory();
+          isFile = stat.isFile();
+        } catch {
+          continue;
+        }
+      } else {
+        isDir = lst.isDirectory();
+        isFile = lst.isFile();
+      }
+
+      if (isDir) walk(full);
+      else if (isFile && name === `${slug}.md`) candidates.push(full);
     }
   }
   walk(root);
 
+  // Defense in depth: re-check each candidate with realpathContained
+  // (already passed above, but cheap to re-verify before opening the file).
   for (const c of candidates) {
-    if (isInside(root, c)) return c;
+    if (realpathContained(realRoot, c) !== null) return c;
   }
   return null;
 }

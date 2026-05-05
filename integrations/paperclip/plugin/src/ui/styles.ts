@@ -359,22 +359,10 @@ const WIKI_STYLES = `
 .llm-wiki-health-setup a:hover,
 .llm-wiki-health-setup-link:hover { opacity: 1; }
 
-/* Sidebar launcher — single navigation link. */
-.llm-wiki-launcher {
-  padding: 0.4rem 0.6rem;
-  font-size: inherit;
-  color: inherit;
-}
-.llm-wiki-launcher-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: inherit;
-  text-decoration: none;
-  font-size: 0.9rem;
-  opacity: 0.85;
-}
-.llm-wiki-launcher-link:hover { opacity: 1; }
+/* The sidebar launcher uses the host's Tailwind utility classes
+   (text-foreground, bg-accent, etc.) directly — see
+   src/ui/launcher/Launcher.tsx — so it inherits Paperclip's nav-item
+   look without us re-shipping any CSS. */
 
 /* Three-column workspace (page slot). */
 .llm-wiki-workspace {

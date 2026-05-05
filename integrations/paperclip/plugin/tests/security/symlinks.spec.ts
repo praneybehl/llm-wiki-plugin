@@ -5,6 +5,7 @@ import {
   writeFileSync,
   symlinkSync,
   rmSync,
+  unlinkSync,
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -410,70 +411,81 @@ innocent body
   });
 
   it("does not return content from a symlinked index.md that escapes the wiki", async () => {
-    // Replace the real index.md with a symlink.
-    rmSync(join(escapeWiki, "index.md"));
+    // Use unlinkSync (works for files and symlinks) and a try/finally so
+    // a failed assertion still restores the fixture for downstream tests.
+    unlinkSync(join(escapeWiki, "index.md"));
     symlinkSync(
       join(escapeExternal, "secret-index.md"),
       join(escapeWiki, "index.md"),
     );
-
-    const harness = await escapeHarness();
-    const result = await harness.getData<{ index: string }>(
-      "loadIndex",
-      { companyId: COMPANY_ID, projectId: PROJECT_ID },
-    );
-
-    // Restore for downstream tests.
-    rmSync(join(escapeWiki, "index.md"));
-    writeFileSync(join(escapeWiki, "index.md"), "# real index\n", "utf-8");
-
-    expect(result.index).toBe("");
-    expect(result.index).not.toContain(SECRET_MARKER);
+    let result: { index: string } | undefined;
+    try {
+      const harness = await escapeHarness();
+      result = await harness.getData<{ index: string }>(
+        "loadIndex",
+        { companyId: COMPANY_ID, projectId: PROJECT_ID },
+      );
+    } finally {
+      // unlinkSync removes the symlink itself (never follows). rmSync on
+      // a symlink works for files but is fragile cross-platform; prefer
+      // unlinkSync for any path that could be a symlink.
+      unlinkSync(join(escapeWiki, "index.md"));
+      writeFileSync(join(escapeWiki, "index.md"), "# real index\n", "utf-8");
+    }
+    expect(result?.index).toBe("");
+    expect(result?.index ?? "").not.toContain(SECRET_MARKER);
   });
 
   it("does not return content from symlinked indexes/foo.md shards that escape the wiki", async () => {
-    // Plant an escape shard.
     symlinkSync(
       join(escapeExternal, "shard-secret.md"),
       join(escapeWiki, "indexes", "by-secret.md"),
     );
-    // Plant a normal shard for contrast.
     writeFileSync(
       join(escapeWiki, "indexes", "by-type.md"),
       "# real shard\n",
       "utf-8",
     );
-
-    const harness = await escapeHarness();
-    const result = await harness.getData<{
-      shards: { name: string; text: string }[];
-    }>("loadIndex", { companyId: COMPANY_ID, projectId: PROJECT_ID });
-
-    // Cleanup.
-    rmSync(join(escapeWiki, "indexes", "by-secret.md"));
-    rmSync(join(escapeWiki, "indexes", "by-type.md"));
-
-    expect(result.shards).toHaveLength(1);
-    expect(result.shards[0]?.name).toBe("by-type");
-    for (const s of result.shards) {
+    let result:
+      | { shards: { name: string; text: string }[] }
+      | undefined;
+    try {
+      const harness = await escapeHarness();
+      result = await harness.getData<{
+        shards: { name: string; text: string }[];
+      }>("loadIndex", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    } finally {
+      unlinkSync(join(escapeWiki, "indexes", "by-secret.md"));
+      unlinkSync(join(escapeWiki, "indexes", "by-type.md"));
+    }
+    expect(result?.shards).toHaveLength(1);
+    expect(result?.shards[0]?.name).toBe("by-type");
+    for (const s of result?.shards ?? []) {
       expect(s.text).not.toContain(SECRET_MARKER);
     }
   });
 
   it("does not return shards when the indexes/ directory itself is a symlink escape", async () => {
-    rmSync(join(escapeWiki, "indexes"), { recursive: true });
+    // The original `indexes/` is a real (empty) directory created in
+    // beforeAll. Replace it with a symlink to a directory outside the
+    // wiki, run the assertion, then restore via unlinkSync (rmSync on a
+    // symlink-to-directory throws EISDIR on Linux without
+    // {recursive, force} flags).
+    rmSync(join(escapeWiki, "indexes"), { recursive: true, force: true });
     symlinkSync(escapeExternal, join(escapeWiki, "indexes"));
-
-    const harness = await escapeHarness();
-    const result = await harness.getData<{
-      shards: { name: string; text: string }[];
-    }>("loadIndex", { companyId: COMPANY_ID, projectId: PROJECT_ID });
-
-    // Cleanup: restore a real directory.
-    rmSync(join(escapeWiki, "indexes"));
-    mkdirSync(join(escapeWiki, "indexes"));
-
-    expect(result.shards).toEqual([]);
+    let result:
+      | { shards: { name: string; text: string }[] }
+      | undefined;
+    try {
+      const harness = await escapeHarness();
+      result = await harness.getData<{
+        shards: { name: string; text: string }[];
+      }>("loadIndex", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    } finally {
+      unlinkSync(join(escapeWiki, "indexes"));
+      mkdirSync(join(escapeWiki, "indexes"));
+    }
+    expect(result?.shards).toEqual([]);
   });
 });
 

@@ -3,6 +3,7 @@ import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 import type { PluginWidgetProps } from "@paperclipai/plugin-sdk/ui";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { injectWikiStyles } from "./styles.js";
+import { wikiHref } from "./href.js";
 
 interface WikiHealth {
   pageCount: number;
@@ -70,8 +71,14 @@ function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
         <header>Wiki health</header>
         <p>Wiki path not configured for this Company.</p>
         <p className="llm-wiki-hint">
-          Run <code>/wiki:init</code> from any agent in this Company, or set{" "}
-          <code>wiki_path</code> in the plugin settings.
+          Run <code>/wiki:init</code> from any agent in this Company, or open{" "}
+          <a
+            href={wikiHref(context.companyPrefix, { kind: "setup" })}
+            data-testid="wiki-health-missing-setup-link"
+          >
+            Setup
+          </a>{" "}
+          for the full runbook.
         </p>
       </div>
     );
@@ -80,6 +87,13 @@ function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
   return (
     <div className="llm-wiki-health" data-state="ok">
       <header>Wiki health</header>
+      <a
+        href={wikiHref(context.companyPrefix, { kind: "setup" })}
+        className="llm-wiki-health-setup-link"
+        data-testid="wiki-health-setup-link"
+      >
+        Open setup →
+      </a>
       <dl className="llm-wiki-health-stats">
         <dt>Pages</dt>
         <dd>{data.pageCount}</dd>

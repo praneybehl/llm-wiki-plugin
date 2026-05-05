@@ -714,6 +714,40 @@ describe("worker — search_top_k config plumbing", () => {
   });
 });
 
+describe("worker — verifySetup", () => {
+  let harness: TestHarness;
+  beforeAll(async () => {
+    harness = await makeWorker();
+  });
+
+  it("reports a found wiki, the resolved path, and a non-empty page count", async () => {
+    const result = await harness.getData<{
+      wiki: { found: boolean; path: string | null; pageCount: number };
+      tool: { registered: boolean };
+      sample: { query: string; resultCount: number; durationMs: number };
+    }>("verifySetup", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    expect(result.wiki.found).toBe(true);
+    expect(typeof result.wiki.path).toBe("string");
+    expect(result.wiki.pageCount).toBeGreaterThan(0);
+    expect(result.tool.registered).toBe(true);
+    expect(result.sample.query).toBe("test");
+    expect(result.sample.resultCount).toBeGreaterThanOrEqual(0);
+    expect(result.sample.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("reports wiki.found=false when the wiki path can't be resolved", async () => {
+    const harnessNoWiki = await makeWorker({
+      config: { wiki_path: "this-folder-does-not-exist" },
+    });
+    const result = await harnessNoWiki.getData<{
+      wiki: { found: boolean; path: string | null; pageCount: number };
+    }>("verifySetup", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    expect(result.wiki.found).toBe(false);
+    expect(result.wiki.path).toBeNull();
+    expect(result.wiki.pageCount).toBe(0);
+  });
+});
+
 describe("worker — backlinks", () => {
   let harness: TestHarness;
   beforeAll(async () => {

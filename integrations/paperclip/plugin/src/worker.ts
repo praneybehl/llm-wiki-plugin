@@ -528,6 +528,45 @@ const plugin = definePlugin({
       };
     });
 
+    // ── verifySetup ───────────────────────────────────────────────────
+    ctx.data.register("verifySetup", async (params) => {
+      const companyId = String(params.companyId ?? "");
+      const projectId = params.projectId ? String(params.projectId) : null;
+      const root = await resolveWikiRoot(ctx, companyId, projectId);
+
+      let pageCount = 0;
+      let sampleResults = 0;
+      let sampleDurationMs = 0;
+      const sampleQuery = "test";
+
+      if (root) {
+        try {
+          const pages = collectPages(root);
+          pageCount = pages.length;
+          const start = Date.now();
+          const scored = searchPages(pages, { query: sampleQuery, topK: 5 });
+          sampleDurationMs = Date.now() - start;
+          sampleResults = scored.length;
+        } catch {
+          // Fall through with zeros — verify view will mark this as warn.
+        }
+      }
+
+      return {
+        wiki: {
+          found: root !== null,
+          path: root,
+          pageCount,
+        },
+        tool: { registered: true },
+        sample: {
+          query: sampleQuery,
+          resultCount: sampleResults,
+          durationMs: sampleDurationMs,
+        },
+      };
+    });
+
     // ── backlinks ─────────────────────────────────────────────────────
     ctx.data.register("backlinks", async (params) => {
       const companyId = String(params.companyId ?? "");
@@ -599,7 +638,7 @@ const plugin = definePlugin({
       {
         displayName: "Query the LLM Wiki",
         description:
-          "BM25 search over the active Company's wiki. Returns top N pages with one-line summaries.",
+          "Search the Company's LLM Wiki — the source of truth for accumulated company knowledge (people, products, decisions, prior research, sources). Call this before answering questions about Company-specific context. Returns BM25-ranked pages with title, type, and one-line summary; follow up with another wiki.query for deep dives or read the page directly through the agent's filesystem if available.",
         parametersSchema: {
           type: "object",
           properties: {

@@ -269,6 +269,86 @@ const WIKI_STYLES = `
   cursor: pointer;
 }
 
+/* Setup view. */
+.llm-wiki-setup {
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.llm-wiki-setup > header h2 { margin: 0 0 0.3rem; font-size: 1.1rem; }
+.llm-wiki-setup-step {
+  border: 1px solid rgba(127, 127, 127, 0.25);
+  border-radius: 6px;
+  padding: 0.7rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.llm-wiki-setup-step h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.llm-wiki-setup-step[data-status="ok"] {
+  border-color: rgba(0, 160, 80, 0.4);
+  background: rgba(0, 160, 80, 0.04);
+}
+.llm-wiki-setup-step[data-status="missing"],
+.llm-wiki-setup-step[data-status="warn"] {
+  border-color: rgba(200, 140, 0, 0.4);
+  background: rgba(200, 140, 0, 0.04);
+}
+.llm-wiki-setup-step[data-status="error"] {
+  border-color: rgba(200, 60, 60, 0.5);
+  background: rgba(200, 60, 60, 0.04);
+}
+.llm-wiki-setup-step-body p { margin: 0.25rem 0; font-size: 0.9rem; }
+.llm-wiki-setup-adapters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.llm-wiki-setup-adapter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.85rem;
+}
+.llm-wiki-setup-copy {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+.llm-wiki-setup-copy pre {
+  flex: 1 1 auto;
+  margin: 0;
+  background: rgba(127, 127, 127, 0.08);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  overflow: auto;
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.llm-wiki-setup-copy pre code { background: none; padding: 0; }
+
+/* Health indicator setup link. */
+.llm-wiki-health-setup-link {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.7;
+}
+.llm-wiki-health-setup-link:hover { opacity: 1; }
+
 /* Sidebar launcher. */
 .llm-wiki-launcher {
   display: flex;

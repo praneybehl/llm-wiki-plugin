@@ -80,7 +80,7 @@ const manifest: PaperclipPluginManifestV1 = {
       name: "wiki.query",
       displayName: "Query the LLM Wiki",
       description:
-        "BM25 search over the active Company's wiki. Returns top N pages with one-line summaries.",
+        "Search the Company's LLM Wiki — the source of truth for accumulated company knowledge (people, products, decisions, prior research, sources). Call this before answering questions about Company-specific context. Returns BM25-ranked pages with title, type, and one-line summary; follow up with another wiki.query for deep dives or read the page directly through the agent's filesystem if available.",
       parametersSchema: {
         type: "object",
         properties: {

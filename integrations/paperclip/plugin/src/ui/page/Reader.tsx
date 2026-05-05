@@ -10,6 +10,7 @@ import {
 } from "./OutlinePanel.js";
 import { wikiHref, type WikiLocation } from "../href.js";
 import { recordRecent } from "../recent.js";
+import { SetupView } from "../setup/SetupView.js";
 
 /**
  * Reader — center-column dispatcher for the wiki workspace.
@@ -103,8 +104,19 @@ export function Reader({
         />
       );
     case "setup":
-      return <SetupPlaceholder onPageLoaded={onPageLoaded} />;
+      return <SetupContainer context={context} onPageLoaded={onPageLoaded} />;
   }
+}
+
+function SetupContainer({
+  context,
+  onPageLoaded,
+}: {
+  context: PluginHostContext;
+  onPageLoaded: ReaderProps["onPageLoaded"];
+}): React.ReactElement {
+  useNotifyClear(onPageLoaded, []);
+  return <SetupView context={context} />;
 }
 
 function useNotifyClear(
@@ -315,19 +327,3 @@ function SearchView({
   );
 }
 
-function SetupPlaceholder({
-  onPageLoaded,
-}: {
-  onPageLoaded: ReaderProps["onPageLoaded"];
-}): React.ReactElement {
-  useNotifyClear(onPageLoaded, []);
-  return (
-    <section className="llm-wiki-setup">
-      <h2>Setup</h2>
-      <p className="llm-wiki-empty">
-        Setup walkthrough lands in the next release. For now, see the
-        plugin README for the install runbook.
-      </p>
-    </section>
-  );
-}

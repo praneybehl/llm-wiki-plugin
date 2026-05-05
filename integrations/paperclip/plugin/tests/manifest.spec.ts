@@ -184,6 +184,15 @@ describe("manifest — tools", () => {
     expect(tool?.parametersSchema).toBeTruthy();
   });
 
+  it("wiki.query description is self-instructive (when-to-call signal for agents)", () => {
+    const tool = manifest.tools?.find((t) => t.name === "wiki.query");
+    const desc = (tool?.description ?? "").toLowerCase();
+    // Agents reading the toolbelt should see when to use this tool, not
+    // just what the algorithm is.
+    expect(desc).toContain("source of truth");
+    expect(desc).toContain("before answering");
+  });
+
   it("wiki.query parametersSchema requires a 'query' field", () => {
     const tool = manifest.tools?.find((t) => t.name === "wiki.query");
     const schema = tool?.parametersSchema as {

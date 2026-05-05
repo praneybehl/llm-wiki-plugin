@@ -8,6 +8,7 @@ import { FolderTree, type PageEntry } from "./page/FolderTree.js";
 import { Reader, type ReaderPageContext } from "./page/Reader.js";
 import { PropertiesPanel } from "./page/PropertiesPanel.js";
 import { OutlinePanel } from "./page/OutlinePanel.js";
+import { BacklinksPanel } from "./page/BacklinksPanel.js";
 
 /**
  * The wiki workspace — three-column layout served at the page slot route.
@@ -90,6 +91,12 @@ function Workspace({
           <>
             <PropertiesPanel meta={page.meta} />
             <OutlinePanel headings={page.headings} />
+            <BacklinksPanel
+              companyId={context.companyId}
+              projectId={context.projectId}
+              companyPrefix={context.companyPrefix}
+              slug={page.slug}
+            />
           </>
         )}
       </aside>

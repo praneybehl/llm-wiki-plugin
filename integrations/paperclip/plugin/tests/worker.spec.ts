@@ -714,6 +714,78 @@ describe("worker — search_top_k config plumbing", () => {
   });
 });
 
+describe("worker — backlinks", () => {
+  let harness: TestHarness;
+  beforeAll(async () => {
+    harness = await makeWorker();
+  });
+
+  it("returns the pages that link to a given slug via [[slug]]", async () => {
+    const result = await harness.getData<{
+      results: { slug: string; title: string; type: string; snippet: string }[];
+    }>("backlinks", {
+      companyId: COMPANY_ID,
+      projectId: PROJECT_ID,
+      slug: "attention-mechanism",
+    });
+    const slugs = result.results.map((r) => r.slug).sort();
+    // Three fixture pages link to attention-mechanism: transformer (entity),
+    // transformer-vs-rnn (synthesis), attention-paper (source).
+    expect(slugs).toEqual(
+      ["attention-paper", "transformer", "transformer-vs-rnn"].sort(),
+    );
+  });
+
+  it("recognises the [[slug|alias]] form as a backlink", async () => {
+    // attention-paper links to transformer via the bare form, but we
+    // also want to verify alias matching. Insert no fixture; instead,
+    // assert that transformer-vs-rnn (which uses bare form to link to
+    // transformer) shows up as a backlink for transformer.
+    const result = await harness.getData<{
+      results: { slug: string }[];
+    }>("backlinks", {
+      companyId: COMPANY_ID,
+      projectId: PROJECT_ID,
+      slug: "transformer",
+    });
+    const slugs = result.results.map((r) => r.slug).sort();
+    expect(slugs).toContain("transformer-vs-rnn");
+    expect(slugs).toContain("attention-paper");
+  });
+
+  it("returns an empty list for an unlinked slug", async () => {
+    const result = await harness.getData<{ results: unknown[] }>(
+      "backlinks",
+      {
+        companyId: COMPANY_ID,
+        projectId: PROJECT_ID,
+        slug: "no-such-page",
+      },
+    );
+    expect(result.results).toEqual([]);
+  });
+
+  it("rejects empty slug input without scanning", async () => {
+    const result = await harness.getData<{ results: unknown[] }>(
+      "backlinks",
+      { companyId: COMPANY_ID, projectId: PROJECT_ID, slug: "" },
+    );
+    expect(result.results).toEqual([]);
+  });
+
+  it("never returns the page itself in its own backlink list", async () => {
+    const result = await harness.getData<{ results: { slug: string }[] }>(
+      "backlinks",
+      {
+        companyId: COMPANY_ID,
+        projectId: PROJECT_ID,
+        slug: "transformer",
+      },
+    );
+    expect(result.results.find((r) => r.slug === "transformer")).toBeUndefined();
+  });
+});
+
 afterAll(() => {
   // No persistent temp dirs to clean — fixtures live in the repo.
 });

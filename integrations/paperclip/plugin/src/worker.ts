@@ -59,6 +59,10 @@ function metaString(meta: Record<string, FrontmatterValue>, key: string): string
   return typeof v === "string" ? v : "";
 }
 
+function escapeForRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function isInside(parent: string, target: string): boolean {
   const rel = path.relative(parent, target);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
@@ -522,6 +526,37 @@ const plugin = definePlugin({
         wikiPathMissing: false,
         lintCheckIntervalMinutes,
       };
+    });
+
+    // ── backlinks ─────────────────────────────────────────────────────
+    ctx.data.register("backlinks", async (params) => {
+      const companyId = String(params.companyId ?? "");
+      const projectId = params.projectId ? String(params.projectId) : null;
+      const slug = String(params.slug ?? "").trim();
+      if (slug.length === 0) return { results: [] };
+
+      const root = await resolveWikiRoot(ctx, companyId, projectId);
+      if (!root) return { results: [] };
+
+      const pages = collectPages(root);
+      // Pages whose body contains a wikilink to `slug` (either bare
+      // [[slug]] or aliased [[slug|display]]). extractWikilinks already
+      // canonicalises both forms to the slug. We exclude the page itself
+      // so a page never appears in its own backlinks.
+      const results = pages
+        .filter((p) => p.slug !== slug && p.links.includes(slug))
+        .map((p) => {
+          const title = metaString(p.meta, "title") || p.slug;
+          const type = metaString(p.meta, "type") || "(none)";
+          // Snippet — first line containing the wikilink (with optional
+          // alias). Falls back to the page's first non-empty paragraph.
+          const re = new RegExp(`\\[\\[${escapeForRegex(slug)}(?:\\|[^\\]]+)?\\]\\]`);
+          const lines = p.body.split(/\r?\n/);
+          const hit = lines.find((line) => re.test(line));
+          const snippet = (hit ?? lines.find((l) => l.trim().length > 0) ?? "").trim();
+          return { slug: p.slug, title, type, snippet };
+        });
+      return { results };
     });
 
     // ── relevantForIssue ──────────────────────────────────────────────

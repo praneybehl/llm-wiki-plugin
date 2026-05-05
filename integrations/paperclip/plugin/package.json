@@ -34,7 +34,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "node ./esbuild.config.mjs",
-    "build:watch": "node ./esbuild.config.mjs --watch"
+    "build:watch": "node ./esbuild.config.mjs --watch",
+    "prepublish:check": "node ./scripts/prepublish-checks.mjs",
+    "prepublishOnly": "node ./scripts/prepublish-checks.mjs"
   },
   "peerDependencies": {
     "@paperclipai/plugin-sdk": "2026.428.0",

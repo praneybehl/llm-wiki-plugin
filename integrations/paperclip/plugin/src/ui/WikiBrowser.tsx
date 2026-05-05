@@ -122,7 +122,7 @@ export function WikiBrowser({
               ? (pageResult.data as WikiPageData)
               : null
           }
-          onWikilinkClick={(slug) => setCurrentSlug(slug)}
+          companyPrefix={context.companyPrefix}
         />
       ) : trimmedQuery.length > 0 ? (
         <SearchResults
@@ -213,14 +213,14 @@ function PageDetail({
   loading,
   error,
   page,
-  onWikilinkClick,
+  companyPrefix,
 }: {
   loading: boolean;
   error: string | null;
   page: WikiPageData | null;
-  onWikilinkClick: (slug: string) => void;
+  companyPrefix: string | null;
 }): React.ReactElement {
   if (error !== null) return <p>Error: {error}</p>;
   if (loading || page === null) return <p>Loading…</p>;
-  return <WikiPageView page={page} onWikilinkClick={onWikilinkClick} />;
+  return <WikiPageView page={page} companyPrefix={companyPrefix} />;
 }

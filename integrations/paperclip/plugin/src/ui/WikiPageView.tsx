@@ -1,30 +1,38 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeHighlight from "rehype-highlight";
+import { wikiHref } from "./href.js";
 
 /**
- * Renders one wiki page as markdown with GFM extensions.
+ * Renders one wiki page as markdown with GFM extensions and the v0.4
+ * reader pipeline:
+ *   - rehype-slug: stable ids on h1–h6 (used by the outline panel).
+ *   - rehype-autolink-headings: tiny `#` permalink anchor inside each
+ *     heading.
+ *   - rehype-highlight: highlight.js classes on fenced code blocks.
  *
  * Wikilink handling: `[[slug]]` / `[[slug|display]]` are transformed at
  * the source level (string substitution) into standard markdown links
- * with a sentinel scheme. The custom <a> renderer detects the sentinel
- * and surfaces them as internal links with a data-wiki-slug attribute,
- * dispatching to the optional onWikilinkClick handler. This keeps the
- * markdown pipeline stock — no third-party remark-wiki-link dependency —
- * and makes parity with our extractWikilinks regex trivial to verify.
+ * with a `wiki:` sentinel scheme. The custom <a> renderer detects the
+ * sentinel and rewrites the href to a real `/{prefix}/llm-wiki#{slug}`
+ * URL — the URL is the source of truth for navigation, not a callback.
  */
 
 const WIKILINK_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 const SENTINEL_PROTOCOL = "wiki:";
 
 function expandWikilinks(body: string): string {
-  return body.replace(WIKILINK_RE, (_match, rawSlug: string, rawDisplay?: string) => {
-    const slug = rawSlug.trim();
-    const display = (rawDisplay ?? slug).trim();
-    // Use a sentinel scheme so the <a> renderer can detect wiki links
-    // without colliding with regular http(s) targets.
-    return `[${display}](${SENTINEL_PROTOCOL}${slug})`;
-  });
+  return body.replace(
+    WIKILINK_RE,
+    (_match, rawSlug: string, rawDisplay?: string) => {
+      const slug = rawSlug.trim();
+      const display = (rawDisplay ?? slug).trim();
+      return `[${display}](${SENTINEL_PROTOCOL}${slug})`;
+    },
+  );
 }
 
 /**
@@ -35,9 +43,11 @@ function expandWikilinks(body: string): string {
  */
 function preserveWikiScheme(url: string): string {
   if (url.startsWith(SENTINEL_PROTOCOL)) return url;
-  // Allow common safe schemes; drop everything else (mirrors react-markdown's
-  // default behavior).
-  if (/^(https?|mailto|tel):/.test(url) || url.startsWith("#") || url.startsWith("/")) {
+  if (
+    /^(https?|mailto|tel):/.test(url) ||
+    url.startsWith("#") ||
+    url.startsWith("/")
+  ) {
     return url;
   }
   return "";
@@ -51,26 +61,31 @@ export interface WikiPageData {
 
 export interface WikiPageViewProps {
   page: WikiPageData;
-  onWikilinkClick?: (slug: string) => void;
+  /**
+   * Active company prefix. Wikilinks inside the rendered body resolve to
+   * `/{companyPrefix}/llm-wiki#{slug}`. When null (e.g. before the host
+   * context resolves), wikilinks fall back to a `#` no-op href.
+   */
+  companyPrefix: string | null;
 }
 
-function MarkdownAnchor(
-  props: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href?: string },
-  onWikilinkClick?: (slug: string) => void,
-): React.ReactElement {
-  const { href, children, ...rest } = props;
+interface MarkdownAnchorProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+  href?: string;
+  companyPrefix: string | null;
+}
+
+function MarkdownAnchor({
+  href,
+  children,
+  companyPrefix,
+  ...rest
+}: MarkdownAnchorProps): React.ReactElement {
   if (typeof href === "string" && href.startsWith(SENTINEL_PROTOCOL)) {
     const slug = href.slice(SENTINEL_PROTOCOL.length);
     return (
       <a
-        href={`#wiki/${slug}`}
+        href={wikiHref(companyPrefix, { kind: "page", slug })}
         data-wiki-slug={slug}
-        onClick={(e) => {
-          if (onWikilinkClick) {
-            e.preventDefault();
-            onWikilinkClick(slug);
-          }
-        }}
         {...rest}
       >
         {children}
@@ -84,9 +99,22 @@ function MarkdownAnchor(
   );
 }
 
+const REMARK_PLUGINS = [remarkGfm];
+const REHYPE_PLUGINS = [
+  rehypeSlug,
+  // Default behaviour ("prepend") puts the anchor before the heading text,
+  // which we hide via CSS unless the heading is hovered. Keeping the
+  // default rather than tuning options now — easy to revisit if the
+  // visual is too noisy.
+  rehypeAutolinkHeadings,
+  // ignoreMissing keeps unrecognised languages as plain `<code>` instead
+  // of throwing.
+  [rehypeHighlight, { ignoreMissing: true }],
+] as const;
+
 export function WikiPageView({
   page,
-  onWikilinkClick,
+  companyPrefix,
 }: WikiPageViewProps): React.ReactElement {
   const title =
     typeof page.meta.title === "string" && page.meta.title.length > 0
@@ -97,15 +125,22 @@ export function WikiPageView({
       ? page.meta.type
       : null;
 
-  const expanded = React.useMemo(() => expandWikilinks(page.body), [page.body]);
+  const expanded = React.useMemo(
+    () => expandWikilinks(page.body),
+    [page.body],
+  );
 
   const components = React.useMemo<{
-    a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => React.ReactElement;
+    a: (
+      props: React.AnchorHTMLAttributes<HTMLAnchorElement>,
+    ) => React.ReactElement;
   }>(
     () => ({
-      a: (props) => MarkdownAnchor(props, onWikilinkClick),
+      a: (props) => (
+        <MarkdownAnchor {...props} companyPrefix={companyPrefix} />
+      ),
     }),
-    [onWikilinkClick],
+    [companyPrefix],
   );
 
   return (
@@ -117,7 +152,8 @@ export function WikiPageView({
         ) : null}
       </header>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={REMARK_PLUGINS}
+        rehypePlugins={REHYPE_PLUGINS as unknown as never}
         components={components}
         urlTransform={preserveWikiScheme}
       >

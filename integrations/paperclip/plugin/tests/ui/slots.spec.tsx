@@ -281,6 +281,86 @@ describe("ui/index.tsx — named exports", () => {
 // Fix 2 — UI must not pass a hardcoded topK so the worker config wins
 // ────────────────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────────────────
+// Fix 3 — WikiHealthIndicator refreshes on lintCheckIntervalMinutes
+// ────────────────────────────────────────────────────────────────────────
+
+describe("WikiHealthIndicator — periodic refresh", () => {
+  function healthPayload(intervalMinutes: number) {
+    return {
+      pageCount: 10,
+      indexLines: 50,
+      linkDensity: 1.5,
+      scalingMessages: [],
+      lintStatus: "pass" as const,
+      lintFindings: { totalPages: 10 },
+      wikiPathMissing: false,
+      lintCheckIntervalMinutes: intervalMinutes,
+    };
+  }
+
+  it("calls refresh() after the configured interval elapses", () => {
+    vi.useFakeTimers();
+    try {
+      const refresh = vi.fn();
+      vi.mocked(usePluginData).mockReturnValue({
+        data: healthPayload(5),
+        loading: false,
+        error: null,
+        refresh,
+      });
+      render(<WikiHealthIndicator context={baseHostContext} />);
+      // 5 minutes = 300_000 ms.
+      expect(refresh).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(5 * 60_000);
+      expect(refresh).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(5 * 60_000);
+      expect(refresh).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears the interval on unmount (no leak)", () => {
+    vi.useFakeTimers();
+    try {
+      const refresh = vi.fn();
+      vi.mocked(usePluginData).mockReturnValue({
+        data: healthPayload(5),
+        loading: false,
+        error: null,
+        refresh,
+      });
+      const { unmount } = render(
+        <WikiHealthIndicator context={baseHostContext} />,
+      );
+      unmount();
+      vi.advanceTimersByTime(60 * 60_000);
+      expect(refresh).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not schedule when payload is loading or in error state", () => {
+    vi.useFakeTimers();
+    try {
+      const refresh = vi.fn();
+      vi.mocked(usePluginData).mockReturnValue({
+        data: null,
+        loading: true,
+        error: null,
+        refresh,
+      });
+      render(<WikiHealthIndicator context={baseHostContext} />);
+      vi.advanceTimersByTime(60 * 60_000);
+      expect(refresh).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("WikiBrowser — does not hardcode topK for searchWiki", () => {
   it("does not pass topK in the searchWiki params", () => {
     vi.mocked(usePluginData).mockReturnValue(

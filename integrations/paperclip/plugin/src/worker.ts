@@ -104,6 +104,26 @@ async function resolveTopK(
   return TOPK_DEFAULT;
 }
 
+const LINT_INTERVAL_MIN_MINUTES = 5;
+const LINT_INTERVAL_DEFAULT_MINUTES = 60;
+
+/**
+ * Resolve the dashboard widget's refresh interval (in minutes) from the
+ * operator's config, with fallback to the schema default and clamping to
+ * the schema's `minimum: 5`.
+ */
+async function resolveLintIntervalMinutes(ctx: PluginContext): Promise<number> {
+  const config = await getConfig(ctx);
+  const raw = config.lint_check_interval_minutes;
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return LINT_INTERVAL_DEFAULT_MINUTES;
+  }
+  const floored = Math.floor(raw);
+  return floored < LINT_INTERVAL_MIN_MINUTES
+    ? LINT_INTERVAL_MIN_MINUTES
+    : floored;
+}
+
 /**
  * Resolve the wiki root for a Company. Per SPEC §"Multi-Company behavior", v0.1
  * assumes one wiki per Company, located under the Company's primary
@@ -380,6 +400,7 @@ const plugin = definePlugin({
     ctx.data.register("wikiHealth", async (params) => {
       const companyId = String(params.companyId ?? "");
       const projectId = params.projectId ? String(params.projectId) : null;
+      const lintCheckIntervalMinutes = await resolveLintIntervalMinutes(ctx);
       const root = await resolveWikiRoot(ctx, companyId, projectId);
       if (!root) {
         return {
@@ -390,6 +411,7 @@ const plugin = definePlugin({
           lintStatus: "warn" as const,
           lintFindings: null,
           wikiPathMissing: true,
+          lintCheckIntervalMinutes,
         };
       }
       const stats = computeStats(root);
@@ -418,6 +440,7 @@ const plugin = definePlugin({
         lintStatus,
         lintFindings: lint.summary,
         wikiPathMissing: false,
+        lintCheckIntervalMinutes,
       };
     });
 

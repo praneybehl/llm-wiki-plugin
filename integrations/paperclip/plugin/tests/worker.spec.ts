@@ -415,6 +415,59 @@ describe("worker — does not write", () => {
   });
 });
 
+describe("worker — wikiHealth includes lintCheckIntervalMinutes", () => {
+  it("defaults to 60 minutes when no config is set", async () => {
+    const harness = await makeWorker();
+    const result = await harness.getData<{
+      lintCheckIntervalMinutes: number;
+    }>("wikiHealth", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    expect(result.lintCheckIntervalMinutes).toBe(60);
+  });
+
+  it("respects config.lint_check_interval_minutes", async () => {
+    const harness = await makeWorker({
+      config: { wiki_path: "wiki", lint_check_interval_minutes: 15 },
+    });
+    const result = await harness.getData<{
+      lintCheckIntervalMinutes: number;
+    }>("wikiHealth", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    expect(result.lintCheckIntervalMinutes).toBe(15);
+  });
+
+  it("clamps below-minimum config to 5 (instanceConfigSchema minimum)", async () => {
+    const harness = await makeWorker({
+      config: { wiki_path: "wiki", lint_check_interval_minutes: 1 },
+    });
+    const result = await harness.getData<{
+      lintCheckIntervalMinutes: number;
+    }>("wikiHealth", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    expect(result.lintCheckIntervalMinutes).toBe(5);
+  });
+
+  it("falls back to 60 when config has a non-numeric value", async () => {
+    const harness = await makeWorker({
+      config: { wiki_path: "wiki", lint_check_interval_minutes: "lol" as unknown as number },
+    });
+    const result = await harness.getData<{
+      lintCheckIntervalMinutes: number;
+    }>("wikiHealth", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    expect(result.lintCheckIntervalMinutes).toBe(60);
+  });
+
+  it("includes the field even in the wikiPathMissing fallback", async () => {
+    const harness = await makeWorker({
+      workspacePath: null,
+      config: { wiki_path: "wiki", lint_check_interval_minutes: 30 },
+    });
+    const result = await harness.getData<{
+      wikiPathMissing: boolean;
+      lintCheckIntervalMinutes: number;
+    }>("wikiHealth", { companyId: COMPANY_ID, projectId: PROJECT_ID });
+    expect(result.wikiPathMissing).toBe(true);
+    expect(result.lintCheckIntervalMinutes).toBe(30);
+  });
+});
+
 describe("worker — search_top_k config plumbing", () => {
   it("uses config.search_top_k as the default when params.topK is absent", async () => {
     const harness = await makeWorker({

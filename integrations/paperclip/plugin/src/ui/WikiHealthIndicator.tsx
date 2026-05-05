@@ -11,13 +11,30 @@ interface WikiHealth {
   lintStatus: "pass" | "warn" | "fail";
   lintFindings: { totalPages?: number } | null;
   wikiPathMissing: boolean;
+  lintCheckIntervalMinutes: number;
 }
 
 function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
-  const { data, loading, error } = usePluginData<WikiHealth>("wikiHealth", {
-    companyId: context.companyId,
-    projectId: context.projectId,
-  });
+  const { data, loading, error, refresh } = usePluginData<WikiHealth>(
+    "wikiHealth",
+    {
+      companyId: context.companyId,
+      projectId: context.projectId,
+    },
+  );
+
+  // Auto-refresh on the operator-configured interval. The worker
+  // includes the value in the payload (sourced from
+  // instanceConfigSchema.lint_check_interval_minutes, default 60,
+  // clamped >= 5). We only schedule once data arrives — no point
+  // polling while loading or in error state.
+  const intervalMinutes = data?.lintCheckIntervalMinutes;
+  React.useEffect(() => {
+    if (intervalMinutes === undefined) return;
+    const ms = Math.max(60_000, intervalMinutes * 60_000);
+    const id = setInterval(() => refresh(), ms);
+    return () => clearInterval(id);
+  }, [intervalMinutes, refresh]);
 
   if (context.companyId === null) {
     return (

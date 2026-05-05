@@ -9,6 +9,11 @@ import { Reader, type ReaderPageContext } from "./page/Reader.js";
 import { PropertiesPanel } from "./page/PropertiesPanel.js";
 import { OutlinePanel } from "./page/OutlinePanel.js";
 import { BacklinksPanel } from "./page/BacklinksPanel.js";
+import { Topbar } from "./page/Topbar.js";
+import {
+  QuickSwitcher,
+  useQuickSwitcherShortcut,
+} from "./page/QuickSwitcher.js";
 
 /**
  * The wiki workspace — three-column layout served at the page slot route.
@@ -47,6 +52,8 @@ function Workspace({
     [],
   );
 
+  const switcher = useQuickSwitcherShortcut();
+
   if (context.companyId === null) {
     return (
       <div className="llm-wiki-workspace">
@@ -62,6 +69,18 @@ function Workspace({
       className="llm-wiki-workspace llm-wiki-page-surface"
       data-view={location.kind}
     >
+      <Topbar
+        location={location}
+        companyPrefix={context.companyPrefix}
+        onOpenSwitcher={() => switcher.setOpen(true)}
+      />
+      <QuickSwitcher
+        pages={indexResult.data?.pages ?? []}
+        companyPrefix={context.companyPrefix}
+        open={switcher.open}
+        onOpenChange={switcher.setOpen}
+      />
+      <div className="llm-wiki-workspace-grid">
       <aside className="llm-wiki-workspace-left">
         <input
           type="search"
@@ -100,6 +119,7 @@ function Workspace({
           </>
         )}
       </aside>
+      </div>
     </div>
   );
 }

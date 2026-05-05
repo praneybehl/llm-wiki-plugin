@@ -3,6 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["tests/**/*.spec.{ts,tsx}"],
+    setupFiles: ["./tests/_setup.ts"],
     // Default node environment for lib + worker tests. UI tests opt into
     // jsdom via `// @vitest-environment jsdom` at the top of each spec.
     environment: "node",

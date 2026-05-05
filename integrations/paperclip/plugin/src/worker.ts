@@ -278,6 +278,12 @@ const plugin = definePlugin({
       const companyId = String(params.companyId ?? "");
       const projectId = params.projectId ? String(params.projectId) : null;
       const slug = String(params.slug ?? "");
+      // Short-circuit before any host RPC or filesystem access. The UI
+      // unconditionally invokes readPage with slug: "" when nothing is
+      // selected; without this, every sidebar mount runs a full walk.
+      if (slug.trim().length === 0) {
+        return { error: "no slug provided" };
+      }
       const root = await resolveWikiRoot(ctx, companyId, projectId);
       if (!root) {
         return { error: "wiki path not accessible" };
@@ -302,6 +308,13 @@ const plugin = definePlugin({
       const companyId = String(params.companyId ?? "");
       const projectId = params.projectId ? String(params.projectId) : null;
       const query = String(params.query ?? "");
+      // Short-circuit before any host RPC or filesystem access. The UI
+      // calls searchWiki on every keystroke (including empty); without
+      // this, an empty search box runs a full collectPages walk that
+      // produces nothing useful.
+      if (query.trim().length === 0) {
+        return { results: [] };
+      }
       const topK = await resolveTopK(ctx, params.topK);
       const filters = (params.filters ?? {}) as SearchFiltersInput;
       const root = await resolveWikiRoot(ctx, companyId, projectId);

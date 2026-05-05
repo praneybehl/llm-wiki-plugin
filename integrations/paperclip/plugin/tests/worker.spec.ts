@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { createTestHarness, type TestHarness } from "@paperclipai/plugin-sdk/testing";
 import type {
   PaperclipPluginManifestV1,
@@ -412,6 +412,71 @@ describe("worker — does not write", () => {
     await expect(
       harness.performAction("anything", {}),
     ).rejects.toThrow(/no action handler/i);
+  });
+});
+
+describe("worker — idle reads short-circuit before any FS walk", () => {
+  // WikiBrowser unconditionally invokes loadIndex, searchWiki, readPage even
+  // when the user hasn't typed a query or selected a slug. With currentSlug
+  // = null and empty query, both readPage(slug: "") and searchWiki(query: "")
+  // would otherwise do a full filesystem walk. Short-circuit at the worker
+  // entry point so opening the sidebar costs one walk (loadIndex), not three.
+  //
+  // We can't spyOn(node:fs) directly — Node builtin exports are
+  // non-configurable. Instead we spy on ctx.projects.getPrimaryWorkspace,
+  // which is the first thing the worker would do on any non-short-circuit
+  // path. If the short-circuit fires, the workspace call never happens.
+
+  it("searchWiki with empty query returns [] before calling ctx.projects", async () => {
+    const harness = await makeWorker();
+    const spy = vi.spyOn(harness.ctx.projects, "getPrimaryWorkspace");
+    spy.mockClear();
+    const result = await harness.getData<{ results: unknown[] }>("searchWiki", {
+      companyId: COMPANY_ID,
+      projectId: PROJECT_ID,
+      query: "",
+    });
+    expect(result.results).toEqual([]);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("searchWiki with whitespace-only query also short-circuits", async () => {
+    const harness = await makeWorker();
+    const spy = vi.spyOn(harness.ctx.projects, "getPrimaryWorkspace");
+    spy.mockClear();
+    const result = await harness.getData<{ results: unknown[] }>("searchWiki", {
+      companyId: COMPANY_ID,
+      projectId: PROJECT_ID,
+      query: "   \t   ",
+    });
+    expect(result.results).toEqual([]);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("readPage with empty slug returns an error without calling ctx.projects", async () => {
+    const harness = await makeWorker();
+    const spy = vi.spyOn(harness.ctx.projects, "getPrimaryWorkspace");
+    spy.mockClear();
+    const result = await harness.getData<{ error?: string }>("readPage", {
+      companyId: COMPANY_ID,
+      projectId: PROJECT_ID,
+      slug: "",
+    });
+    expect(result.error).toBeTruthy();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("readPage with whitespace-only slug also short-circuits", async () => {
+    const harness = await makeWorker();
+    const spy = vi.spyOn(harness.ctx.projects, "getPrimaryWorkspace");
+    spy.mockClear();
+    const result = await harness.getData<{ error?: string }>("readPage", {
+      companyId: COMPANY_ID,
+      projectId: PROJECT_ID,
+      slug: "   ",
+    });
+    expect(result.error).toBeTruthy();
+    expect(spy).not.toHaveBeenCalled();
   });
 });
 

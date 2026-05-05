@@ -51,7 +51,6 @@
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
-    "cmdk": "^1.1.1",
     "esbuild": "^0.28.0",
     "jsdom": "^29.1.1",
     "react": "^18.3.0",

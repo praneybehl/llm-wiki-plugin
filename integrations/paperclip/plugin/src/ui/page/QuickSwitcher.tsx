@@ -1,18 +1,19 @@
 import * as React from "react";
-import { Command } from "cmdk";
 import { navigateTo } from "../href.js";
 import type { PageEntry } from "./FolderTree.js";
 
 /**
  * Quick switcher (Cmd-K / Ctrl-K) — fuzzy-search jump to any wiki page.
  *
- * Built on Vercel's `cmdk`. Filtering, keyboard navigation, ARIA, and
- * focus trapping come from the library; we own the page list, the
- * grouping, and the navigate-on-select handler.
+ * In-house implementation rather than cmdk / Radix Dialog: Paperclip's
+ * plugin React shim only re-exports a fixed allowlist of hooks
+ * (`useInsertionEffect` is not in it), which breaks Radix's internals.
+ * The component below uses only the hooks the host shim actually
+ * provides.
  *
- * Selecting an item calls `navigateTo` (which pushes a history entry
- * and dispatches popstate) and closes the dialog. Escape closes
- * without navigating; the calling Topbar wires the open/close state.
+ * Behaviour: ↑/↓ moves the selection, Enter navigates, Escape closes,
+ * clicks outside the panel close. Items are filtered by a
+ * case-insensitive substring match against title and slug.
  */
 
 export interface QuickSwitcherProps {
@@ -28,64 +29,99 @@ export function QuickSwitcher({
   open,
   onOpenChange,
 }: QuickSwitcherProps): React.ReactElement | null {
-  const grouped = React.useMemo(() => groupByType(pages), [pages]);
+  const [query, setQuery] = React.useState("");
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const onSelect = React.useCallback(
-    (slug: string) => {
-      navigateTo(companyPrefix, { kind: "page", slug });
+  const filtered = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q.length === 0) return pages;
+    return pages.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.slug.toLowerCase().includes(q),
+    );
+  }, [pages, query]);
+
+  // Reset selection / query whenever the dialog re-opens.
+  React.useEffect(() => {
+    if (open) {
+      setActiveIndex(0);
+      setQuery("");
+      inputRef.current?.focus();
+    }
+  }, [open]);
+
+  React.useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
+  if (!open) return null;
+
+  function commit(slug: string): void {
+    navigateTo(companyPrefix, { kind: "page", slug });
+    onOpenChange(false);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>): void {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const p = filtered[activeIndex];
+      if (p) commit(p.slug);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
       onOpenChange(false);
-    },
-    [companyPrefix, onOpenChange],
-  );
+    }
+  }
 
   return (
-    <Command.Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-      label="Quick switcher"
-      className="llm-wiki-cmdk-dialog"
+    <div
+      className="llm-wiki-cmdk-overlay"
+      role="dialog"
+      aria-label="Quick switcher"
+      onClick={() => onOpenChange(false)}
     >
-      <Command.Input
-        placeholder="Search pages…"
-        className="llm-wiki-cmdk-input"
-      />
-      <Command.List className="llm-wiki-cmdk-list">
-        <Command.Empty className="llm-wiki-empty">
-          No matching pages.
-        </Command.Empty>
-        {grouped.map(([type, entries]) => (
-          <Command.Group key={type} heading={type}>
-            {entries.map((p) => (
-              <Command.Item
+      <div
+        className="llm-wiki-cmdk-dialog"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
+      >
+        <input
+          ref={inputRef}
+          type="search"
+          className="llm-wiki-cmdk-input"
+          placeholder="Search pages…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search pages"
+        />
+        <ul className="llm-wiki-cmdk-list">
+          {filtered.length === 0 ? (
+            <li className="llm-wiki-empty">No matching pages.</li>
+          ) : (
+            filtered.map((p, i) => (
+              <li
                 key={p.slug}
-                value={`${p.title} ${p.slug}`}
-                onSelect={() => onSelect(p.slug)}
                 className="llm-wiki-cmdk-item"
+                data-selected={i === activeIndex ? "true" : undefined}
+                onMouseEnter={() => setActiveIndex(i)}
+                onClick={() => commit(p.slug)}
               >
                 <span className="llm-wiki-cmdk-item-title">{p.title}</span>
                 <span className="llm-wiki-cmdk-item-slug">{p.slug}</span>
-              </Command.Item>
-            ))}
-          </Command.Group>
-        ))}
-      </Command.List>
-    </Command.Dialog>
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
+    </div>
   );
-}
-
-function groupByType(pages: PageEntry[]): [string, PageEntry[]][] {
-  const m = new Map<string, PageEntry[]>();
-  for (const p of pages) {
-    const list = m.get(p.type) ?? [];
-    list.push(p);
-    m.set(p.type, list);
-  }
-  return Array.from(m.entries())
-    .map(([type, list]) => {
-      list.sort((a, b) => a.title.localeCompare(b.title));
-      return [type, list] as [string, PageEntry[]];
-    })
-    .sort((a, b) => a[0].localeCompare(b[0]));
 }
 
 /**

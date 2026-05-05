@@ -59,7 +59,11 @@ export function SetupView({ context }: SetupViewProps): React.ReactElement {
                 : "missing"
         }
       >
-        {data?.wiki.found ? (
+        {loading || !data ? (
+          <p className="llm-wiki-empty">Verifying…</p>
+        ) : error ? (
+          <p className="llm-wiki-error">Error: {error.message}</p>
+        ) : data.wiki.found ? (
           <p>
             Wiki found at <code>{data.wiki.path ?? "(unknown)"}</code> —{" "}
             <strong>{data.wiki.pageCount} pages</strong>.

@@ -3,6 +3,7 @@ import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 import type { PluginDetailTabProps } from "@paperclipai/plugin-sdk/ui";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { injectWikiStyles } from "./styles.js";
+import { wikiHref } from "./href.js";
 
 interface RelevantResult {
   slug: string;
@@ -53,7 +54,10 @@ function ContextList({ context }: PluginDetailTabProps): React.ReactElement {
         {data.results.map((r) => (
           <li key={r.slug} className="llm-wiki-result">
             <a
-              href={`#wiki/${r.slug}`}
+              href={wikiHref(context.companyPrefix, {
+                kind: "page",
+                slug: r.slug,
+              })}
               data-wiki-slug={r.slug}
               className="llm-wiki-result-link"
             >

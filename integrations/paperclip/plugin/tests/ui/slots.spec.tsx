@@ -199,7 +199,7 @@ describe("WikiContextTab", () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────
-// WikiSidebar / WikiPage (both wrap WikiBrowser)
+// WikiSidebar (Launcher) / WikiPage (Workspace)
 // ────────────────────────────────────────────────────────────────────────
 
 describe("WikiSidebar (launcher surface)", () => {

@@ -49,6 +49,10 @@ function errorResult(message: string) {
 beforeEach(() => {
   vi.mocked(useHostContext).mockReturnValue(baseHostContext);
   vi.mocked(usePluginAction).mockReturnValue(async () => undefined);
+  // Reset URL between tests — Launcher submits navigate with pushState, so
+  // a previous test's submit can leak into a later test's parseWikiLocation.
+  window.history.replaceState({}, "", "/");
+  window.sessionStorage.clear();
 });
 
 // ────────────────────────────────────────────────────────────────────────
@@ -198,54 +202,87 @@ describe("WikiContextTab", () => {
 // WikiSidebar / WikiPage (both wrap WikiBrowser)
 // ────────────────────────────────────────────────────────────────────────
 
-describe("WikiSidebar (browser surface)", () => {
+describe("WikiSidebar (launcher surface)", () => {
   const indexPayload = {
-    index: "# Wiki\n\n- [[transformer]]",
+    index: "",
     shards: [],
     pages: [
-      { slug: "transformer", title: "Transformer", type: "entity", relPath: "entities/transformer.md" },
-      { slug: "attention-mechanism", title: "Attention Mechanism", type: "concept", relPath: "concepts/attention-mechanism.md" },
+      {
+        slug: "transformer",
+        title: "Transformer",
+        type: "entity",
+        relPath: "entities/transformer.md",
+      },
+      {
+        slug: "attention-mechanism",
+        title: "Attention Mechanism",
+        type: "concept",
+        relPath: "concepts/attention-mechanism.md",
+      },
     ],
   };
+  const healthPayload = {
+    pageCount: 2,
+    indexLines: 0,
+    linkDensity: 1,
+    scalingMessages: [],
+    lintStatus: "pass" as const,
+    lintFindings: { totalPages: 2 },
+    wikiPathMissing: false,
+    lintCheckIntervalMinutes: 60,
+  };
 
-  it("renders the page list when loadIndex resolves", () => {
-    vi.mocked(usePluginData).mockReturnValue(dataResult(indexPayload));
-    render(<WikiSidebar context={baseHostContext} />);
-    expect(screen.getByText("Transformer")).toBeDefined();
-    expect(screen.getByText("Attention Mechanism")).toBeDefined();
-  });
-
-  it("renders a search input", () => {
-    vi.mocked(usePluginData).mockReturnValue(dataResult(indexPayload));
-    render(<WikiSidebar context={baseHostContext} />);
-    const input = screen.getByPlaceholderText(/search/i) as HTMLInputElement;
-    expect(input).toBeDefined();
-  });
-
-  it("typing in search calls usePluginData('searchWiki', ...) with the query", () => {
-    // First call (mount) returns the index; subsequent calls during search
-    // can return any payload — we just want to verify the key.
-    vi.mocked(usePluginData).mockImplementation((key, params) => {
-      if (key === "searchWiki") {
-        return dataResult({ results: [] }) as never;
+  function mockProviders(opts?: { wikiPathMissing?: boolean }) {
+    vi.mocked(usePluginData).mockImplementation((key) => {
+      if (key === "loadIndex") return dataResult(indexPayload) as never;
+      if (key === "wikiHealth") {
+        return dataResult({
+          ...healthPayload,
+          wikiPathMissing: opts?.wikiPathMissing ?? false,
+        }) as never;
       }
-      return dataResult(indexPayload) as never;
+      return dataResult(null) as never;
     });
-    render(<WikiSidebar context={baseHostContext} />);
-    const input = screen.getByPlaceholderText(/search/i) as HTMLInputElement;
+  }
+
+  it("renders the Open link to the wiki workspace", () => {
+    mockProviders();
+    const { container } = render(<WikiSidebar context={baseHostContext} />);
+    const open = container.querySelector("a[data-testid='wiki-open']");
+    expect(open?.getAttribute("href")).toBe("/co/llm-wiki");
+  });
+
+  it("renders a Browse list grouped by frontmatter type", () => {
+    mockProviders();
+    const { container } = render(<WikiSidebar context={baseHostContext} />);
+    expect(
+      container.querySelector("a[data-testid='wiki-browse-concept']"),
+    ).not.toBeNull();
+    expect(
+      container.querySelector("a[data-testid='wiki-browse-entity']"),
+    ).not.toBeNull();
+  });
+
+  it("renders a search input that submits to ?q=…", () => {
+    mockProviders();
+    const { container } = render(<WikiSidebar context={baseHostContext} />);
+    const input = container.querySelector(
+      "input[type='search']",
+    ) as HTMLInputElement;
+    expect(input).toBeDefined();
+    const form = input.closest("form")!;
     act(() => {
       fireEvent.change(input, { target: { value: "transformer" } });
+      fireEvent.submit(form);
     });
-    expect(usePluginData).toHaveBeenCalledWith(
-      "searchWiki",
-      expect.objectContaining({ query: "transformer" }),
-    );
+    expect(window.location.search).toBe("?q=transformer");
   });
 
-  it("renders a wiki-not-configured state on bridge error", () => {
-    vi.mocked(usePluginData).mockReturnValue(errorResult("no wiki"));
-    render(<WikiSidebar context={baseHostContext} />);
-    expect(screen.getByText(/no wiki|not configured|error/i)).toBeDefined();
+  it("shows a Set up CTA when wikiPathMissing is true", () => {
+    mockProviders({ wikiPathMissing: true });
+    const { container } = render(<WikiSidebar context={baseHostContext} />);
+    const setup = container.querySelector("a[data-testid='wiki-setup-cta']");
+    expect(setup?.getAttribute("href")).toBe("/co/llm-wiki?view=setup");
   });
 });
 
@@ -361,20 +398,36 @@ describe("WikiHealthIndicator — periodic refresh", () => {
   });
 });
 
-describe("WikiBrowser — does not hardcode topK for searchWiki", () => {
+describe("Reader — does not hardcode topK for searchWiki", () => {
   it("does not pass topK in the searchWiki params", () => {
-    vi.mocked(usePluginData).mockReturnValue(
-      dataResult({ index: "", shards: [], pages: [] }),
-    );
-    render(<WikiSidebar context={baseHostContext} />);
+    // Mount the workspace at the search URL so Reader dispatches into
+    // SearchView and issues the searchWiki call.
+    window.history.replaceState({}, "", "/co/llm-wiki?q=transformer");
+    vi.mocked(usePluginData).mockImplementation((key) => {
+      if (key === "loadIndex")
+        return dataResult({ index: "", shards: [], pages: [] }) as never;
+      if (key === "wikiHealth")
+        return dataResult({
+          pageCount: 0,
+          indexLines: 0,
+          linkDensity: 0,
+          scalingMessages: [],
+          lintStatus: "pass",
+          lintFindings: { totalPages: 0 },
+          wikiPathMissing: false,
+          lintCheckIntervalMinutes: 60,
+        }) as never;
+      if (key === "searchWiki") return dataResult({ results: [] }) as never;
+      return dataResult(null) as never;
+    });
+    render(<WikiPage context={baseHostContext} />);
 
     const searchCall = vi
       .mocked(usePluginData)
       .mock.calls.find(([key]) => key === "searchWiki");
     expect(searchCall).toBeDefined();
     const params = searchCall?.[1] ?? {};
-    // topK must be absent (or explicitly undefined) so the worker's
-    // resolveTopK uses config.search_top_k.
+    // topK must be absent so the worker's resolveTopK uses config.search_top_k.
     expect((params as Record<string, unknown>).topK).toBeUndefined();
   });
 });

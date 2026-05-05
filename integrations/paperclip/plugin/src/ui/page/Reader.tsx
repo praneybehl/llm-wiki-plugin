@@ -9,6 +9,7 @@ import {
   extractHeadings,
 } from "./OutlinePanel.js";
 import { wikiHref, type WikiLocation } from "../href.js";
+import { recordRecent } from "../recent.js";
 
 /**
  * Reader — center-column dispatcher for the wiki workspace.
@@ -218,23 +219,29 @@ function PageRead({
       onPageLoaded(null);
       return;
     }
+    const meta = (data as WikiPageData).meta;
+    const dataSlug = (data as WikiPageData).slug;
+    // Record into the launcher's "Recent" list. Best-effort — sessionStorage
+    // may be disabled in some environments. Safe to call repeatedly because
+    // recordRecent dedups by slug.
+    const title =
+      typeof meta.title === "string" && meta.title.length > 0
+        ? meta.title
+        : dataSlug;
+    recordRecent({ slug: dataSlug, title });
+
     const host = articleHostRef.current;
     if (host === null) {
-      onPageLoaded({
-        meta: (data as WikiPageData).meta,
-        slug: (data as WikiPageData).slug,
-        headings: [],
-      });
+      onPageLoaded({ meta, slug: dataSlug, headings: [] });
       return;
     }
     // The article is rendered as a child of articleHostRef. extractHeadings
     // expects the article element directly; fall back to the host if there
     // is no nested article (defensive — should never happen in practice).
-    const article =
-      host.querySelector("article.llm-wiki-page") ?? host;
+    const article = host.querySelector("article.llm-wiki-page") ?? host;
     onPageLoaded({
-      meta: (data as WikiPageData).meta,
-      slug: (data as WikiPageData).slug,
+      meta,
+      slug: dataSlug,
       headings: extractHeadings(article as HTMLElement),
     });
   }, [pageResult.data, onPageLoaded]);
@@ -284,7 +291,7 @@ function SearchView({
         <p className="llm-wiki-empty">
           {searchResult.loading
             ? "Searching…"
-            : `${searchResult.data?.results.length ?? 0} matches for “${query}”`}
+            : `${searchResult.data?.results?.length ?? 0} matches for “${query}”`}
         </p>
       </header>
       <ul className="llm-wiki-results">

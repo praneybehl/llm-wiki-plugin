@@ -126,9 +126,6 @@ export function SetupView({ context }: SetupViewProps): React.ReactElement {
                 value={a.installCommand}
                 testId={`wiki-setup-install-${a.id}`}
               />
-              {a.notes ? (
-                <p className="llm-wiki-empty">{a.notes}</p>
-              ) : null}
             </li>
           ))}
         </ul>

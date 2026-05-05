@@ -15,7 +15,6 @@ export interface AdapterInstall {
   displayName: string;
   installCommand: string;
   memoryFile: string;
-  notes?: string;
 }
 
 export const ADAPTERS: AdapterInstall[] = [
@@ -24,8 +23,6 @@ export const ADAPTERS: AdapterInstall[] = [
     displayName: "Claude Code",
     installCommand: "/plugin install llm-wiki@llm-wiki",
     memoryFile: "CLAUDE.md",
-    notes:
-      "Native install — bundled `/wiki:*` slash commands, the skill, and the marketplace manifest in one step.",
   },
   {
     id: "codex",
@@ -51,7 +48,6 @@ export const ADAPTERS: AdapterInstall[] = [
     displayName: "OpenCode",
     installCommand: "npx skills add praneybehl/llm-wiki-plugin -a opencode -g",
     memoryFile: "AGENTS.md",
-    notes: "Also reads CLAUDE.md, so either memory file works.",
   },
   {
     id: "pi",
@@ -77,14 +73,6 @@ To add a new source, follow the \`llm-wiki\` skill's ingest workflow: decide pla
 Scaling discipline: atomic pages (400-line soft cap, 800-line hard cap), sharded indexes past ~150 pages or 300 index lines, required YAML frontmatter on every page, \`[[wikilinks]]\` for every cross-reference.
 
 Full conventions live in \`wiki/SCHEMA.md\`. Treat it as authoritative when it disagrees with this summary.`;
-
-/**
- * The shorter alternative — for memory files where line-count discipline
- * is enforced.
- */
-export const HEARTBEAT_STANZA_SHORT = `## LLM Wiki
-
-This project has an LLM-curated wiki at \`wiki/\`. Read \`wiki/index.md\` before answering research questions. Full conventions in \`wiki/SCHEMA.md\`. Ingest and query workflows live in the \`llm-wiki\` skill.`;
 
 /**
  * The system-prompt addition for HTTP-only agents (Hermes, custom

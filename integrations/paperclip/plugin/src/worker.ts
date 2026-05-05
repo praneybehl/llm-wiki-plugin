@@ -29,6 +29,7 @@ import {
 import { collectPages, searchPages } from "./lib/bm25.js";
 import { lintWiki, type LintFindings } from "./lib/lint.js";
 import { computeStats } from "./lib/stats.js";
+import { WIKI_QUERY_DESCRIPTION } from "./manifest.js";
 
 interface PluginConfig {
   wiki_path?: string;
@@ -638,7 +639,7 @@ const plugin = definePlugin({
       {
         displayName: "Query the LLM Wiki",
         description:
-          "Search the Company's LLM Wiki — the source of truth for accumulated company knowledge (people, products, decisions, prior research, sources). Call this before answering questions about Company-specific context. Returns BM25-ranked pages with title, type, and one-line summary; follow up with another wiki.query for deep dives or read the page directly through the agent's filesystem if available.",
+          WIKI_QUERY_DESCRIPTION,
         parametersSchema: {
           type: "object",
           properties: {

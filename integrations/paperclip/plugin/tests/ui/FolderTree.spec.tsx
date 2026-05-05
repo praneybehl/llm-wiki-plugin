@@ -123,6 +123,26 @@ describe("FolderTree component", () => {
     ).toBeNull();
   });
 
+  it("collapses an auto-expanded folder on the first click of its header", () => {
+    // Regression: previously the user-toggle map had no entry for an
+    // auto-expanded folder, so clicking it kept the folder open instead
+    // of closing it.
+    const { container, getByText } = render(
+      <FolderTree
+        pages={pages}
+        companyPrefix="SEE"
+        currentSlug="concepts/transformer"
+      />,
+    );
+    expect(
+      container.querySelector("a[data-wiki-slug='concepts/transformer']"),
+    ).not.toBeNull();
+    fireEvent.click(getByText("concepts"));
+    expect(
+      container.querySelector("a[data-wiki-slug='concepts/transformer']"),
+    ).toBeNull();
+  });
+
   it("highlights the current page leaf with aria-current=page", () => {
     const { container } = render(
       <FolderTree

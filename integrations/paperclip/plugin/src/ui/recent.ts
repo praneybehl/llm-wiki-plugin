@@ -9,6 +9,13 @@
 
 const STORAGE_KEY = "llm-wiki:recent";
 
+/**
+ * Custom event dispatched on `window` after every successful write.
+ * Lets the sidebar launcher refresh its "Recent" list when the page
+ * slot (which writes recents) lives in a different React tree.
+ */
+export const RECENT_UPDATED_EVENT = "llm-wiki:recent-updated";
+
 export const RECENT_CAP = 8;
 
 export interface RecentEntry {
@@ -48,7 +55,9 @@ export function recordRecent(entry: RecentEntry): void {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
     // sessionStorage may be disabled / full; recents are best-effort.
+    return;
   }
+  window.dispatchEvent(new CustomEvent(RECENT_UPDATED_EVENT));
 }
 
 export function clearRecent(): void {

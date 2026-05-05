@@ -6,6 +6,9 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeHighlight from "rehype-highlight";
 import { wikiHref } from "./href.js";
 
+type RehypePlugins = React.ComponentProps<typeof ReactMarkdown>["rehypePlugins"];
+type RemarkPlugins = React.ComponentProps<typeof ReactMarkdown>["remarkPlugins"];
+
 /**
  * Renders one wiki page as markdown with GFM extensions and the v0.4
  * reader pipeline:
@@ -99,18 +102,16 @@ function MarkdownAnchor({
   );
 }
 
-const REMARK_PLUGINS = [remarkGfm];
-const REHYPE_PLUGINS = [
+const REMARK_PLUGINS: RemarkPlugins = [remarkGfm];
+const REHYPE_PLUGINS: RehypePlugins = [
   rehypeSlug,
   // Default behaviour ("prepend") puts the anchor before the heading text,
-  // which we hide via CSS unless the heading is hovered. Keeping the
-  // default rather than tuning options now — easy to revisit if the
-  // visual is too noisy.
+  // which we hide via CSS unless the heading is hovered.
   rehypeAutolinkHeadings,
   // ignoreMissing keeps unrecognised languages as plain `<code>` instead
   // of throwing.
   [rehypeHighlight, { ignoreMissing: true }],
-] as const;
+];
 
 export function WikiPageView({
   page,
@@ -153,7 +154,7 @@ export function WikiPageView({
       </header>
       <ReactMarkdown
         remarkPlugins={REMARK_PLUGINS}
-        rehypePlugins={REHYPE_PLUGINS as unknown as never}
+        rehypePlugins={REHYPE_PLUGINS}
         components={components}
         urlTransform={preserveWikiScheme}
       >

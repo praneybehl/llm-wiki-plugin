@@ -213,36 +213,27 @@ export function FolderTree({
     };
   }, [fullTree, needle, currentSlug]);
 
-  const [userToggled, setUserToggled] = React.useState<Map<string, boolean>>(
-    () => new Map(),
-  );
+  // Single source of truth for which folders are open. Initialised from
+  // the ancestors of currentSlug; merged (union, not replace) with new
+  // autoExpand entries when currentSlug or the filter changes, so a
+  // user-collapsed folder stays collapsed unless a navigation event
+  // points there. Toggling flips membership directly — no second
+  // override map needed.
+  const [open, setOpen] = React.useState<Set<string>>(() => new Set(autoExpand));
 
-  const open = React.useMemo<Set<string>>(() => {
-    const out = new Set(autoExpand);
-    for (const [path, isOpen] of userToggled.entries()) {
-      if (isOpen) out.add(path);
-      else out.delete(path);
-    }
-    return out;
-  }, [autoExpand, userToggled]);
+  React.useEffect(() => {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      for (const path of autoExpand) next.add(path);
+      return next;
+    });
+  }, [autoExpand]);
 
   const toggle = React.useCallback((path: string) => {
-    setUserToggled((prev) => {
-      const next = new Map(prev);
-      const current = next.get(path);
-      // If unset, default state was either auto-expanded or collapsed; flip
-      // to the opposite by reading the current effective state.
-      // We approximate via prev: if path isn't in prev, assume the auto-state
-      // matches `autoExpand`'s current state — for the purpose of a toggle,
-      // either next state will do; we just want the opposite of what's shown.
-      // The component re-reads effective state on next render.
-      if (current === undefined) {
-        // We don't have access to autoExpand here cleanly; default to true
-        // (open) which is the more discoverable click outcome.
-        next.set(path, true);
-        return next;
-      }
-      next.set(path, !current);
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
       return next;
     });
   }, []);

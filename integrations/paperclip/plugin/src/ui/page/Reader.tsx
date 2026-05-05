@@ -74,7 +74,6 @@ export function Reader({
         <Landing
           loading={indexResult.loading}
           indexBody={indexResult.data?.index ?? ""}
-          onPageLoaded={onPageLoaded}
         />
       );
     case "folder":
@@ -84,7 +83,6 @@ export function Reader({
           pages={pages}
           companyPrefix={context.companyPrefix}
           loading={indexResult.loading}
-          onPageLoaded={onPageLoaded}
         />
       );
     case "page":
@@ -97,48 +95,20 @@ export function Reader({
       );
     case "search":
       return (
-        <SearchView
-          context={context}
-          query={location.query}
-          onPageLoaded={onPageLoaded}
-        />
+        <SearchView context={context} query={location.query} />
       );
     case "setup":
-      return <SetupContainer context={context} onPageLoaded={onPageLoaded} />;
+      return <SetupView context={context} />;
   }
-}
-
-function SetupContainer({
-  context,
-  onPageLoaded,
-}: {
-  context: PluginHostContext;
-  onPageLoaded: ReaderProps["onPageLoaded"];
-}): React.ReactElement {
-  useNotifyClear(onPageLoaded, []);
-  return <SetupView context={context} />;
-}
-
-function useNotifyClear(
-  onPageLoaded: ReaderProps["onPageLoaded"],
-  deps: unknown[],
-): void {
-  React.useEffect(() => {
-    onPageLoaded(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
 }
 
 function Landing({
   loading,
   indexBody,
-  onPageLoaded,
 }: {
   loading: boolean;
   indexBody: string;
-  onPageLoaded: ReaderProps["onPageLoaded"];
 }): React.ReactElement {
-  useNotifyClear(onPageLoaded, [indexBody]);
   return (
     <section className="llm-wiki-landing">
       {loading && indexBody === "" ? (
@@ -162,15 +132,12 @@ function FolderView({
   pages,
   companyPrefix,
   loading,
-  onPageLoaded,
 }: {
   folder: string;
   pages: IndexPage[];
   companyPrefix: string | null;
   loading: boolean;
-  onPageLoaded: ReaderProps["onPageLoaded"];
 }): React.ReactElement {
-  useNotifyClear(onPageLoaded, [folder]);
   const inFolder = pages
     .filter(
       (p) =>
@@ -225,58 +192,47 @@ function PageRead({
   );
   const articleHostRef = React.useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    const data = pageResult.data;
-    if (data === null || data === undefined || (data as WikiPageData & { error?: string }).error) {
-      onPageLoaded(null);
-      return;
-    }
-    const meta = (data as WikiPageData).meta;
-    const dataSlug = (data as WikiPageData).slug;
-    // Record into the launcher's "Recent" list. Best-effort — sessionStorage
-    // may be disabled in some environments. Safe to call repeatedly because
-    // recordRecent dedups by slug.
-    const title =
-      typeof meta.title === "string" && meta.title.length > 0
-        ? meta.title
-        : dataSlug;
-    recordRecent({ slug: dataSlug, title });
+  // Narrow once: the readPage worker can return either a page or an
+  // `{ error }` envelope. Everything below treats `page` as the resolved
+  // page or null.
+  const data = pageResult.data;
+  const page: WikiPageData | null =
+    data && !(data as { error?: string }).error
+      ? (data as WikiPageData)
+      : null;
 
+  React.useEffect(() => {
+    if (page === null) return;
+    const title =
+      typeof page.meta.title === "string" && page.meta.title.length > 0
+        ? page.meta.title
+        : page.slug;
+    recordRecent({ slug: page.slug, title });
     const host = articleHostRef.current;
-    if (host === null) {
-      onPageLoaded({ meta, slug: dataSlug, headings: [] });
-      return;
-    }
-    // The article is rendered as a child of articleHostRef. extractHeadings
-    // expects the article element directly; fall back to the host if there
-    // is no nested article (defensive — should never happen in practice).
-    const article = host.querySelector("article.llm-wiki-page") ?? host;
+    const article = host?.querySelector("article.llm-wiki-page") ?? host;
     onPageLoaded({
-      meta,
-      slug: dataSlug,
-      headings: extractHeadings(article as HTMLElement),
+      meta: page.meta,
+      slug: page.slug,
+      headings: article ? extractHeadings(article as HTMLElement) : [],
     });
-  }, [pageResult.data, onPageLoaded]);
+  }, [page, onPageLoaded]);
 
   if (pageResult.error !== null) {
     return <p className="llm-wiki-error">Error: {pageResult.error.message}</p>;
   }
-  if (pageResult.loading || pageResult.data === null) {
+  if (pageResult.loading || data === null) {
     return <p>Loading…</p>;
   }
-  if ((pageResult.data as WikiPageData & { error?: string }).error) {
+  if (page === null) {
     return (
       <p className="llm-wiki-error">
-        Error: {(pageResult.data as { error: string }).error}
+        Error: {(data as { error: string }).error}
       </p>
     );
   }
   return (
     <div ref={articleHostRef}>
-      <WikiPageView
-        page={pageResult.data as WikiPageData}
-        companyPrefix={context.companyPrefix}
-      />
+      <WikiPageView page={page} companyPrefix={context.companyPrefix} />
     </div>
   );
 }
@@ -284,18 +240,15 @@ function PageRead({
 function SearchView({
   context,
   query,
-  onPageLoaded,
 }: {
   context: PluginHostContext;
   query: string;
-  onPageLoaded: ReaderProps["onPageLoaded"];
 }): React.ReactElement {
   const searchResult = usePluginData<SearchPayload>("searchWiki", {
     companyId: context.companyId,
     projectId: context.projectId,
     query,
   });
-  useNotifyClear(onPageLoaded, [query]);
   return (
     <section className="llm-wiki-search-view">
       <header>

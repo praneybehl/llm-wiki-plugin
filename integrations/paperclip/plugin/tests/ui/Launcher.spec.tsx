@@ -127,6 +127,16 @@ describe("Launcher (sidebar)", () => {
     );
   });
 
+  it("refreshes the Recent list when recordRecent fires its event mid-session", () => {
+    mockProviders();
+    const { queryByText, getByText } = render(<Launcher context={baseContext} />);
+    expect(queryByText("Transformer")).toBeNull();
+    act(() => {
+      recordRecent({ slug: "concepts/transformer", title: "Transformer" });
+    });
+    expect(getByText("Transformer")).toBeDefined();
+  });
+
   it("renders a 'Set up the wiki' CTA when wikiPathMissing is true", () => {
     vi.mocked(usePluginData).mockImplementation((provider: string) => {
       if (provider === "loadIndex")

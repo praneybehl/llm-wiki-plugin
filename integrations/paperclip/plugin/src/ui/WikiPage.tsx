@@ -19,14 +19,12 @@ import {
  * The wiki workspace — three-column layout served at the page slot route.
  *
  *   ┌──────────────────────────────────────────────┐
+ *   │ topbar (breadcrumb + ⌘K)                     │
  *   │ left rail (FolderTree)                       │
- *   │ center (Reader: landing/folder/page/search)  │
+ *   │ center (Reader: landing/folder/page/search/  │
+ *   │         setup)                               │
  *   │ right rail (Properties + Outline + Backlinks)│
  *   └──────────────────────────────────────────────┘
- *
- * Backlinks is wired in Phase D; the right rail renders Properties +
- * Outline only in this phase. The Setup view (`?view=setup`) renders a
- * placeholder until Phase H lands.
  */
 
 interface IndexPayload {
@@ -51,6 +49,14 @@ function Workspace({
     (next: ReaderPageContext | null) => setPage(next),
     [],
   );
+
+  // Reader only ever calls onPageLoaded with a payload (from PageRead).
+  // Workspace owns the inverse — clearing the right-rail metadata when
+  // the user leaves the page view. Keeps Reader's child views free of
+  // callback bookkeeping.
+  React.useEffect(() => {
+    if (location.kind !== "page") setPage(null);
+  }, [location.kind]);
 
   const switcher = useQuickSwitcherShortcut();
 

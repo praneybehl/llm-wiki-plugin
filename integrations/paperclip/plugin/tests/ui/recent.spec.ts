@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from "vitest";
-import { recordRecent, readRecent, RECENT_CAP } from "../../src/ui/recent.js";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import {
+  recordRecent,
+  readRecent,
+  RECENT_CAP,
+  RECENT_UPDATED_EVENT,
+} from "../../src/ui/recent.js";
 
 beforeEach(() => {
   window.sessionStorage.clear();
@@ -55,6 +60,18 @@ describe("recent pages list", () => {
   it("survives a non-array JSON payload by returning empty", () => {
     window.sessionStorage.setItem("llm-wiki:recent", '"a string"');
     expect(readRecent()).toEqual([]);
+  });
+
+  it("dispatches RECENT_UPDATED_EVENT on every successful write", () => {
+    const handler = vi.fn();
+    window.addEventListener(RECENT_UPDATED_EVENT, handler);
+    try {
+      recordRecent({ slug: "a", title: "A" });
+      recordRecent({ slug: "b", title: "B" });
+      expect(handler).toHaveBeenCalledTimes(2);
+    } finally {
+      window.removeEventListener(RECENT_UPDATED_EVENT, handler);
+    }
   });
 
   it("ignores entries with bad shape", () => {

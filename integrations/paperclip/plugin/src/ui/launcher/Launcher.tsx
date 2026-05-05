@@ -2,7 +2,7 @@ import * as React from "react";
 import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 import type { PluginHostContext } from "@paperclipai/plugin-sdk/ui";
 import { wikiHref, navigateTo } from "../href.js";
-import { readRecent, type RecentEntry } from "../recent.js";
+import { readRecent, RECENT_UPDATED_EVENT, type RecentEntry } from "../recent.js";
 
 /**
  * Launcher — the sidebar surface. Job: get the user from anywhere in
@@ -57,12 +57,17 @@ export function Launcher({ context }: LauncherProps): React.ReactElement {
   const [query, setQuery] = React.useState("");
   const [recent, setRecent] = React.useState<RecentEntry[]>(() => readRecent());
 
-  // Re-read sessionStorage when the launcher remounts (e.g. when the host
-  // re-mounts the sidebar across route changes). We don't subscribe to a
-  // storage event because sessionStorage isn't shared across tabs and
-  // updates within the same tab are written directly by Reader.
+  // Subscribe to the custom event recordRecent() dispatches on every
+  // write. Without this, the launcher and the page slot live in
+  // different React trees inside Paperclip — the launcher's initial
+  // recents would never refresh as the user navigates around the wiki.
   React.useEffect(() => {
-    setRecent(readRecent());
+    function refresh(): void {
+      setRecent(readRecent());
+    }
+    refresh();
+    window.addEventListener(RECENT_UPDATED_EVENT, refresh);
+    return () => window.removeEventListener(RECENT_UPDATED_EVENT, refresh);
   }, []);
 
   const onSubmit = React.useCallback(

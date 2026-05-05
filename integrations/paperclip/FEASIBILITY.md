@@ -14,7 +14,7 @@
 
 **However, SPEC.md has ~12 specific factual errors that must be corrected before code lands.** They're enumerated in §8 below. None are blocking; all change the manifest shape, capability list, or import paths in mechanical ways.
 
-**Open caveat (not blocking):** Paperclip [issue #2276](https://github.com/paperclipai/paperclip/issues/2276) is OPEN with no merged fix — a duplicate-key bug in `UI_SLOT_CAPABILITIES` causes false-positive validator rejections for plugins declaring `dashboardWidget`. Workaround at install time is documented in §7. Smoke-testing against current Paperclip will surface whether we hit it.
+**Open caveat (not blocking):** Paperclip [issue #2276](https://github.com/paperclipai/paperclip/issues/2276) is OPEN. Re-read the live issue body and current master `plugin-capability-validator.ts` shows the bug actually affects **worker-only plugins without UI slots** — the validator iterates `manifest.ui?.slots ?? []` and now (current master) gates the slot-capability check on `uiSlots.length > 0`, but pre-fix builds required slot capabilities even when the plugin had no `ui` field. **Our plugin declares `dashboardWidget` AND its matching `ui.dashboardWidget.register` capability, so we never trip this.** The bug is irrelevant to us; details preserved in §7 only because the issue is OPEN until the fix tags a release.
 
 ## 1. Filesystem access — GO
 
@@ -283,17 +283,29 @@ Pin in plugin's `package.json`:
 
 ## 7. Known issues affecting us
 
-### [Issue #2276](https://github.com/paperclipai/paperclip/issues/2276) — `UI_SLOT_CAPABILITIES` validator bug (OPEN, no merged fix)
+### [Issue #2276](https://github.com/paperclipai/paperclip/issues/2276) — `UI_SLOT_CAPABILITIES` validator bug (OPEN; fixed on master, not yet released)
 
-The issue reports that the validator file contains a duplicate `dashboardWidget: "ui.dashboardWidget.register"` entry that causes plugins which legitimately declare `dashboardWidget` to be rejected with: `Plugin <id> manifest has inconsistent capabilities. Missing required capabilities for declared features: ui.dashboardWidget.register`.
+**Re-read 2026-05-05 — earlier framing was wrong.** The live issue body describes the bug as: the validator iterates `UI_SLOT_CAPABILITIES` and requires matching capabilities even when `manifest.ui` is undefined (i.e., **worker-only plugins with no UI slots**). The reported failure mode is a worker-only plugin getting rejected with `Missing required capabilities for declared features: ui.dashboardWidget.register` despite having declared no UI slots at all.
 
-**Impact on us:** our plugin declares a `dashboardWidget` slot for the health indicator. We **may** hit this on install against current Paperclip releases. Mitigations, in order:
+Current master [`plugin-capability-validator.ts`](https://github.com/paperclipai/paperclip/blob/master/server/src/services/plugin-capability-validator.ts) gates the slot iteration on `uiSlots.length > 0`:
 
-1. Smoke-test the plugin against a clean Paperclip install during Phase 7 step 8. If the install succeeds, the bug isn't tripping in the version we target.
-2. If install fails with the reported error, document the workaround in `integrations/paperclip/README.md` (the user comments out the dupe `dashboardWidget` entry in their local Paperclip's validator) and consider opening a PR upstream that fixes #2276.
-3. As a fallback, ship v0.1 without the dashboard widget and add it once the upstream fix lands. The widget is the lowest-value of the four UI surfaces.
+```ts
+const uiSlots = manifest.ui?.slots ?? [];
+if (uiSlots.length > 0) {
+  for (const slot of uiSlots) {
+    const requiredCap = UI_SLOT_CAPABILITIES[slot.type];
+    if (requiredCap && !declared.has(requiredCap)) {
+      if (!allMissing.includes(requiredCap)) allMissing.push(requiredCap);
+    }
+  }
+}
+```
 
-**Decision: keep the widget in v0.1; smoke-test will tell us.**
+So master is fixed; the issue is OPEN waiting for the fix to land in a tagged release.
+
+**Impact on us:** none. Our plugin declares a `dashboardWidget` slot AND `ui.dashboardWidget.register` in capabilities. The validator's slot loop runs, finds the required capability declared, and passes. We never trip this. The earlier framing in this section incorrectly described the bug as affecting plugins that declare `dashboardWidget`; the opposite is true.
+
+**No mitigation needed.** No workaround to document. Smoke-test confirms install succeeds; if it doesn't, the cause is something else.
 
 ### [Issue #2678](https://github.com/paperclipai/paperclip/issues/2678) — Plugin discovery UI invisible (OPEN; PR #2702 closed/probably merged)
 
@@ -329,7 +341,7 @@ Before starting Phase 1, the approved plan's Phases 3–5 need these one-line ed
 - **Phase 3 (Manifest):** drop `sdkVersion`, rename `category` → `categories: ["workspace"]`, add `project.workspaces.read` and drop `events.subscribe`, change tool result expectation in tests from `{ content, structured }` to `{ content?, data?, error? }`.
 - **Phase 4 (Worker):** the `wiki.query` handler returns `{ content, data }` (`data` holds the ranked-results array). Worker uses `ctx.projects.listWorkspaces` (not just `ctx.projects` in some abstract sense). Capability-denial test asserts `Error.message`, not `-32001`.
 - **Phase 5 (UI):** roll our own `ErrorBoundary`. Slot prop type for the dashboard widget is `PluginWidgetProps`. UI must guard `companyId === null`. UI bundle externals updated per §8.
-- **Phase 7 (Pre-publish):** add a step before npm publish: smoke-install against a clean Paperclip and watch for issue #2276's symptom. If hit, document the workaround in the operator README before publish.
+- **Phase 7 (Pre-publish):** smoke-install against a clean Paperclip before publish. (Earlier text in this section flagged Issue #2276 as a publish risk; the corrected reading in §7 above shows the bug doesn't apply to our plugin — it affects worker-only plugins without UI slots, and our manifest declares a full `ui.slots[]` plus all matching capabilities.)
 
 These edits are mechanical — no design changes, no scope changes. **Recommend: proceed to Phase 1.**
 

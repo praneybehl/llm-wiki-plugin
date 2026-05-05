@@ -155,7 +155,6 @@ Most issues fall into one of three buckets:
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Sidebar / dashboard says *"Wiki path not configured"* | No wiki bootstrapped, or `wiki_path` config points at the wrong directory | Run `/wiki:init` from any agent, or set `wiki_path` correctly via `/settings/plugins/io.praneybehl.llm-wiki` |
-| Plugin install rejected with *"Missing required capabilities for declared features: ui.dashboardWidget.register"* | Upstream validator bug ([Issue #2276](https://github.com/paperclipai/paperclip/issues/2276)) | See workaround in [`plugin/README.md` § Troubleshooting](./plugin/README.md#plugin-install-fails-with-missing-required-capabilities-for-declared-features-uidashboardwidgetregister) |
 | Search results from the plugin differ from agent heartbeat output | They shouldn't — both use BM25 with identical constants | File an issue with the corpus and queries; both implementations are parity-tested against `wiki_search.py` |
 
 Full troubleshooting + FAQ live in [`plugin/README.md`](./plugin/README.md#troubleshooting).

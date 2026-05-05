@@ -258,7 +258,7 @@ The host fetches the latest version, re-validates the manifest, displays any new
 
 This is a deliberate maintainer action — bumping `peerDependencies."@paperclipai/plugin-sdk"` requires re-running [Phase 0 validation](../FEASIBILITY.md) against the new SDK source to catch any contract drift. We do not auto-bump on patch releases.
 
-**Wiki schema evolution.** The plugin's BM25 / lint / stats logic is locked to the wiki schema version it was built against. If the skill ships a breaking change to the schema (e.g., a new required frontmatter field), the plugin falls back to a permissive read mode and surfaces a warning to the operator on startup. Both ship from the same repo, so a single release tag covers both — there's no scenario where the skill is ahead of the plugin in the wild.
+**Wiki schema coupling.** Both the plugin and the skill ship from the same repo, so a single release tag covers both — there's no scenario where the skill is ahead of the plugin in the wild. v0.1 has no schema-version checks; if the skill introduces a breaking schema change in a future release, the plugin will need to be updated in lockstep, not at runtime.
 
 ## Troubleshooting
 
@@ -268,14 +268,6 @@ The configured `wiki_path` doesn't resolve under any project's primary workspace
 
 - **The wiki hasn't been bootstrapped yet.** Run `/wiki:init` (or the equivalent natural-language invocation in your adapter) from any agent in the Company. The skill creates `wiki/` in the Company's primary workspace.
 - **The wiki lives at a non-default path.** Set `wiki_path` to point at it via `/settings/plugins/io.praneybehl.llm-wiki`. The path is resolved relative to the workspace root (e.g. `wiki`, `docs/wiki`, `knowledge`).
-
-### Plugin install fails with "Missing required capabilities for declared features: ui.dashboardWidget.register"
-
-Known upstream bug — [`paperclipai/paperclip` issue #2276](https://github.com/paperclipai/paperclip/issues/2276). The validator has a duplicate-key entry in `UI_SLOT_CAPABILITIES` that triggers a false-positive rejection for plugins declaring `dashboardWidget`.
-
-**Workaround until upstream fix lands:** comment out the duplicate `dashboardWidget` entry in your local Paperclip's `server/src/services/plugin-capability-validator.ts` and restart the host. See the linked issue for the exact lines.
-
-If you'd rather avoid the workaround, ship a manifest variant without the `dashboardWidget` slot and lose only the dashboard health card — the other four surfaces (sidebar, page, issue tab, agent tool) still work.
 
 ### `wiki.query` returns `"wiki not configured for this Company"`
 
@@ -355,7 +347,7 @@ No. The plugin makes zero external network calls. It reads local files via `node
 
 **Can I run the plugin without the dashboard widget?**
 
-Yes — the [Issue #2276 workaround section](#plugin-install-fails-with-missing-required-capabilities-for-declared-features-uidashboardwidgetregister) above describes shipping a manifest variant without the widget. You'd lose the wiki health card; the other four surfaces (sidebar, page, issue context, agent tool) work unchanged.
+Yes — fork the manifest, drop the `dashboardWidget` slot from `ui.slots[]` and the matching `ui.dashboardWidget.register` from `capabilities`, and rebuild. You'd lose the wiki health card; the other four surfaces (sidebar, page, issue context, agent tool) work unchanged. There's no first-class config flag for this; opening an issue if you need it.
 
 **What happens when I uninstall?**
 

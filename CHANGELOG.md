@@ -23,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - The Paperclip plugin SDK uses calver, not semver. The plugin pins `@paperclipai/plugin-sdk` at exactly `2026.428.0` as a peer dependency (per the SDK's own published versioning convention). Updating to a newer SDK should be a deliberate bump that re-runs Phase 0 validation against the new SDK source.
 - Plugin discovery UI in Paperclip is currently invisible — install via the CLI or the local-path HTTP endpoint until the upstream discovery surface ships ([`paperclipai/paperclip` issue #2678](https://github.com/paperclipai/paperclip/issues/2678)).
-- The validator bug in [`paperclipai/paperclip` issue #2276](https://github.com/paperclipai/paperclip/issues/2276) may falsely reject plugins declaring `dashboardWidget` until the upstream fix lands. Workaround documented in [`integrations/paperclip/README.md`](./integrations/paperclip/README.md).
+- [`paperclipai/paperclip` issue #2276](https://github.com/paperclipai/paperclip/issues/2276) is OPEN but already fixed on master — the bug affects worker-only plugins with no UI slots, not plugins that declare `dashboardWidget`. The plugin's manifest declares a full `ui.slots[]` and matches every slot to its capability, so this issue does not apply to us. Recorded here for traceability against the FEASIBILITY report's earlier (incorrect) framing.
 
 ## [0.3.0] — 2026-04-25
 

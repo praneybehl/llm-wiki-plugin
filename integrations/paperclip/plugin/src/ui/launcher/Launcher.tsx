@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { PluginHostContext } from "@paperclipai/plugin-sdk/ui";
 import { wikiHref } from "../href.js";
+import { HostLink } from "../HostLink.js";
 
 /**
  * Sidebar entry point — a single nav row that visually matches
@@ -59,7 +60,7 @@ export function Launcher({ context }: LauncherProps): React.ReactElement | null 
   if (context.companyId === null) return null;
   const className = `${NAV_BASE} ${isCurrent ? NAV_ACTIVE : NAV_INACTIVE}`;
   return (
-    <a
+    <HostLink
       href={wikiHref(context.companyPrefix, { kind: "landing" })}
       className={className}
       aria-current={isCurrent ? "page" : undefined}
@@ -69,7 +70,7 @@ export function Launcher({ context }: LauncherProps): React.ReactElement | null 
         <BookIcon />
       </span>
       <span className="flex-1 truncate">LLM Wiki</span>
-    </a>
+    </HostLink>
   );
 }
 

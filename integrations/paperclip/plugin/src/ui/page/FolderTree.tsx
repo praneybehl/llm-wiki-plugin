@@ -1,5 +1,6 @@
 import * as React from "react";
 import { wikiHref } from "../href.js";
+import { HostLink } from "../HostLink.js";
 
 /**
  * FolderTree — derived from `pages[].relPath`, no extra worker provider
@@ -142,7 +143,7 @@ function NodeView({
     const isCurrent = currentSlug === node.slug;
     return (
       <li className="llm-wiki-tree-leaf">
-        <a
+        <HostLink
           href={wikiHref(companyPrefix, { kind: "page", slug: node.slug })}
           data-wiki-slug={node.slug}
           aria-current={isCurrent ? "page" : undefined}
@@ -153,7 +154,7 @@ function NodeView({
           }
         >
           {node.title}
-        </a>
+        </HostLink>
       </li>
     );
   }

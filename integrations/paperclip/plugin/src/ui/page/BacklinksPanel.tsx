@@ -1,6 +1,7 @@
 import * as React from "react";
 import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 import { wikiHref } from "../href.js";
+import { HostLink } from "../HostLink.js";
 
 interface BacklinkResult {
   slug: string;
@@ -62,13 +63,13 @@ export function BacklinksPanel({
       <ul>
         {data.results.map((r) => (
           <li key={r.slug}>
-            <a
+            <HostLink
               href={wikiHref(companyPrefix, { kind: "page", slug: r.slug })}
               data-wiki-slug={r.slug}
               title={r.snippet}
             >
               {r.title}
-            </a>
+            </HostLink>
           </li>
         ))}
       </ul>

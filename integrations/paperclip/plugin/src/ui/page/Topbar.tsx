@@ -1,5 +1,6 @@
 import * as React from "react";
 import { wikiHref, type WikiLocation } from "../href.js";
+import { HostLink } from "../HostLink.js";
 
 /**
  * Topbar — sits above the three-column workspace.
@@ -117,9 +118,9 @@ export function Topbar({
               </span>
             ) : null}
             {c.href !== null ? (
-              <a className="llm-wiki-topbar-crumb" href={c.href}>
+              <HostLink className="llm-wiki-topbar-crumb" href={c.href}>
                 {c.label}
-              </a>
+              </HostLink>
             ) : (
               <span className="llm-wiki-topbar-crumb" aria-current="page">
                 {c.label}

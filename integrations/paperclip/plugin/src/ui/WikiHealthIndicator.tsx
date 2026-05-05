@@ -4,6 +4,7 @@ import type { PluginWidgetProps } from "@paperclipai/plugin-sdk/ui";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { injectWikiStyles } from "./styles.js";
 import { wikiHref } from "./href.js";
+import { HostLink } from "./HostLink.js";
 
 /**
  * Operators see this on the dashboard. Four auto-detectable signals
@@ -106,12 +107,12 @@ function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
         <p>Wiki path not configured for this Company.</p>
         <p className="llm-wiki-hint">
           Run <code>/wiki:init</code> from any agent in this Company, or open{" "}
-          <a
+          <HostLink
             href={wikiHref(context.companyPrefix, { kind: "setup" })}
             data-testid="wiki-health-missing-setup-link"
           >
             Setup
-          </a>{" "}
+          </HostLink>{" "}
           for the full runbook.
         </p>
       </div>
@@ -209,12 +210,12 @@ function SetupStatusBanner({
       >
         🟡 Setup: {completed}/{total} steps complete
       </span>
-      <a
+      <HostLink
         href={wikiHref(companyPrefix, { kind: "setup" })}
         data-testid="wiki-health-setup-link"
       >
         Open setup →
-      </a>
+      </HostLink>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeHighlight from "rehype-highlight";
 import { wikiHref } from "./href.js";
+import { HostLink } from "./HostLink.js";
 
 /**
  * The shared markdown rendering pipeline used by both the page reader
@@ -67,13 +68,13 @@ function MarkdownAnchor({
   if (typeof href === "string" && href.startsWith(SENTINEL_PROTOCOL)) {
     const slug = href.slice(SENTINEL_PROTOCOL.length);
     return (
-      <a
+      <HostLink
         href={wikiHref(companyPrefix, { kind: "page", slug })}
         data-wiki-slug={slug}
         {...rest}
       >
         {children}
-      </a>
+      </HostLink>
     );
   }
   return (

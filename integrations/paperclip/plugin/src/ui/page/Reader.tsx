@@ -8,6 +8,7 @@ import {
   extractHeadings,
 } from "./OutlinePanel.js";
 import { wikiHref, type WikiLocation } from "../href.js";
+import { HostLink } from "../HostLink.js";
 import { SetupView } from "../setup/SetupView.js";
 
 /**
@@ -159,14 +160,14 @@ function FolderView({
       <ul className="llm-wiki-results">
         {inFolder.map((p) => (
           <li key={p.slug} className="llm-wiki-result">
-            <a
+            <HostLink
               href={wikiHref(companyPrefix, { kind: "page", slug: p.slug })}
               data-wiki-slug={p.slug}
               className="llm-wiki-result-link"
             >
               <span className="llm-wiki-result-title">{p.title}</span>
               <span className="llm-wiki-result-type">{p.type}</span>
-            </a>
+            </HostLink>
           </li>
         ))}
       </ul>
@@ -258,7 +259,7 @@ function SearchView({
       <ul className="llm-wiki-results">
         {(searchResult.data?.results ?? []).map((r) => (
           <li key={r.slug} className="llm-wiki-result">
-            <a
+            <HostLink
               href={wikiHref(context.companyPrefix, {
                 kind: "page",
                 slug: r.slug,
@@ -268,7 +269,7 @@ function SearchView({
             >
               <span className="llm-wiki-result-title">{r.title}</span>
               <span className="llm-wiki-result-type">{r.type}</span>
-            </a>
+            </HostLink>
           </li>
         ))}
       </ul>

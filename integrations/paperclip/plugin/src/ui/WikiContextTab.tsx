@@ -2,6 +2,7 @@ import * as React from "react";
 import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 import type { PluginDetailTabProps } from "@paperclipai/plugin-sdk/ui";
 import { ErrorBoundary } from "./ErrorBoundary.js";
+import { injectWikiStyles } from "./styles.js";
 
 interface RelevantResult {
   slug: string;
@@ -69,6 +70,7 @@ function ContextList({ context }: PluginDetailTabProps): React.ReactElement {
 export function WikiContextTab(
   props: PluginDetailTabProps,
 ): React.ReactElement {
+  React.useEffect(() => injectWikiStyles(), []);
   return (
     <ErrorBoundary>
       <ContextList {...props} />

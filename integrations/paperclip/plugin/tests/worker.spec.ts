@@ -415,6 +415,92 @@ describe("worker — does not write", () => {
   });
 });
 
+describe("worker — Company-scoped fallback finds the project that has the wiki", () => {
+  // Real Paperclip's getPrimaryWorkspace synthesizes a workspace for every
+  // project (via project.codebase.effectiveLocalFolder) — see
+  // server/src/services/plugin-host-services.ts. The company-level fallback
+  // therefore can't break on the first non-null workspace; it must
+  // continue until it finds one whose path actually contains the wiki.
+  // Caught by the live smoke test against Paperclip's dashboard widget.
+
+  const otherProject = {
+    ...project,
+    id: "other-proj",
+    name: "Other Project",
+  } as unknown as Project;
+
+  async function makeWorkerWithMultipleProjects(): Promise<TestHarness> {
+    const harness = createTestHarness({
+      manifest: manifest as PaperclipPluginManifestV1,
+      capabilities: manifest.capabilities,
+      config: { wiki_path: "wiki" },
+    });
+    harness.seed({
+      projects: [otherProject, project], // first project does NOT have the wiki
+      issues: [issueAboutTransformers],
+    });
+
+    const ctx = harness.ctx as PluginContext & { projects: any };
+    const wikiWorkspace = { ...fakeWorkspace, path: FIXTURES_ROOT };
+    // Simulate real Paperclip: synthesize a workspace for the project
+    // that has NO wiki (mimicking effectiveLocalFolder fallback to /tmp).
+    const otherWorkspace: PluginWorkspace = {
+      id: "ws-other",
+      projectId: "other-proj",
+      name: "synthetic",
+      path: "/tmp/no-wiki-here-" + Date.now(),
+      isPrimary: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    ctx.projects.getPrimaryWorkspace = async (pid: string, _cid: string) => {
+      if (pid === PROJECT_ID) return wikiWorkspace;
+      if (pid === "other-proj") return otherWorkspace;
+      return null;
+    };
+    ctx.projects.getWorkspaceForIssue = async () => wikiWorkspace;
+    ctx.projects.list = async () => [otherProject, project];
+    await plugin.definition.setup(harness.ctx);
+    return harness;
+  }
+
+  it("walks past projects with synthetic-but-empty workspaces and finds the wiki", async () => {
+    const harness = await makeWorkerWithMultipleProjects();
+    // No projectId — Company-scoped call (the dashboard does this).
+    const result = await harness.getData<{
+      pages: { slug: string }[];
+    }>("loadIndex", { companyId: COMPANY_ID });
+    // First project synthesized a workspace without our wiki; second has
+    // it. Old behavior: 0 pages (broke on first project's synthetic ws).
+    // New behavior: 7 pages from the fixture.
+    expect(result.pages).toHaveLength(7);
+  });
+
+  it("wikiHealth reports real counts on the Company-scoped path", async () => {
+    const harness = await makeWorkerWithMultipleProjects();
+    const result = await harness.getData<{
+      pageCount: number;
+      wikiPathMissing: boolean;
+    }>("wikiHealth", { companyId: COMPANY_ID });
+    expect(result.wikiPathMissing).toBe(false);
+    expect(result.pageCount).toBe(7);
+  });
+
+  it("explicit projectId pointing at a wiki-less project does NOT silently fall back", async () => {
+    // SPEC §"Multi-Company behavior" + slot intent: if the operator's slot
+    // context names a specific project, honoring that project's resolution
+    // matters more than convenience. Don't drift to a different project.
+    const harness = await makeWorkerWithMultipleProjects();
+    const result = await harness.getData<{
+      pages: { slug: string }[];
+    }>("loadIndex", {
+      companyId: COMPANY_ID,
+      projectId: "other-proj", // pointed explicitly at the wiki-less project
+    });
+    expect(result.pages).toEqual([]);
+  });
+});
+
 describe("worker — idle reads short-circuit before any FS walk", () => {
   // WikiBrowser unconditionally invokes loadIndex, searchWiki, readPage even
   // when the user hasn't typed a query or selected a slug. With currentSlug

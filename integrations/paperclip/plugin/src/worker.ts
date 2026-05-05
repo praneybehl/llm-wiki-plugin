@@ -136,6 +136,26 @@ async function resolveLintIntervalMinutes(ctx: PluginContext): Promise<number> {
  * containment check fails). The worker's data handlers convert null to a
  * graceful `{ error: ... }` response — they never throw to the host.
  */
+/**
+ * Test whether the wiki resolves at a given workspace.
+ *
+ * Real Paperclip's ctx.projects.getPrimaryWorkspace synthesizes a workspace
+ * for every project — it falls back to project.codebase.effectiveLocalFolder
+ * even when no explicit workspace row exists (see plugin-host-services.ts).
+ * So the company-level fallback in resolveWikiRoot can't stop on the first
+ * non-null workspace; it has to find the project whose workspace actually
+ * contains the configured wiki directory.
+ */
+function resolveWikiAt(
+  workspacePath: string,
+  wikiPath: string,
+): string | null {
+  const root = path.resolve(workspacePath, wikiPath);
+  if (!isInside(workspacePath, root)) return null;
+  if (!fs.existsSync(root)) return null;
+  return resolvedContainedRoot(workspacePath, root);
+}
+
 async function resolveWikiRoot(
   ctx: PluginContext,
   companyId: string,
@@ -147,27 +167,37 @@ async function resolveWikiRoot(
     ? config.wiki_path
     : "wiki";
 
-  let workspace = null;
   try {
+    // Try the explicit project first if provided.
     if (projectId) {
-      workspace = await ctx.projects.getPrimaryWorkspace(projectId, companyId);
-    }
-    if (!workspace) {
-      const projects = await ctx.projects.list({ companyId, limit: 50 });
-      for (const project of projects) {
-        workspace = await ctx.projects.getPrimaryWorkspace(project.id, companyId);
-        if (workspace) break;
+      const ws = await ctx.projects.getPrimaryWorkspace(projectId, companyId);
+      if (ws) {
+        const resolved = resolveWikiAt(ws.path, wikiPath);
+        if (resolved !== null) return resolved;
+        // Explicit projectId was given but the wiki isn't there — don't
+        // silently search other projects, return null. The slot context
+        // pointed somewhere specific; honoring that intent matters.
+        return null;
       }
+    }
+
+    // Company-level fallback: walk every project, accept only the one
+    // whose workspace actually contains the wiki. Stopping on the first
+    // non-null workspace would pick projects that synthesize a
+    // workspace via effectiveLocalFolder but don't actually have the
+    // wiki (real Paperclip behavior).
+    const projects = await ctx.projects.list({ companyId, limit: 50 });
+    for (const project of projects) {
+      const ws = await ctx.projects.getPrimaryWorkspace(project.id, companyId);
+      if (!ws) continue;
+      const resolved = resolveWikiAt(ws.path, wikiPath);
+      if (resolved !== null) return resolved;
     }
   } catch {
     return null;
   }
-  if (!workspace) return null;
 
-  const root = path.resolve(workspace.path, wikiPath);
-  if (!isInside(workspace.path, root)) return null;
-  if (!fs.existsSync(root)) return null;
-  return resolvedContainedRoot(workspace.path, root);
+  return null;
 }
 
 async function resolveWikiRootForIssue(
@@ -186,10 +216,7 @@ async function resolveWikiRootForIssue(
     return null;
   }
   if (!ws) return null;
-  const root = path.resolve(ws.path, wikiPath);
-  if (!isInside(ws.path, root)) return null;
-  if (!fs.existsSync(root)) return null;
-  return resolvedContainedRoot(ws.path, root);
+  return resolveWikiAt(ws.path, wikiPath);
 }
 
 /**

@@ -2,6 +2,7 @@ import * as React from "react";
 import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 import type { PluginWidgetProps } from "@paperclipai/plugin-sdk/ui";
 import { ErrorBoundary } from "./ErrorBoundary.js";
+import { injectWikiStyles } from "./styles.js";
 
 interface WikiHealth {
   pageCount: number;
@@ -108,6 +109,7 @@ function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
 export function WikiHealthIndicator(
   props: PluginWidgetProps,
 ): React.ReactElement {
+  React.useEffect(() => injectWikiStyles(), []);
   return (
     <ErrorBoundary>
       <HealthCard {...props} />

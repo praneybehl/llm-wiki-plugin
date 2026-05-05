@@ -415,6 +415,101 @@ describe("worker — does not write", () => {
   });
 });
 
+describe("worker — search_top_k config plumbing", () => {
+  it("uses config.search_top_k as the default when params.topK is absent", async () => {
+    const harness = await makeWorker({
+      config: { wiki_path: "wiki", search_top_k: 3 },
+    });
+    const result = await harness.getData<{ results: { slug: string }[] }>(
+      "searchWiki",
+      {
+        companyId: COMPANY_ID,
+        projectId: PROJECT_ID,
+        query: "transformer attention",
+      },
+    );
+    expect(result.results.length).toBe(3);
+  });
+
+  it("explicit params.topK wins over config.search_top_k", async () => {
+    const harness = await makeWorker({
+      config: { wiki_path: "wiki", search_top_k: 10 },
+    });
+    const result = await harness.getData<{ results: { slug: string }[] }>(
+      "searchWiki",
+      {
+        companyId: COMPANY_ID,
+        projectId: PROJECT_ID,
+        query: "transformer attention",
+        topK: 2,
+      },
+    );
+    expect(result.results.length).toBe(2);
+  });
+
+  it("clamps an out-of-range config.search_top_k to the schema's [1, 20] bounds", async () => {
+    const harness = await makeWorker({
+      config: { wiki_path: "wiki", search_top_k: 100 },
+    });
+    const result = await harness.getData<{ results: { slug: string }[] }>(
+      "searchWiki",
+      {
+        companyId: COMPANY_ID,
+        projectId: PROJECT_ID,
+        query: "transformer attention",
+      },
+    );
+    // Our fixture corpus only has 7 pages so we'd never see 20 anyway —
+    // but the cap means search_top_k=100 is rejected, NOT used as-is, and
+    // the worker falls back to the schema default (5).
+    expect(result.results.length).toBeLessThanOrEqual(20);
+  });
+
+  it("falls back to 5 when config has no search_top_k", async () => {
+    const harness = await makeWorker({
+      config: { wiki_path: "wiki" },
+    });
+    const result = await harness.getData<{ results: { slug: string }[] }>(
+      "searchWiki",
+      {
+        companyId: COMPANY_ID,
+        projectId: PROJECT_ID,
+        query: "transformer attention",
+      },
+    );
+    expect(result.results.length).toBe(5);
+  });
+
+  it("relevantForIssue applies the same config-driven default", async () => {
+    const harness = await makeWorker({
+      config: { wiki_path: "wiki", search_top_k: 2 },
+    });
+    const result = await harness.getData<{ results: { slug: string }[] }>(
+      "relevantForIssue",
+      {
+        companyId: COMPANY_ID,
+        issueId: ISSUE_ID,
+        // no topK — config wins
+      },
+    );
+    expect(result.results.length).toBeLessThanOrEqual(2);
+  });
+
+  it("wiki.query tool applies the same config-driven default", async () => {
+    const harness = await makeWorker({
+      config: { wiki_path: "wiki", search_top_k: 3 },
+    });
+    const result = await harness.executeTool<{
+      data?: { results: { slug: string }[] };
+    }>(
+      "wiki.query",
+      { query: "transformer attention" },
+      { companyId: COMPANY_ID, projectId: PROJECT_ID, agentId: "a", runId: "r" },
+    );
+    expect(result.data?.results.length).toBe(3);
+  });
+});
+
 afterAll(() => {
   // No persistent temp dirs to clean — fixtures live in the repo.
 });

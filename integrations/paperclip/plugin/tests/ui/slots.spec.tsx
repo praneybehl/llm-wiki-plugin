@@ -276,3 +276,45 @@ describe("ui/index.tsx — named exports", () => {
     expect(typeof uiIndex.WikiPageView).toBe("function");
   });
 });
+
+// ────────────────────────────────────────────────────────────────────────
+// Fix 2 — UI must not pass a hardcoded topK so the worker config wins
+// ────────────────────────────────────────────────────────────────────────
+
+describe("WikiBrowser — does not hardcode topK for searchWiki", () => {
+  it("does not pass topK in the searchWiki params", () => {
+    vi.mocked(usePluginData).mockReturnValue(
+      dataResult({ index: "", shards: [], pages: [] }),
+    );
+    render(<WikiSidebar context={baseHostContext} />);
+
+    const searchCall = vi
+      .mocked(usePluginData)
+      .mock.calls.find(([key]) => key === "searchWiki");
+    expect(searchCall).toBeDefined();
+    const params = searchCall?.[1] ?? {};
+    // topK must be absent (or explicitly undefined) so the worker's
+    // resolveTopK uses config.search_top_k.
+    expect((params as Record<string, unknown>).topK).toBeUndefined();
+  });
+});
+
+describe("WikiContextTab — does not hardcode topK for relevantForIssue", () => {
+  it("does not pass topK in the relevantForIssue params", () => {
+    const ctx = {
+      ...baseHostContext,
+      entityId: "issue-99",
+      entityType: "issue",
+    } satisfies PluginHostContext & { entityId: string; entityType: string };
+    vi.mocked(useHostContext).mockReturnValue(ctx);
+    vi.mocked(usePluginData).mockReturnValue(dataResult({ results: [] }));
+    render(<WikiContextTab context={ctx} />);
+
+    const call = vi
+      .mocked(usePluginData)
+      .mock.calls.find(([key]) => key === "relevantForIssue");
+    expect(call).toBeDefined();
+    const params = call?.[1] ?? {};
+    expect((params as Record<string, unknown>).topK).toBeUndefined();
+  });
+});

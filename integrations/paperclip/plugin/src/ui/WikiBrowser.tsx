@@ -51,11 +51,13 @@ export function WikiBrowser({
   });
 
   const trimmedQuery = query.trim();
+  // No hardcoded topK — the worker resolves it from the operator's
+  // search_top_k config (default 5, bounded [1, 20]) so changes in
+  // /settings/plugins/io.praneybehl.llm-wiki take effect on the next mount.
   const searchResult = usePluginData<SearchPayload>("searchWiki", {
     companyId: context.companyId,
     projectId: context.projectId,
     query: trimmedQuery,
-    topK: 10,
   });
 
   const pageResult = usePluginData<WikiPageData & { error?: string }>(

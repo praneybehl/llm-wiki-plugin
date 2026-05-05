@@ -72,6 +72,38 @@ async function getConfig(ctx: PluginContext): Promise<PluginConfig> {
   }
 }
 
+const TOPK_MIN = 1;
+const TOPK_MAX = 20;
+const TOPK_DEFAULT = 5;
+
+function isValidTopK(n: unknown): n is number {
+  return (
+    typeof n === "number" &&
+    Number.isFinite(n) &&
+    n >= TOPK_MIN &&
+    n <= TOPK_MAX
+  );
+}
+
+/**
+ * Resolve the topK value with precedence: explicit param > config > default.
+ *
+ * The manifest's instanceConfigSchema gates search_top_k to the [1, 20]
+ * range with a default of 5. Out-of-range values from either source fall
+ * through to the next candidate so the schema bounds are always
+ * respected, matching what the host's auto-form would enforce on input.
+ */
+async function resolveTopK(
+  ctx: PluginContext,
+  paramTopK: unknown,
+): Promise<number> {
+  const fromParam = typeof paramTopK === "string" ? Number(paramTopK) : paramTopK;
+  if (isValidTopK(fromParam)) return Math.floor(fromParam);
+  const config = await getConfig(ctx);
+  if (isValidTopK(config.search_top_k)) return Math.floor(config.search_top_k);
+  return TOPK_DEFAULT;
+}
+
 /**
  * Resolve the wiki root for a Company. Per SPEC §"Multi-Company behavior", v0.1
  * assumes one wiki per Company, located under the Company's primary
@@ -250,7 +282,7 @@ const plugin = definePlugin({
       const companyId = String(params.companyId ?? "");
       const projectId = params.projectId ? String(params.projectId) : null;
       const query = String(params.query ?? "");
-      const topK = Number(params.topK ?? 5);
+      const topK = await resolveTopK(ctx, params.topK);
       const filters = (params.filters ?? {}) as SearchFiltersInput;
       const root = await resolveWikiRoot(ctx, companyId, projectId);
       if (!root) return { results: [] };
@@ -393,7 +425,7 @@ const plugin = definePlugin({
     ctx.data.register("relevantForIssue", async (params) => {
       const companyId = String(params.companyId ?? "");
       const issueId = String(params.issueId ?? "");
-      const topK = Number(params.topK ?? 5);
+      const topK = await resolveTopK(ctx, params.topK);
 
       let issue = null;
       try {
@@ -449,7 +481,7 @@ const plugin = definePlugin({
           tag?: string;
         };
         const query = String(params.query ?? "");
-        const topK = Number(params.topK ?? 5);
+        const topK = await resolveTopK(ctx, params.topK);
         const filters: SearchFiltersInput = {};
         if (params.type) filters.type = params.type;
         if (params.tag) filters.tags = [params.tag];

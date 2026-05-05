@@ -15,12 +15,12 @@ interface RelevantPayload {
 }
 
 function ContextList({ context }: PluginDetailTabProps): React.ReactElement {
+  // No hardcoded topK — the worker resolves it from search_top_k config.
   const { data, loading, error } = usePluginData<RelevantPayload>(
     "relevantForIssue",
     {
       companyId: context.companyId,
       issueId: context.entityId,
-      topK: 5,
     },
   );
 

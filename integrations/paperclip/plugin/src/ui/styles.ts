@@ -40,8 +40,8 @@ const WIKI_STYLES = `
 }
 
 .llm-wiki-search-input {
-  flex: 1 1 auto;
-  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0.4rem 0.6rem;
   border-radius: 6px;
   border: 1px solid currentColor;
@@ -268,6 +268,449 @@ const WIKI_STYLES = `
   text-decoration-style: dotted;
   cursor: pointer;
 }
+
+/* Setup view. */
+.llm-wiki-setup {
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.llm-wiki-setup > header h2 { margin: 0 0 0.3rem; font-size: 1.1rem; }
+.llm-wiki-setup-step {
+  border: 1px solid rgba(127, 127, 127, 0.25);
+  border-radius: 6px;
+  padding: 0.7rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.llm-wiki-setup-step h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.llm-wiki-setup-step[data-status="ok"] {
+  border-color: rgba(0, 160, 80, 0.4);
+  background: rgba(0, 160, 80, 0.04);
+}
+.llm-wiki-setup-step[data-status="missing"],
+.llm-wiki-setup-step[data-status="warn"] {
+  border-color: rgba(200, 140, 0, 0.4);
+  background: rgba(200, 140, 0, 0.04);
+}
+.llm-wiki-setup-step[data-status="error"] {
+  border-color: rgba(200, 60, 60, 0.5);
+  background: rgba(200, 60, 60, 0.04);
+}
+.llm-wiki-setup-step-body p { margin: 0.25rem 0; font-size: 0.9rem; }
+.llm-wiki-setup-adapters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.llm-wiki-setup-adapter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.85rem;
+}
+.llm-wiki-setup-copy {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+.llm-wiki-setup-copy pre {
+  flex: 1 1 auto;
+  margin: 0;
+  background: rgba(127, 127, 127, 0.08);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  overflow: auto;
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.llm-wiki-setup-copy pre code { background: none; padding: 0; }
+
+/* Health indicator setup banner. */
+.llm-wiki-health-setup {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.06);
+  font-size: 0.8rem;
+}
+.llm-wiki-health-setup a,
+.llm-wiki-health-setup-link {
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.75;
+}
+.llm-wiki-health-setup a:hover,
+.llm-wiki-health-setup-link:hover { opacity: 1; }
+
+/* The sidebar launcher uses the host's Tailwind utility classes
+   (text-foreground, bg-accent, etc.) directly — see
+   src/ui/launcher/Launcher.tsx — so it inherits Paperclip's nav-item
+   look without us re-shipping any CSS. */
+
+/* Three-column workspace (page slot). */
+.llm-wiki-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  box-sizing: border-box;
+  font-size: inherit;
+  color: inherit;
+  gap: 0.5rem;
+}
+.llm-wiki-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) minmax(220px, 280px);
+  gap: 0.75rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+@media (max-width: 1100px) {
+  .llm-wiki-workspace-grid { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); }
+  .llm-wiki-workspace-right { display: none; }
+}
+@media (max-width: 720px) {
+  .llm-wiki-workspace-grid { grid-template-columns: 1fr; }
+  .llm-wiki-workspace-left { display: none; }
+}
+
+/* Topbar. */
+.llm-wiki-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.25rem 0;
+  font-size: 0.85rem;
+}
+.llm-wiki-topbar-nav {
+  display: flex;
+  gap: 0.2rem;
+}
+.llm-wiki-topbar-arrow {
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0.15rem 0.45rem;
+  opacity: 0.7;
+}
+.llm-wiki-topbar-arrow:hover { opacity: 1; }
+.llm-wiki-topbar-switcher {
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0.15rem 0.45rem;
+  opacity: 0.7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+}
+.llm-wiki-topbar-switcher:hover { opacity: 1; }
+.llm-wiki-topbar-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.llm-wiki-topbar-crumb {
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.7;
+}
+.llm-wiki-topbar-crumb[aria-current="page"] {
+  opacity: 1;
+  font-weight: 600;
+}
+.llm-wiki-topbar-crumb:not([aria-current])[href]:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+.llm-wiki-topbar-sep { opacity: 0.4; }
+
+/* cmdk Quick switcher dialog. */
+.llm-wiki-cmdk-dialog,
+[cmdk-dialog] {
+  position: fixed;
+  top: 15vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: min(560px, 90vw);
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 20, 20, 0.96);
+  color: #fafafa;
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+[cmdk-overlay] {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 999;
+}
+.llm-wiki-cmdk-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.llm-wiki-cmdk-list {
+  overflow-y: auto;
+  padding: 0.4rem;
+  scroll-padding-block: 0.4rem;
+}
+[cmdk-group-heading] {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  padding: 0.5rem 0.4rem 0.25rem;
+}
+.llm-wiki-cmdk-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.llm-wiki-cmdk-item[data-selected="true"] {
+  background: rgba(255, 255, 255, 0.08);
+}
+.llm-wiki-cmdk-item-title {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.llm-wiki-cmdk-item-slug {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  opacity: 0.55;
+}
+.llm-wiki-workspace-left,
+.llm-wiki-workspace-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  overflow-y: auto;
+  min-width: 0;
+}
+.llm-wiki-workspace-center {
+  overflow-y: auto;
+  min-width: 0;
+  padding: 0 0.25rem;
+}
+
+/* Folder tree. */
+.llm-wiki-tree,
+.llm-wiki-tree-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+.llm-wiki-tree-children {
+  padding-left: 0.85rem;
+  margin-top: 0.05rem;
+  border-left: 1px solid rgba(127, 127, 127, 0.18);
+}
+.llm-wiki-tree-folder-header {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.llm-wiki-tree-folder-header:hover {
+  background: rgba(127, 127, 127, 0.12);
+}
+.llm-wiki-tree-folder-caret {
+  flex: 0 0 auto;
+  font-size: 0.65rem;
+  opacity: 0.55;
+  width: 0.8rem;
+  display: inline-block;
+}
+.llm-wiki-tree-folder-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+.llm-wiki-tree-link {
+  display: block;
+  padding: 0.25rem 0.4rem 0.25rem 1.1rem;
+  border-radius: 4px;
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+.llm-wiki-tree-link:hover {
+  background: rgba(127, 127, 127, 0.12);
+}
+.llm-wiki-tree-link-current {
+  background: rgba(127, 127, 127, 0.18);
+  font-weight: 600;
+}
+
+/* Right-rail panels. */
+.llm-wiki-properties h3,
+.llm-wiki-outline h3,
+.llm-wiki-backlinks h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+.llm-wiki-properties dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.6rem;
+  row-gap: 0.2rem;
+  margin: 0;
+  font-size: 0.85rem;
+}
+.llm-wiki-properties dt {
+  opacity: 0.6;
+  font-weight: 500;
+}
+.llm-wiki-properties dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.llm-wiki-outline ul,
+.llm-wiki-backlinks ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.85rem;
+}
+.llm-wiki-outline a,
+.llm-wiki-backlinks a {
+  color: inherit;
+  text-decoration: none;
+  padding: 0.2rem 0.3rem;
+  border-radius: 3px;
+  display: block;
+}
+.llm-wiki-outline a:hover,
+.llm-wiki-backlinks a:hover {
+  background: rgba(127, 127, 127, 0.12);
+}
+.llm-wiki-outline li[data-level="3"] { padding-left: 0.7rem; opacity: 0.85; }
+.llm-wiki-outline li[data-level="4"] { padding-left: 1.2rem; opacity: 0.75; }
+.llm-wiki-outline li[data-level="5"],
+.llm-wiki-outline li[data-level="6"] { padding-left: 1.6rem; opacity: 0.65; }
+
+/* Reader landing / folder / search views. */
+.llm-wiki-landing,
+.llm-wiki-folder-view,
+.llm-wiki-search-view,
+.llm-wiki-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.25rem;
+}
+.llm-wiki-landing-index {
+  font-size: inherit;
+  color: inherit;
+  line-height: 1.45;
+}
+.llm-wiki-landing-index h1 { font-size: 1.2rem; margin: 0 0 0.6rem; }
+.llm-wiki-landing-index h2 { font-size: 1rem;  margin: 0.6rem 0 0.3rem; }
+.llm-wiki-folder-view header h2,
+.llm-wiki-search-view header h2,
+.llm-wiki-setup h2 { margin: 0; font-size: 1.05rem; }
+
+/* Permalink anchors next to headings (rehype-autolink-headings). */
+.llm-wiki-page h1 .icon-link,
+.llm-wiki-page h2 .icon-link,
+.llm-wiki-page h3 .icon-link {
+  display: none;
+}
+.llm-wiki-page h1:hover a[aria-hidden],
+.llm-wiki-page h2:hover a[aria-hidden],
+.llm-wiki-page h3:hover a[aria-hidden] {
+  opacity: 0.5;
+}
+.llm-wiki-page h1 a[aria-hidden],
+.llm-wiki-page h2 a[aria-hidden],
+.llm-wiki-page h3 a[aria-hidden] {
+  margin-left: 0.3rem;
+  text-decoration: none;
+  opacity: 0;
+  color: inherit;
+  font-size: 0.85em;
+}
+
+/* highlight.js minimal palette — currentColor / opacity-driven so it
+   tracks the host theme rather than baking a single light/dark palette. */
+.hljs           { background: rgba(127, 127, 127, 0.08); color: inherit; }
+.hljs-comment,
+.hljs-quote     { opacity: 0.55; font-style: italic; }
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in  { font-weight: 600; }
+.hljs-string,
+.hljs-attr,
+.hljs-name      { opacity: 0.85; }
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-bullet    { opacity: 0.75; }
 
 /* Error boundary. */
 .llm-wiki-error-boundary {

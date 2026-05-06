@@ -8,6 +8,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **`paperclip-plugin-llm-wiki` v0.4 — Obsidian-style wiki workspace inside Paperclip.** The plugin's page slot at `/{prefix}/llm-wiki` becomes a real three-column workspace: a folder tree on the left (mirroring the on-disk `concepts/`, `entities/`, `sources/`, `synthesis/` structure), a URL-driven Reader in the center, and a metadata rail on the right (Properties + Outline + Backlinks). Wiki pages have per-page URLs (`#concepts/transformer`) so they can be copied, shared, and back-buttoned to. Wikilinks in rendered markdown navigate via these URLs rather than via component state. Markdown rendering picks up `rehype-slug`, `rehype-autolink-headings`, and `rehype-highlight` for stable heading ids, hover-anchors, and code syntax highlighting.
+- **Sidebar slot becomes a launcher.** Drops the in-sidebar reader (cramped and a dead-end) in favour of an Open link, a search input that submits to `?q=…`, a Recent list backed by sessionStorage, a Browse-by-type list, and a condensed health badge. When the wiki is missing, collapses to a single "Set up the wiki →" CTA pointing at the Setup view.
+- **Setup walkthrough (`?view=setup`).** Closes the loop between "I installed the plugin" and "my agents actually use the wiki." The plugin's sandbox can't auto-install the agent-side skill or modify any agent's heartbeat instructions, so the walkthrough lays out the runbook in one place: live status checks for wiki + tool + sample query, copy-paste-ready install commands per adapter (Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Pi), the canonical heartbeat stanza, and the system-prompt addition for HTTP-only agents.
+- **Backlinks worker provider + right-rail panel** — pages that reference the active page. Reuses the symlink-hardened `collectPages` walker; no new capability declared.
+- **`verifySetup` worker provider** — composes wiki resolution + a sample search into a structured payload the Setup view renders ✅/❌ from.
+- **`wiki.query` tool description rewritten to be self-instructive.** Tells agents reading the toolbelt *when* to call (source-of-truth phrasing, before-answering trigger) instead of just describing the algorithm. Single source: defined once in the manifest, imported by the worker.
+- **Quick switcher (⌘K / Ctrl-K).** Fuzzy-search modal of every wiki page, built on Vercel's `cmdk`. Topbar surfaces a clickable breadcrumb and back/forward arrows.
+
+### Changed
+
+- **`paperclip-plugin-llm-wiki`**: 99 new tests (196 → 295), 8 new UI components, 2 new worker providers. The single-column `WikiBrowser` from v0.3 is gone — superseded by the three-column workspace + launcher. Issue detail tab links now resolve to the wiki workspace's `#slug` URLs instead of a fake page-local hash.
+
+## [Unreleased — earlier work]
+
+### Added
+
 - **Paperclip integration: `paperclip-plugin-llm-wiki` (npm v0.0.1).** A new sub-deliverable under `integrations/paperclip/plugin/` that surfaces the LLM Wiki inside Paperclip's UI as a read-only context lens. Five surfaces: a Company sidebar, a full-page view at `/companies/:c/plugins/llm-wiki`, an issue-detail tab that auto-surfaces relevant wiki pages by BM25 over title + description, a dashboard health widget (page count, lint status, link density, scaling-threshold messages), and a `wiki.query` agent-callable tool for HTTP/webhook adapters that don't run the skill directly. The plugin is strictly read-only — writes still happen through agents on heartbeat (via the skill) or through the operator's existing markdown environment.
 - **Algorithmic parity between the plugin and the canonical Python scripts.** The plugin's TypeScript ports of `wiki_search.py`, `wiki_lint.py`, and `wiki_stats.py` are mechanically tested for byte-for-byte parity against a fixed fixture corpus — same BM25 constants (k1=1.5, b=0.75), same IDF formula, same skip rules. Snapshot regeneration script: `python3 integrations/paperclip/plugin/tests/fixtures/_gen_bm25_expectations.py`. Search results from the plugin and from agent heartbeat will not drift.
 - **`integrations/paperclip/SPEC.md`** — v0.1 plugin design proposal with verbatim references to the live Paperclip plugin SDK.

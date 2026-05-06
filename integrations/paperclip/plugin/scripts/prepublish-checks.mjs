@@ -326,6 +326,15 @@ if (existsSync(changelogPath)) {
   bad("CHANGELOG.md not found at repo root");
 }
 
+section(14, "Setup snippets in sync with skills/llm-wiki canonical sources");
+try {
+  execSync("node ./scripts/check-setup-snippets.mjs", { stdio: "pipe" });
+  ok("HEARTBEAT_STANZA in src/ui/setup/snippets.ts matches the canonical source");
+} catch (e) {
+  const stderr = e?.stderr?.toString?.() ?? String(e);
+  bad(`setup snippets drift detected:\n${stderr.split("\n").slice(0, 6).join("\n")}`);
+}
+
 // ─── Final summary ───────────────────────────────────────────────────
 console.log("\n" + "─".repeat(64));
 const total = pass + fail;

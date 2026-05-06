@@ -1,6 +1,15 @@
 import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 
 /**
+ * Description for the `wiki.query` agent tool. Exported so the worker's
+ * runtime tool registration can reference the same string — agents
+ * reading the toolbelt see the same when-to-call signal whether they
+ * resolve the description through the manifest or the registered tool.
+ */
+export const WIKI_QUERY_DESCRIPTION =
+  "Search the Company's LLM Wiki — the source of truth for accumulated company knowledge (people, products, decisions, prior research, sources). Call this before answering questions about Company-specific context. Returns BM25-ranked pages with title, type, and one-line summary; follow up with another wiki.query for deep dives or read the page directly through the agent's filesystem if available.";
+
+/**
  * Paperclip plugin manifest for paperclip-plugin-llm-wiki.
  *
  * Source contract:
@@ -79,8 +88,7 @@ const manifest: PaperclipPluginManifestV1 = {
     {
       name: "wiki.query",
       displayName: "Query the LLM Wiki",
-      description:
-        "BM25 search over the active Company's wiki. Returns top N pages with one-line summaries.",
+      description: WIKI_QUERY_DESCRIPTION,
       parametersSchema: {
         type: "object",
         properties: {

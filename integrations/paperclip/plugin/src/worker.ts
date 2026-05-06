@@ -29,6 +29,7 @@ import {
 import { collectPages, searchPages } from "./lib/bm25.js";
 import { lintWiki, type LintFindings } from "./lib/lint.js";
 import { computeStats } from "./lib/stats.js";
+import { WIKI_QUERY_DESCRIPTION } from "./manifest.js";
 
 interface PluginConfig {
   wiki_path?: string;
@@ -57,6 +58,10 @@ function isString(v: unknown): v is string {
 function metaString(meta: Record<string, FrontmatterValue>, key: string): string {
   const v = meta[key];
   return typeof v === "string" ? v : "";
+}
+
+function escapeForRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function isInside(parent: string, target: string): boolean {
@@ -524,6 +529,76 @@ const plugin = definePlugin({
       };
     });
 
+    // ── verifySetup ───────────────────────────────────────────────────
+    ctx.data.register("verifySetup", async (params) => {
+      const companyId = String(params.companyId ?? "");
+      const projectId = params.projectId ? String(params.projectId) : null;
+      const root = await resolveWikiRoot(ctx, companyId, projectId);
+
+      let pageCount = 0;
+      let sampleResults = 0;
+      let sampleDurationMs = 0;
+      const sampleQuery = "test";
+
+      if (root) {
+        try {
+          const pages = collectPages(root);
+          pageCount = pages.length;
+          const start = Date.now();
+          const scored = searchPages(pages, { query: sampleQuery, topK: 5 });
+          sampleDurationMs = Date.now() - start;
+          sampleResults = scored.length;
+        } catch {
+          // Fall through with zeros — verify view will mark this as warn.
+        }
+      }
+
+      return {
+        wiki: {
+          found: root !== null,
+          path: root,
+          pageCount,
+        },
+        tool: { registered: true },
+        sample: {
+          query: sampleQuery,
+          resultCount: sampleResults,
+          durationMs: sampleDurationMs,
+        },
+      };
+    });
+
+    // ── backlinks ─────────────────────────────────────────────────────
+    ctx.data.register("backlinks", async (params) => {
+      const companyId = String(params.companyId ?? "");
+      const projectId = params.projectId ? String(params.projectId) : null;
+      const slug = String(params.slug ?? "").trim();
+      if (slug.length === 0) return { results: [] };
+
+      const root = await resolveWikiRoot(ctx, companyId, projectId);
+      if (!root) return { results: [] };
+
+      const pages = collectPages(root);
+      // Pages whose body contains a wikilink to `slug` (either bare
+      // [[slug]] or aliased [[slug|display]]). extractWikilinks already
+      // canonicalises both forms to the slug. We exclude the page itself
+      // so a page never appears in its own backlinks.
+      const results = pages
+        .filter((p) => p.slug !== slug && p.links.includes(slug))
+        .map((p) => {
+          const title = metaString(p.meta, "title") || p.slug;
+          const type = metaString(p.meta, "type") || "(none)";
+          // Snippet — first line containing the wikilink (with optional
+          // alias). Falls back to the page's first non-empty paragraph.
+          const re = new RegExp(`\\[\\[${escapeForRegex(slug)}(?:\\|[^\\]]+)?\\]\\]`);
+          const lines = p.body.split(/\r?\n/);
+          const hit = lines.find((line) => re.test(line));
+          const snippet = (hit ?? lines.find((l) => l.trim().length > 0) ?? "").trim();
+          return { slug: p.slug, title, type, snippet };
+        });
+      return { results };
+    });
+
     // ── relevantForIssue ──────────────────────────────────────────────
     ctx.data.register("relevantForIssue", async (params) => {
       const companyId = String(params.companyId ?? "");
@@ -564,7 +639,7 @@ const plugin = definePlugin({
       {
         displayName: "Query the LLM Wiki",
         description:
-          "BM25 search over the active Company's wiki. Returns top N pages with one-line summaries.",
+          WIKI_QUERY_DESCRIPTION,
         parametersSchema: {
           type: "object",
           properties: {

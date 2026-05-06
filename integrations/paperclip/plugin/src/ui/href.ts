@@ -36,10 +36,13 @@ export type WikiLocation =
   | { kind: "setup" };
 
 export function wikiHref(
-  companyPrefix: string | null,
+  companyPrefix: string | null | undefined,
   target: WikiTarget,
 ): string {
-  if (companyPrefix === null) return "#";
+  // The plugin SDK's `companyPrefix` is typed `string | null`, but the
+  // dashboard widget's host context surfaces it as `undefined` — guard
+  // against both.
+  if (companyPrefix === null || companyPrefix === undefined) return "#";
   const base = `/${companyPrefix}/llm-wiki`;
   switch (target.kind) {
     case "landing":

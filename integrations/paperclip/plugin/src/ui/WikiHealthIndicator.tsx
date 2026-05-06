@@ -51,7 +51,25 @@ interface WikiHealth {
   lintCheckIntervalMinutes: number;
 }
 
+/**
+ * The dashboard widget's PluginWidgetProps.context surfaces
+ * companyPrefix as `undefined` even though the SDK type says
+ * `string | null` and the widget is mounted on a company-scoped
+ * route. Fall back to deriving the prefix from the first path
+ * segment of window.location so links to /{prefix}/llm-wiki?view=
+ * setup don't render as /undefined/...
+ */
+function effectiveCompanyPrefix(
+  ctx: PluginWidgetProps["context"],
+): string | null {
+  if (ctx.companyPrefix) return ctx.companyPrefix;
+  if (typeof window === "undefined") return null;
+  const seg = window.location.pathname.split("/").filter(Boolean)[0];
+  return seg && seg !== "instance" ? seg : null;
+}
+
 function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
+  const companyPrefix = effectiveCompanyPrefix(context);
   const { data, loading, error, refresh } = usePluginData<WikiHealth>(
     "wikiHealth",
     {
@@ -108,7 +126,7 @@ function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
         <p className="llm-wiki-hint">
           Run <code>/wiki:init</code> from any agent in this Company, or open{" "}
           <HostLink
-            href={wikiHref(context.companyPrefix, { kind: "setup" })}
+            href={wikiHref(companyPrefix, { kind: "setup" })}
             data-testid="wiki-health-missing-setup-link"
           >
             Setup
@@ -122,10 +140,7 @@ function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
   return (
     <div className="llm-wiki-health" data-state="ok">
       <header>Wiki health</header>
-      <SetupStatusBanner
-        data={data}
-        companyPrefix={context.companyPrefix}
-      />
+      <SetupStatusBanner data={data} companyPrefix={companyPrefix} />
       <dl className="llm-wiki-health-stats">
         <dt>Pages</dt>
         <dd>{data.pageCount}</dd>

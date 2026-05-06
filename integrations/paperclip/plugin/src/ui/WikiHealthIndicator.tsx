@@ -3,7 +3,7 @@ import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 import type { PluginWidgetProps } from "@paperclipai/plugin-sdk/ui";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { injectWikiStyles } from "./styles.js";
-import { wikiHref } from "./href.js";
+import { wikiHref, resolveCompanyPrefix } from "./href.js";
 import { HostLink } from "./HostLink.js";
 
 /**
@@ -51,25 +51,8 @@ interface WikiHealth {
   lintCheckIntervalMinutes: number;
 }
 
-/**
- * The dashboard widget's PluginWidgetProps.context surfaces
- * companyPrefix as `undefined` even though the SDK type says
- * `string | null` and the widget is mounted on a company-scoped
- * route. Fall back to deriving the prefix from the first path
- * segment of window.location so links to /{prefix}/llm-wiki?view=
- * setup don't render as /undefined/...
- */
-function effectiveCompanyPrefix(
-  ctx: PluginWidgetProps["context"],
-): string | null {
-  if (ctx.companyPrefix) return ctx.companyPrefix;
-  if (typeof window === "undefined") return null;
-  const seg = window.location.pathname.split("/").filter(Boolean)[0];
-  return seg && seg !== "instance" ? seg : null;
-}
-
 function HealthCard({ context }: PluginWidgetProps): React.ReactElement {
-  const companyPrefix = effectiveCompanyPrefix(context);
+  const companyPrefix = resolveCompanyPrefix(context.companyPrefix);
   const { data, loading, error, refresh } = usePluginData<WikiHealth>(
     "wikiHealth",
     {

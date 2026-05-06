@@ -35,13 +35,43 @@ export type WikiLocation =
   | { kind: "search"; query: string; slug: string | null }
   | { kind: "setup" };
 
+/**
+ * Resolve the active Company prefix.
+ *
+ * The plugin SDK types `PluginHostContext.companyPrefix` as
+ * `string | null`, but Paperclip's dashboard mounts the
+ * `dashboardWidget` slot with `<PluginSlotOutlet context={{ companyId
+ * }} />` — only `companyId` is passed, so `companyPrefix` arrives as
+ * `undefined` for that slot type. Other slot types (sidebar, page,
+ * detailTab) pass it correctly.
+ *
+ * Rather than special-casing the dashboard widget, this helper reads
+ * the value from the first path segment of `window.location` whenever
+ * the context-supplied value is missing. Paperclip's company-scoped
+ * routes are always `/{prefix}/...`; the only non-prefix top-level
+ * segment is `instance` (instance settings), which we explicitly
+ * exclude.
+ *
+ * Upstream: file `ui/src/pages/Dashboard.tsx:311` should pass the
+ * full slot context (companyPrefix, projectId, …), matching how
+ * sidebar / page / detailTab outlets are mounted elsewhere. Until
+ * that lands, this fallback keeps every link working.
+ */
+export function resolveCompanyPrefix(
+  fromContext: string | null | undefined,
+): string | null {
+  if (fromContext) return fromContext;
+  if (typeof window === "undefined") return null;
+  const seg = window.location.pathname.split("/").filter(Boolean)[0];
+  return seg && seg !== "instance" ? seg : null;
+}
+
 export function wikiHref(
   companyPrefix: string | null | undefined,
   target: WikiTarget,
 ): string {
-  // The plugin SDK's `companyPrefix` is typed `string | null`, but the
-  // dashboard widget's host context surfaces it as `undefined` — guard
-  // against both.
+  // Guard against both null and undefined — the SDK type says null but
+  // the dashboard widget's slot context omits the field entirely.
   if (companyPrefix === null || companyPrefix === undefined) return "#";
   const base = `/${companyPrefix}/llm-wiki`;
   switch (target.kind) {

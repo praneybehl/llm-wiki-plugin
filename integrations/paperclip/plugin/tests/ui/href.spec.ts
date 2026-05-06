@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from "vitest";
-import { wikiHref, parseWikiLocation } from "../../src/ui/href.js";
+import {
+  wikiHref,
+  parseWikiLocation,
+  resolveCompanyPrefix,
+} from "../../src/ui/href.js";
 
 function setLocation(pathname: string, search: string, hash: string): void {
   // jsdom requires same-origin for history mutation; use a relative URL,
@@ -52,6 +56,36 @@ describe("wikiHref", () => {
     expect(wikiHref("SEE", { kind: "search", query: "a&b=c" })).toBe(
       "/SEE/llm-wiki?q=a%26b%3Dc",
     );
+  });
+});
+
+describe("resolveCompanyPrefix — fallback for the dashboard-widget host bug", () => {
+  beforeEach(() => {
+    window.history.replaceState({}, "", "/SEE/dashboard");
+  });
+
+  it("returns the context value when the host provides it", () => {
+    expect(resolveCompanyPrefix("co")).toBe("co");
+  });
+
+  it("falls back to the first path segment when context is undefined", () => {
+    window.history.replaceState({}, "", "/SEE/dashboard");
+    expect(resolveCompanyPrefix(undefined)).toBe("SEE");
+  });
+
+  it("falls back to the first path segment when context is null", () => {
+    window.history.replaceState({}, "", "/ACME/issues");
+    expect(resolveCompanyPrefix(null)).toBe("ACME");
+  });
+
+  it("returns null on instance routes (no company prefix in scope)", () => {
+    window.history.replaceState({}, "", "/instance/settings/plugins");
+    expect(resolveCompanyPrefix(undefined)).toBeNull();
+  });
+
+  it("returns null when the URL has no leading segment", () => {
+    window.history.replaceState({}, "", "/");
+    expect(resolveCompanyPrefix(undefined)).toBeNull();
   });
 });
 

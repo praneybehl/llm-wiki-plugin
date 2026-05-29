@@ -154,6 +154,37 @@ This is a markdown-based personal knowledge base, not a database. If your domain
 
 Failure modes to know about, all discussed in `skills/llm-wiki/SKILL.md`: silent corruption (a misreading of one source becomes an authoritative-looking wiki page that influences subsequent ingests — mitigated by mandatory `sources:` frontmatter and lint), the wiki-reads-its-own-output drift (Claude treating prior wiki pages as ground truth rather than checking against raw sources — mitigated by the ingest workflow's instruction to re-read raw sources when updating claims), and the maintenance ratchet (lint reports growing faster than you can review — mitigated by the scalability discipline, but if it happens, the schema needs revision).
 
+## Integrations
+
+The skill is the **agent-side** install — every adapter table above gets you that. For specific platforms there's also an optional **human-side** companion that brings the wiki into view where operators already work.
+
+### Paperclip — `paperclip-plugin-llm-wiki`
+
+For teams that run their work in [Paperclip](https://github.com/paperclipai/paperclip), an optional plugin at [`integrations/paperclip/plugin/`](./integrations/paperclip/plugin/) surfaces the wiki inside Paperclip's UI. Five surfaces, all read-only:
+
+| Surface | What it does |
+|---|---|
+| Wiki sidebar | Browse the wiki by type, drill into pages, search across the whole wiki |
+| Full-page view | The same browser at full width — for reading multiple linked pages |
+| Issue context tab | Top wiki pages relevant to the open issue, ranked by BM25 over title + description |
+| Dashboard health widget | Page count, lint status (pass / warn / fail), link density, sharding-threshold messages |
+| `wiki.query` agent tool | BM25 search via tool call — for HTTP-only adapters that don't run the skill directly |
+
+Install (once v0.1 ships to npm):
+
+```bash
+pnpm paperclipai plugin install paperclip-plugin-llm-wiki
+```
+
+The plugin is **read-only by design** and pairs with the skill. The skill writes the wiki on heartbeat; the plugin reads it from inside Paperclip. Editing still happens through agents on heartbeat or the operator's editor of choice (Obsidian, Claude Code, direct SSH).
+
+Documentation:
+
+- [`integrations/paperclip/plugin/README.md`](./integrations/paperclip/plugin/README.md) — the comprehensive user guide. Install walkthrough, per-surface usage guide, configuration reference, agent-tool JSON shape, security and privacy notes, troubleshooting, FAQ.
+- [`integrations/paperclip/README.md`](./integrations/paperclip/README.md) — operator-facing decision page. When to install plugin vs. just the skill, first-time setup walkthrough, multi-Company guidance.
+- [`integrations/paperclip/SPEC.md`](./integrations/paperclip/SPEC.md) — v0.1 design with verbatim references to the live Paperclip plugin SDK source.
+- [`integrations/paperclip/FEASIBILITY.md`](./integrations/paperclip/FEASIBILITY.md) — Phase 0 validation report; documents the SPEC errata that surfaced against the SDK at `paperclipai/paperclip@master`.
+
 ## Tooling
 
 Once the wiki is set up, you can read and edit pages with any markdown viewer. [Obsidian](https://obsidian.md) is a particularly good fit because of its graph view, `[[wikilinks]]` syntax, and Web Clipper extension, but it isn't required — the wiki is just a directory of markdown files in your project.

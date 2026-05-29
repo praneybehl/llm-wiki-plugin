@@ -1,0 +1,37 @@
+name: paperclip-plugin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "integrations/paperclip/**"
+      - ".github/workflows/paperclip-plugin.yml"
+  pull_request:
+    paths:
+      - "integrations/paperclip/**"
+      - ".github/workflows/paperclip-plugin.yml"
+
+defaults:
+  run:
+    working-directory: integrations/paperclip/plugin
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: integrations/paperclip/plugin/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Pre-publish checks (typecheck + tests + build + manifest/tarball validation)
+        run: pnpm run prepublish:check

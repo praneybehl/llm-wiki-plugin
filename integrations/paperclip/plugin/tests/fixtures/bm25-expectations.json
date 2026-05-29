@@ -1,0 +1,235 @@
+{
+  "queries": [
+    {
+      "query": "transformer attention",
+      "slugs": [
+        "transformer",
+        "attention-mechanism",
+        "attention-paper",
+        "transformer-vs-rnn",
+        "gpt-3"
+      ]
+    },
+    {
+      "query": "scaling laws",
+      "slugs": [
+        "scaling-laws-paper",
+        "scaling-laws",
+        "gpt-3",
+        "transformer-vs-rnn"
+      ]
+    },
+    {
+      "query": "language model",
+      "slugs": [
+        "scaling-laws-paper",
+        "gpt-3",
+        "scaling-laws",
+        "transformer-vs-rnn",
+        "attention-paper",
+        "transformer"
+      ]
+    },
+    {
+      "query": "GPT",
+      "slugs": [
+        "gpt-3",
+        "attention-paper",
+        "scaling-laws",
+        "scaling-laws-paper",
+        "transformer"
+      ]
+    },
+    {
+      "query": "Vaswani",
+      "slugs": [
+        "attention-paper",
+        "transformer"
+      ]
+    },
+    {
+      "query": "few-shot learning",
+      "slugs": [
+        "gpt-3"
+      ]
+    },
+    {
+      "query": "Chinchilla",
+      "slugs": [
+        "scaling-laws-paper"
+      ]
+    },
+    {
+      "query": "encoder decoder",
+      "slugs": [
+        "transformer",
+        "attention-paper",
+        "gpt-3"
+      ]
+    },
+    {
+      "query": "softmax",
+      "slugs": [
+        "attention-mechanism"
+      ]
+    },
+    {
+      "query": "neural network",
+      "slugs": [
+        "transformer",
+        "scaling-laws-paper"
+      ]
+    }
+  ],
+  "filters": [
+    {
+      "label": "type=concept transformer attention",
+      "args": [
+        "transformer attention",
+        "--top",
+        "10",
+        "--type",
+        "concept"
+      ],
+      "slugs": [
+        "attention-mechanism"
+      ]
+    },
+    {
+      "label": "type=source scaling",
+      "args": [
+        "scaling",
+        "--top",
+        "10",
+        "--type",
+        "source"
+      ],
+      "slugs": [
+        "scaling-laws-paper"
+      ]
+    },
+    {
+      "label": "tag=safety scaling",
+      "args": [
+        "scaling",
+        "--top",
+        "10",
+        "--tag",
+        "safety"
+      ],
+      "slugs": [
+        "scaling-laws"
+      ]
+    },
+    {
+      "label": "tag=transformer attention",
+      "args": [
+        "attention",
+        "--top",
+        "10",
+        "--tag",
+        "transformer"
+      ],
+      "slugs": [
+        "attention-mechanism",
+        "attention-paper",
+        "transformer",
+        "transformer-vs-rnn"
+      ]
+    },
+    {
+      "label": "since=2026-02-01 transformer",
+      "args": [
+        "transformer",
+        "--top",
+        "10",
+        "--since",
+        "2026-02-01"
+      ],
+      "slugs": [
+        "gpt-3",
+        "transformer-vs-rnn"
+      ]
+    },
+    {
+      "label": "since=2026-03-01 transformer",
+      "args": [
+        "transformer",
+        "--top",
+        "10",
+        "--since",
+        "2026-03-01"
+      ],
+      "slugs": [
+        "transformer-vs-rnn"
+      ]
+    }
+  ],
+  "backlinks": [
+    {
+      "target": "transformer",
+      "slugs": [
+        "attention-mechanism",
+        "gpt-3",
+        "attention-paper",
+        "transformer-vs-rnn"
+      ]
+    },
+    {
+      "target": "attention-paper",
+      "slugs": [
+        "attention-mechanism",
+        "transformer"
+      ]
+    },
+    {
+      "target": "scaling-laws",
+      "slugs": [
+        "gpt-3",
+        "scaling-laws-paper",
+        "transformer-vs-rnn"
+      ]
+    },
+    {
+      "target": "gpt-3",
+      "slugs": [
+        "scaling-laws",
+        "transformer",
+        "attention-paper",
+        "scaling-laws-paper"
+      ]
+    }
+  ],
+  "topLinked": [
+    {
+      "slug": "transformer",
+      "count": 4,
+      "broken": false
+    },
+    {
+      "slug": "gpt-3",
+      "count": 4,
+      "broken": false
+    },
+    {
+      "slug": "scaling-laws",
+      "count": 3,
+      "broken": false
+    },
+    {
+      "slug": "attention-mechanism",
+      "count": 3,
+      "broken": false
+    },
+    {
+      "slug": "attention-paper",
+      "count": 2,
+      "broken": false
+    },
+    {
+      "slug": "scaling-laws-paper",
+      "count": 2,
+      "broken": false
+    }
+  ]
+}

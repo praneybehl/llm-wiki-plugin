@@ -38,6 +38,11 @@ from pathlib import Path
 WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 TOKEN_RE = re.compile(r"[a-z0-9]+")
+FENCED_CODE_BLOCK_RE = re.compile(r"```.*?```", re.DOTALL)
+
+
+def strip_code(text: str) -> str:
+    return FENCED_CODE_BLOCK_RE.sub("", text)
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
@@ -78,7 +83,7 @@ def slug_from_path(path: Path, wiki_root: Path) -> str:
 
 
 def extract_wikilinks(body: str) -> list[str]:
-    return [m.group(1).strip() for m in WIKILINK_RE.finditer(body)]
+    return [m.group(1).strip() for m in WIKILINK_RE.finditer(strip_code(body))]
 
 
 def collect_pages(wiki_root: Path) -> list[dict]:

@@ -49,6 +49,12 @@ except ImportError:
 
 WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
+FENCED_CODE_BLOCK_RE = re.compile(r"```.*?```", re.DOTALL)
+
+
+def strip_code(text: str) -> str:
+    return FENCED_CODE_BLOCK_RE.sub("", text)
+
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
 SKIP_TOP_LEVEL_DIRS = {"indexes", "graph"}
@@ -90,7 +96,7 @@ def collect_pages(wiki_root: Path) -> list[dict]:
         except (UnicodeDecodeError, OSError):
             continue
         meta, body = parse_frontmatter(text)
-        links = [m.group(1).strip() for m in WIKILINK_RE.finditer(body)]
+        links = [m.group(1).strip() for m in WIKILINK_RE.finditer(strip_code(body))]
         pages.append({
             "path": str(md_path),
             "rel_path": str(rel).replace("\\", "/"),

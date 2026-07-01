@@ -20,6 +20,11 @@ from pathlib import Path
 
 WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
+FENCED_CODE_BLOCK_RE = re.compile(r"```.*?```", re.DOTALL)
+
+
+def strip_code(text: str) -> str:
+    return FENCED_CODE_BLOCK_RE.sub("", text)
 
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "log.md", "README.md"}
@@ -81,7 +86,7 @@ def main():
         total_words += word_count
         # Strip frontmatter before counting wikilinks; frontmatter uses bare slugs.
         body = FRONTMATTER_RE.sub("", text, count=1) if text.startswith("---") else text
-        links = WIKILINK_RE.findall(body)
+        links = WIKILINK_RE.findall(strip_code(body))
         total_links += len(links)
         for link in links:
             target = link.split("|")[0].strip()

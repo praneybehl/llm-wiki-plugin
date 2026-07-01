@@ -37,10 +37,15 @@ from pathlib import Path
 WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 CAPITALIZED_PHRASE_RE = re.compile(r"\b([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+){0,3})\b")
+FENCED_CODE_BLOCK_RE = re.compile(r"```.*?```", re.DOTALL)
 
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
 SKIP_TOP_LEVEL_DIRS = {"indexes", "graph"}
+
+
+def strip_code(text: str) -> str:
+    return FENCED_CODE_BLOCK_RE.sub("", text)
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str, bool]:
@@ -93,7 +98,7 @@ def collect_pages(wiki_root: Path) -> list[dict]:
             continue
         meta, body, malformed = parse_frontmatter(text)
         line_count = text.count("\n") + 1
-        links = [m.group(1).strip() for m in WIKILINK_RE.finditer(body)]
+        links = [m.group(1).strip() for m in WIKILINK_RE.finditer(strip_code(body))]
         pages.append({
             "path": str(md_path),
             "rel_path": str(rel),

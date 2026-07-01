@@ -15,6 +15,14 @@ Options:
     --soft-cap N        Page-size soft cap in lines (default: 400)
     --hard-cap N        Page-size hard cap in lines (default: 800)
     --required-fm a,b   Required frontmatter fields (default: type,title,tags,created,updated)
+    --repo-entity-required-fm a,b
+                        Required frontmatter for pages marked `kind: repo-entity`
+                        (default: kind,type,name,origin,web_url,description)
+    --no-repo-entity-exemption
+                        Disable the default orphan-check exemption for
+                        `kind: repo-entity` pages. Normally such pages are
+                        treated as inventory anchors (index-only citation
+                        is sufficient) and are not reported as orphans.
     --suggest-pages     Surface terms appearing in many pages without a page
     --suggest-min N     Minimum occurrences for --suggest-pages (default: 5)
     --json              Emit JSON instead of text
@@ -41,6 +49,18 @@ CAPITALIZED_PHRASE_RE = re.compile(r"\b([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
 SKIP_TOP_LEVEL_DIRS = {"indexes", "graph"}
+
+REPO_ENTITY_KIND = "repo-entity"
+DEFAULT_REPO_ENTITY_REQUIRED_FM = "kind,type,name,origin,web_url,description"
+
+
+def is_repo_entity(page: dict) -> bool:
+    """A page is a repo-entity (inventory anchor for a git repository) if its
+    frontmatter carries `kind: repo-entity`. Such pages are cited from the
+    wiki index rather than from content pages; orphan-check and the default
+    required-frontmatter set are relaxed accordingly.
+    """
+    return page.get("meta", {}).get("kind") == REPO_ENTITY_KIND
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str, bool]:
@@ -116,7 +136,9 @@ def parse_date(s):
         return None
 
 
-def lint(pages: list[dict], soft_cap: int, hard_cap: int, required_fm: list[str], suggest_pages: bool, suggest_min: int) -> dict:
+def lint(pages: list[dict], soft_cap: int, hard_cap: int, required_fm: list[str],
+         repo_entity_required_fm: list[str], repo_entity_exemption: bool,
+         suggest_pages: bool, suggest_min: int) -> dict:
     findings = {
         "orphans": [],
         "broken_links": [],
@@ -155,9 +177,15 @@ def lint(pages: list[dict], soft_cap: int, hard_cap: int, required_fm: list[str]
 
     # Orphans, broken links, oversize, frontmatter, staleness
     for p in pages:
-        # Orphans
+        page_is_repo_entity = is_repo_entity(p)
+
+        # Orphans — repo-entity pages are inventory anchors (index-linked) and
+        # are exempt from the orphan check unless the exemption is disabled.
         if not inbound.get(p["slug"]):
-            findings["orphans"].append({"slug": p["slug"], "path": p["rel_path"]})
+            if page_is_repo_entity and repo_entity_exemption:
+                pass  # Intentional: index-only citation is the accepted shape.
+            else:
+                findings["orphans"].append({"slug": p["slug"], "path": p["rel_path"]})
 
         # Broken links
         for link in p["links"]:
@@ -174,11 +202,12 @@ def lint(pages: list[dict], soft_cap: int, hard_cap: int, required_fm: list[str]
         elif p["line_count"] > soft_cap:
             findings["oversized_soft"].append({"path": p["rel_path"], "lines": p["line_count"]})
 
-        # Frontmatter
+        # Frontmatter — repo-entity pages use a different required set.
         if p["malformed_fm"]:
             findings["malformed_frontmatter"].append({"path": p["rel_path"]})
         else:
-            missing = [field for field in required_fm if field not in p["meta"] or p["meta"].get(field) in ("", None, [])]
+            required_for_page = repo_entity_required_fm if page_is_repo_entity else required_fm
+            missing = [field for field in required_for_page if field not in p["meta"] or p["meta"].get(field) in ("", None, [])]
             if missing:
                 findings["missing_frontmatter"].append({"path": p["rel_path"], "missing": missing})
 
@@ -292,6 +321,10 @@ def main():
     parser.add_argument("--soft-cap", type=int, default=400, help="Page-size soft cap (lines).")
     parser.add_argument("--hard-cap", type=int, default=800, help="Page-size hard cap (lines).")
     parser.add_argument("--required-fm", default="type,title,tags,created,updated", help="Required frontmatter fields, comma-separated.")
+    parser.add_argument("--repo-entity-required-fm", default=DEFAULT_REPO_ENTITY_REQUIRED_FM,
+                        help="Required frontmatter for pages marked `kind: repo-entity`, comma-separated.")
+    parser.add_argument("--no-repo-entity-exemption", action="store_true",
+                        help="Disable the default orphan-check exemption for `kind: repo-entity` pages.")
     parser.add_argument("--suggest-pages", action="store_true", help="Surface page candidates.")
     parser.add_argument("--suggest-min", type=int, default=5, help="Minimum page count for suggestions.")
     parser.add_argument("--json", action="store_true", help="Emit JSON.")
@@ -303,7 +336,17 @@ def main():
 
     pages = collect_pages(args.wiki)
     required_fm = [f.strip() for f in args.required_fm.split(",") if f.strip()]
-    findings = lint(pages, args.soft_cap, args.hard_cap, required_fm, args.suggest_pages, args.suggest_min)
+    repo_entity_required_fm = [f.strip() for f in args.repo_entity_required_fm.split(",") if f.strip()]
+    findings = lint(
+        pages,
+        args.soft_cap,
+        args.hard_cap,
+        required_fm,
+        repo_entity_required_fm,
+        repo_entity_exemption=not args.no_repo_entity_exemption,
+        suggest_pages=args.suggest_pages,
+        suggest_min=args.suggest_min,
+    )
 
     if args.json:
         print(json.dumps(findings, indent=2, default=str))

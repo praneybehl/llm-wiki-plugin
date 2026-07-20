@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.4] - 2026-07-20
+
+### Fixed
+
+- Bind embedding consent to the selected provider: `openai` is pinned to the OpenAI endpoint and key, while `custom` requires its own endpoint and model and never inherits OpenAI configuration.
+- Add mismatch regression coverage so mixed OpenAI/custom environment variables cannot redirect text or reuse an unapproved credential.
+
 ## [2.0.3] - 2026-07-20
 
 ### Fixed
@@ -116,7 +123,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.3...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.4...HEAD
+[2.0.4]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.4
 [2.0.3]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.3
 [2.0.2]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.2
 [2.0.1]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.1

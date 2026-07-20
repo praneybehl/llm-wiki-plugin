@@ -119,13 +119,14 @@ Each file is keyed by the SHA-256 of its raw bytes: unchanged files are reused, 
 
 ## Optional hybrid embeddings
 
-Section search becomes *hybrid* only when `SCHEMA.md` records an approved `Embedding mode: openai | custom` and an embedding endpoint is configured. BM25 and semantic similarity are then fused with Reciprocal Rank Fusion (RRF, `k=60`, equal weights). This closes the semantic gap where a paraphrased query shares no words with the target section. Configure the provider with:
+Section search becomes *hybrid* only when `SCHEMA.md` records an approved provider mode and that provider's configuration is complete. `openai` is pinned to `https://api.openai.com/v1/embeddings` and uses only `OPENAI_API_KEY`; it ignores custom URL/key variables. `custom` requires `LLM_WIKI_EMBED_URL` and `LLM_WIKI_EMBED_MODEL`, optionally uses `LLM_WIKI_EMBED_KEY`, and never falls back to OpenAI or `OPENAI_API_KEY`. BM25 and semantic similarity are fused with Reciprocal Rank Fusion (RRF, `k=60`, equal weights).
 
 | Variable | Purpose |
 | --- | --- |
-| `LLM_WIKI_EMBED_URL` | The embeddings endpoint. Defaults to `https://api.openai.com/v1/embeddings` when `OPENAI_API_KEY` is set. |
-| `LLM_WIKI_EMBED_KEY` | API key (falls back to `OPENAI_API_KEY`). Omit for keyless local endpoints. |
-| `LLM_WIKI_EMBED_MODEL` | Model name. Defaults to `text-embedding-3-small`. |
+| `OPENAI_API_KEY` | Required only for `Embedding mode: openai`; sent only to the fixed OpenAI endpoint. |
+| `LLM_WIKI_EMBED_URL` | Required only for `Embedding mode: custom`; the approved custom endpoint. |
+| `LLM_WIKI_EMBED_KEY` | Optional custom-provider key. Omit for keyless local endpoints; never falls back to `OPENAI_API_KEY`. |
+| `LLM_WIKI_EMBED_MODEL` | Required for `custom`; optional for `openai` (defaults to `text-embedding-3-small`). |
 
 `undecided`, `lexical`, and `deferred` modes remain local BM25 even if an API key is present. In hybrid mode, JSON `mode` becomes `"hybrid"` and each row's `retrievers` lists which retrievers found it. Section vectors are cached in `wiki/.wiki-cache/embeddings.jsonl`; only new or changed sections are embedded. Every hybrid query sends its query text to the provider, the first build sends every canonical section, and later searches send uncached new or changed sections. Provider requests may be billable. Pass `--no-embed` to force lexical for one run.
 

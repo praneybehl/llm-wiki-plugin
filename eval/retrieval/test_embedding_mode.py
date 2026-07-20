@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 """Regression tests for persisted embedding consent."""
 
+import importlib.util
 import json
 import os
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
 SEARCH = REPO / "skills" / "llm-wiki" / "scripts" / "wiki_search.py"
+SPEC = importlib.util.spec_from_file_location("wiki_search", SEARCH)
+WIKI_SEARCH = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(WIKI_SEARCH)
 
 
 class EmbeddingModeTests(unittest.TestCase):
@@ -56,12 +61,64 @@ class EmbeddingModeTests(unittest.TestCase):
     def test_hybrid_mode_without_backend_falls_back_cleanly(self):
         payload, stderr = self.run_search("openai", endpoint=False)
         self.assertEqual(payload["mode"], "lexical")
-        self.assertIn("no backend is configured", stderr)
+        self.assertIn("provider is not configured", stderr)
 
     def test_no_embed_overrides_hybrid_mode(self):
         payload, stderr = self.run_search("custom", no_embed=True)
         self.assertEqual(payload["mode"], "lexical")
         self.assertEqual(stderr, "")
+
+    @mock.patch.dict(
+        os.environ,
+        {
+            "OPENAI_API_KEY": "openai-approved-key",
+            "LLM_WIKI_EMBED_URL": "https://custom.invalid/embeddings",
+            "LLM_WIKI_EMBED_KEY": "custom-key",
+            "LLM_WIKI_EMBED_MODEL": "approved-model",
+        },
+        clear=True,
+    )
+    def test_openai_mode_ignores_custom_provider_config(self):
+        config = WIKI_SEARCH.embed_config("openai")
+        self.assertEqual(config["url"], "https://api.openai.com/v1/embeddings")
+        self.assertEqual(config["key"], "openai-approved-key")
+
+    @mock.patch.dict(
+        os.environ,
+        {
+            "OPENAI_API_KEY": "must-not-be-reused",
+            "LLM_WIKI_EMBED_URL": "https://custom.example/embeddings",
+            "LLM_WIKI_EMBED_MODEL": "custom-model",
+        },
+        clear=True,
+    )
+    def test_custom_mode_never_falls_back_to_openai_key(self):
+        config = WIKI_SEARCH.embed_config("custom")
+        self.assertEqual(config["url"], "https://custom.example/embeddings")
+        self.assertIsNone(config["key"])
+
+    @mock.patch.dict(
+        os.environ,
+        {
+            "OPENAI_API_KEY": "must-not-enable-custom",
+            "LLM_WIKI_EMBED_MODEL": "custom-model",
+        },
+        clear=True,
+    )
+    def test_custom_mode_requires_custom_endpoint(self):
+        self.assertIsNone(WIKI_SEARCH.embed_config("custom"))
+
+    @mock.patch.dict(
+        os.environ,
+        {
+            "LLM_WIKI_EMBED_URL": "https://custom.example/embeddings",
+            "LLM_WIKI_EMBED_KEY": "must-not-enable-openai",
+            "LLM_WIKI_EMBED_MODEL": "custom-model",
+        },
+        clear=True,
+    )
+    def test_openai_mode_requires_openai_key(self):
+        self.assertIsNone(WIKI_SEARCH.embed_config("openai"))
 
 
 if __name__ == "__main__":

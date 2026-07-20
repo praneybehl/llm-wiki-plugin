@@ -352,18 +352,27 @@ def passes_filters(page: dict, args) -> bool:
     return True
 
 
-def embed_config() -> dict | None:
-    url = os.environ.get("LLM_WIKI_EMBED_URL")
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    if not url and openai_key:
-        url = "https://api.openai.com/v1/embeddings"
-    if not url:
-        return None
-    return {
-        "url": url,
-        "key": os.environ.get("LLM_WIKI_EMBED_KEY") or openai_key,
-        "model": os.environ.get("LLM_WIKI_EMBED_MODEL") or "text-embedding-3-small",
-    }
+def embed_config(mode: str) -> dict | None:
+    if mode == "openai":
+        key = os.environ.get("OPENAI_API_KEY")
+        if not key:
+            return None
+        return {
+            "url": "https://api.openai.com/v1/embeddings",
+            "key": key,
+            "model": os.environ.get("LLM_WIKI_EMBED_MODEL") or "text-embedding-3-small",
+        }
+    if mode == "custom":
+        url = os.environ.get("LLM_WIKI_EMBED_URL")
+        model = os.environ.get("LLM_WIKI_EMBED_MODEL")
+        if not url or not model:
+            return None
+        return {
+            "url": url,
+            "key": os.environ.get("LLM_WIKI_EMBED_KEY"),
+            "model": model,
+        }
+    return None
 
 
 def embed_texts(texts: list[str], cfg: dict) -> list[list[float]]:
@@ -549,15 +558,13 @@ def cmd_search(args, pages: list[dict]) -> None:
     mode = "lexical"
     schema_mode = embedding_mode_from_schema(args.wiki)
     hybrid_selected = schema_mode in {"openai", "custom"}
-    cfg = None if args.no_embed or not hybrid_selected else embed_config()
+    cfg = None if args.no_embed or not hybrid_selected else embed_config(schema_mode)
     if hybrid_selected and not args.no_embed and not cfg:
         print(
-            f"warning: embedding mode {schema_mode!r} is selected but no backend is configured; "
+            f"warning: embedding mode {schema_mode!r} is selected but its provider is not configured; "
             "falling back to lexical",
             file=sys.stderr,
         )
-    if schema_mode in {"lexical", "deferred", "undecided"}:
-        cfg = None
     if cfg:
         try:
             vectors = section_vectors(sections, args.wiki, cfg)

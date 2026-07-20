@@ -5,10 +5,12 @@ argument-hint: "[--wiki-dir <name>] [--raw-dir <name>]"
 
 Initialize a new LLM Wiki in the current project. Use the `llm-wiki` skill to:
 
-1. Confirm with me where the wiki should live (default: `wiki/` and `raw/` at the project root).
-2. Run `python skills/llm-wiki/scripts/init_wiki.py .` from the plugin's skill directory (or with the appropriate arguments if I specified non-default directory names).
-3. Walk me through the bootstrapped `SCHEMA.md` and ask whether I want to customize anything — page types, tag taxonomy, custom workflow conventions — before the first ingest. Mention that the optional graph layer was seeded under `wiki/graph/` (with `ontology.yaml`, a `README.md` explaining canonical-vs-generated artifacts, and a `.gitignore`) and offer to walk through `ontology.yaml` if I want to add domain-specific predicates.
-4. Propose an agent-memory integration. Ask me which agent(s) I run in this project (Claude Code → `CLAUDE.md`; Codex / Cursor / OpenCode / Pi / OpenClaw → `AGENTS.md`; Gemini CLI → `GEMINI.md`; if unsure or multi-agent, default to `AGENTS.md`). Show me the canonical wiki stanza from `references/agent-memory-integration.md`, ask whether to append it to an existing memory file, create a new one, or skip. Never write without my approval. If the file already contains an LLM Wiki stanza, show me the diff before changing anything.
-5. Don't proceed to ingest anything yet; this command only sets up the structure.
+1. Open `skills/llm-wiki/references/retrieval-setup.md` and ask its setup questions in one grouped interaction: wiki/raw paths, retrieval mode, whether to build embeddings now or later, graph usage, and agent-memory integration. Present local lexical BM25 as the recommended no-key default. Never ask me to paste a secret into chat.
+2. Inspect only whether embedding environment variables and `wiki/.wiki-cache/embeddings.jsonl` exist. Report a present key as "configured, not API-validated" unless a real request has succeeded. Report the wiki as "embedded" only when the vector cache exists and a hybrid query has been observed.
+3. After I answer, run `python skills/llm-wiki/scripts/init_wiki.py .` from the plugin's skill directory, using my selected paths.
+4. Walk me through the bootstrapped `SCHEMA.md` and ask whether I want to customize page types, tags, or workflow conventions. Record my non-secret retrieval choice under `## Retrieval` only with approval.
+5. If I selected hybrid retrieval, ask for explicit approval before the first billable embedding build. Tell me which environment variables to set through my shell or secret manager, but never collect or store their values.
+6. Propose the approved agent-memory integration using `references/agent-memory-integration.md`. Show the exact addition and ask whether to append, create, or skip. Never write without approval.
+7. Do not ingest a source yet. This command only completes an informed setup.
 
 Arguments (if any): $ARGUMENTS

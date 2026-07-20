@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-07-20
+
+### Changed
+
+- Init, upgrade, and query commands now run an explicit retrieval setup interview covering local BM25, OpenAI hybrid, custom compatible endpoints, first-build timing, graph usage, and agent integration.
+- Setup guidance distinguishes environment configuration, successful API validation, and a fully built wiki embedding cache. It never treats a present key as proof of validity and requires approval before the first billable embedding request.
+- New wiki schemas record an explicit embedding mode and validation state without storing secrets.
+
 ## [2.0.1] - 2026-07-20
 
 ### Fixed
@@ -100,7 +108,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.2
 [2.0.1]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.1
 [0.3.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.3.0
 [0.2.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.2.0

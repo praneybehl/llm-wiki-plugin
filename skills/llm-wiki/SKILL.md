@@ -96,6 +96,8 @@ python scripts/init_wiki.py <project-root> [--wiki-dir wiki] [--raw-dir raw]
 
 This creates the directory structure, drops in templates for `SCHEMA.md`, `index.md`, and `log.md`, and seeds a starter page convention document. After bootstrapping, briefly walk the user through the schema and ask whether they want to customize anything (e.g. domain-specific page types, custom tags) before the first ingest. The schema is meant to evolve — encourage editing it.
 
+Before treating setup as complete, run the grouped interview in `references/retrieval-setup.md`. Ask about wiki/raw paths, retrieval mode (local BM25, OpenAI hybrid, custom OpenAI-compatible hybrid, or defer), whether the user authorizes a first embedding-cache build, graph usage, and agent-memory integration. Inspect environment-variable presence without printing secrets. A present key means **configured, not API-validated** until a real request succeeds; a wiki is **embedded** only after `wiki/.wiki-cache/embeddings.jsonl` exists and a hybrid query is observed. Never make a billable embedding request during init without explicit approval.
+
 Then propose wiring the wiki into the project's agent-memory file so the running agent remembers the wiki in future sessions without being told. The target file depends on the agent: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / OpenCode / Pi / OpenClaw, `GEMINI.md` for Gemini CLI, with `AGENTS.md` as the safe default if the user runs multiple agents or is unsure. Full workflow, canonical stanza, and a three-line short variant are in `references/agent-memory-integration.md`. Never write to the memory file without the user's approval — show them the proposed stanza, ask whether to append to an existing file or create a new one, and honour a "skip" answer without pushing.
 
 ## The ingest workflow (summary)
@@ -133,6 +135,7 @@ The reference files are the source of truth for the detailed procedures. Read th
 - `references/page-conventions.md` — frontmatter schema, page naming, link syntax, page-type definitions, sizing rules
 - `references/scaling-playbook.md` — thresholds at which to shard the index, when to introduce the search script, signals that the wiki has outgrown its current conventions
 - `references/agent-memory-integration.md` — how to wire the wiki into the project's agent-memory file (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), canonical stanza and short variant, and the bootstrap conversation script
+- `references/retrieval-setup.md` — the grouped setup interview for paths, lexical vs hybrid retrieval, secret handling, first-build authorization, precise validation states, and recording the non-secret decision in `SCHEMA.md`
 - `references/graph-workflow.md` — the optional graph layer: ontology, frontmatter schema, when to add typed edges vs plain wikilinks, and the extract/lint/query flow
 
 ## Bundled scripts

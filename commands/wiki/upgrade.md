@@ -23,6 +23,9 @@ Arguments (if any): $ARGUMENTS
    - The new `## Retrieval` SCHEMA section is walked exactly like the graph sections above — shown to you and appended only on approval, never silently.
    - `wiki/.wiki-cache/` holds regenerable retrieval artifacts (parse cache, embedding vectors). It's gitignored and safe to delete at any time.
    - Embeddings are opt-in: hybrid retrieval activates only when `LLM_WIKI_EMBED_URL` (or `OPENAI_API_KEY`) is set, optionally with `LLM_WIKI_EMBED_KEY` and `LLM_WIKI_EMBED_MODEL` (default `text-embedding-3-small`). Without them search stays lexical BM25 exactly as before; `--no-embed` forces lexical.
+   - Open `skills/llm-wiki/references/retrieval-setup.md`, inspect environment-variable and cache presence without displaying secrets, and ask me to choose local lexical BM25, OpenAI hybrid, custom OpenAI-compatible hybrid, or defer. Also ask whether a first embedding build should run now or later.
+   - A present API key is only "configured, not API-validated". `wiki/.wiki-cache/embeddings.jsonl` plus an observed hybrid query is required before saying the wiki is embedded.
+   - Never run the first embedding build automatically. It sends canonical section text to the provider and may be billable, so obtain explicit approval first. Record only non-secret setup state in `SCHEMA.md`.
    - Search output is now section-level and shows section headings (a `§` line). Pass `--granularity page` to restore the old whole-page ranking.
 5. If my project's agent-memory file (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) was set up by an older `/wiki:init` and does not mention the graph layer, ask me whether to add a one-line pointer like:
 

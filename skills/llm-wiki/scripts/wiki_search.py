@@ -47,6 +47,10 @@ WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
+EMBEDDING_MODE_RE = re.compile(
+    r"^\s*-\s*Embedding mode:\s*`?(lexical|openai|custom|deferred|undecided)`?",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
@@ -80,6 +84,16 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
 
 def tokenize(text: str) -> list[str]:
     return TOKEN_RE.findall(text.lower())
+
+
+def embedding_mode_from_schema(wiki_root: Path) -> str:
+    """Return the user-approved embedding mode, defaulting safely to undecided."""
+    try:
+        schema = (wiki_root / "SCHEMA.md").read_text(encoding="utf-8")
+    except OSError:
+        return "undecided"
+    match = EMBEDDING_MODE_RE.search(schema)
+    return match.group(1).lower() if match else "undecided"
 
 
 def slug_from_path(path: Path, wiki_root: Path) -> str:
@@ -533,7 +547,17 @@ def cmd_search(args, pages: list[dict]) -> None:
     bm25_ranked = [item for item in bm25_ranked if item[0] > 0]
     ranked = [(score, section_index, ["bm25"]) for score, section_index in bm25_ranked]
     mode = "lexical"
-    cfg = None if args.no_embed else embed_config()
+    schema_mode = embedding_mode_from_schema(args.wiki)
+    hybrid_selected = schema_mode in {"openai", "custom"}
+    cfg = None if args.no_embed or not hybrid_selected else embed_config()
+    if hybrid_selected and not args.no_embed and not cfg:
+        print(
+            f"warning: embedding mode {schema_mode!r} is selected but no backend is configured; "
+            "falling back to lexical",
+            file=sys.stderr,
+        )
+    if schema_mode in {"lexical", "deferred", "undecided"}:
+        cfg = None
     if cfg:
         try:
             vectors = section_vectors(sections, args.wiki, cfg)

@@ -50,10 +50,10 @@ Answer a question against the wiki with citations.
 The agent reads the index (or the relevant shard), identifies and reads candidate pages, follows `[[wikilinks]]` selectively, and synthesizes an answer with citations. If the index doesn't surface good candidates it falls back to BM25 search:
 
 ```bash
-python skills/llm-wiki/scripts/wiki_search.py "<query terms>" --top 10 --json
+python skills/llm-wiki/scripts/wiki_search.py "<query terms>" --top 10 --cache --no-embed --json
 ```
 
-Use `--granularity page` for whole-page ranking; hybrid retrieval activates automatically when embedding env vars are configured. See [Search & retrieval](/search). For relational questions it consults `graph.sqlite` when available. Substantive answers can be filed back into `wiki/synthesis/`.
+Use `--granularity page` for whole-page ranking. Hybrid retrieval requires an approved `Embedding mode: openai | custom` in `SCHEMA.md` plus provider configuration; a key alone does not activate it. Hybrid sends each query and uncached new or changed sections to the provider. See [Search & retrieval](/search). For relational questions the command consults `graph.sqlite` when available. Substantive answers can be filed back into `wiki/synthesis/`.
 
 ## `/wiki:lint` {#lint}
 

@@ -119,7 +119,7 @@ Each file is keyed by the SHA-256 of its raw bytes: unchanged files are reused, 
 
 ## Optional hybrid embeddings
 
-When an embedding endpoint is configured via environment variables, section search becomes *hybrid*: BM25 and semantic similarity are fused with Reciprocal Rank Fusion (RRF, `k=60`, equal weights). This closes the semantic gap where a paraphrased query shares no words with the target section. Configure with:
+Section search becomes *hybrid* only when `SCHEMA.md` records an approved `Embedding mode: openai | custom` and an embedding endpoint is configured. BM25 and semantic similarity are then fused with Reciprocal Rank Fusion (RRF, `k=60`, equal weights). This closes the semantic gap where a paraphrased query shares no words with the target section. Configure the provider with:
 
 | Variable | Purpose |
 | --- | --- |
@@ -127,13 +127,15 @@ When an embedding endpoint is configured via environment variables, section sear
 | `LLM_WIKI_EMBED_KEY` | API key (falls back to `OPENAI_API_KEY`). Omit for keyless local endpoints. |
 | `LLM_WIKI_EMBED_MODEL` | Model name. Defaults to `text-embedding-3-small`. |
 
-Without any of these, search stays lexical BM25 — exactly as before. In hybrid mode, JSON `mode` becomes `"hybrid"` and each row's `retrievers` lists which retrievers found it. Section vectors are cached in `wiki/.wiki-cache/embeddings.jsonl`; only new or changed sections are embedded. Pass `--no-embed` to force lexical for one run.
+`undecided`, `lexical`, and `deferred` modes remain local BM25 even if an API key is present. In hybrid mode, JSON `mode` becomes `"hybrid"` and each row's `retrievers` lists which retrievers found it. Section vectors are cached in `wiki/.wiki-cache/embeddings.jsonl`; only new or changed sections are embedded. Every hybrid query sends its query text to the provider, the first build sends every canonical section, and later searches send uncached new or changed sections. Provider requests may be billable. Pass `--no-embed` to force lexical for one run.
 
 ::: warning Failures never break search
 If the embedding backend errors, times out, or returns bad data, the command prints a warning to stderr, falls back to plain BM25, and exits 0 with `mode: "lexical"`. A hybrid search can degrade, but it cannot fail the command.
 :::
 
 ### Worked config: OpenAI
+
+First set `- Embedding mode: openai` under `## Retrieval` in `wiki/SCHEMA.md` after the user approves the data transfer and ongoing API usage.
 
 ```bash
 export OPENAI_API_KEY=sk-your-key-here
@@ -144,6 +146,7 @@ python skills/llm-wiki/scripts/wiki_search.py "how does self-attention weigh tok
 Uses `text-embedding-3-small` on `api.openai.com` by default. The first run embeds every section (one `embedding N new sections…` line to stderr); later runs only embed what changed.
 
 ### Worked config: local Ollama
+First set `- Embedding mode: custom` under `## Retrieval` in `wiki/SCHEMA.md` after the user approves the data transfer and ongoing provider use.
 
 ```bash
 export LLM_WIKI_EMBED_URL=http://localhost:11434/v1/embeddings

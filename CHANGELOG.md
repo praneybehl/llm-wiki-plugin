@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-07-20
+
+### Fixed
+
+- Persisted retrieval consent is now enforced by `wiki_search.py`: only `Embedding mode: openai | custom` can activate provider calls. `undecided`, `lexical`, `deferred`, or a missing mode stay local even when `OPENAI_API_KEY` is present.
+- Setup, command, and public documentation now disclose ongoing hybrid data use and cost: every hybrid query sends query text, the first vector build sends canonical sections, and later searches send new or changed sections missing cached vectors.
+
+
 ## [2.0.2] - 2026-07-20
 
 ### Changed
@@ -108,7 +116,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.2...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.3...HEAD
+[2.0.3]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.3
 [2.0.2]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.2
 [2.0.1]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.1
 [0.3.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.3.0

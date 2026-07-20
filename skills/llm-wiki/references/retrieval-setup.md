@@ -27,10 +27,10 @@ Present these choices in one grouped interaction so the user can decide without 
 1. **Wiki layout** (init only): default `wiki/` plus sibling `raw/`, or custom paths. If `raw/` is nested inside the wiki, confirm that it remains immutable and excluded from retrieval.
 2. **Retrieval mode:**
    - **Local lexical BM25 (recommended default):** no API key, no usage fees, exact-word retrieval.
-   - **OpenAI hybrid:** BM25 plus embeddings through `OPENAI_API_KEY`; default model `text-embedding-3-small`; billable API usage.
-   - **Custom OpenAI-compatible hybrid:** requires endpoint, key, and model supplied through environment variables.
+   - **OpenAI hybrid:** BM25 plus embeddings through `OPENAI_API_KEY`; default model `text-embedding-3-small`. The first build sends every canonical section, later changes send new or changed sections, and every hybrid query sends the query text. All of these requests may be billable.
+   - **Custom OpenAI-compatible hybrid:** requires endpoint, key, and model supplied through environment variables. The same section-text and per-query transmission applies; pricing and retention depend on that provider.
    - **Defer:** stay lexical and ask again only when the user requests semantic retrieval or changes setup.
-3. **First embedding build:** if hybrid is selected, ask whether to build the embedding cache now or only when semantic search is first needed. State that the first build sends canonical wiki section text to the selected provider and may incur charges.
+3. **First embedding build:** if hybrid is selected, ask whether to build the embedding cache now or only when semantic search is first needed. State that the first build sends canonical wiki section text to the selected provider and may incur charges. Also state that hybrid remains an online service: every hybrid query sends its query text, and each new or changed section is sent when its cached vector is missing.
 4. **Graph layer:** configure typed graph metadata now, keep the generated graph available but unused, or defer.
 5. **Agent integration:** which agent memory file should point to the wiki, or skip.
 
@@ -47,7 +47,7 @@ With approval, record non-secret setup state in `SCHEMA.md` under `## Retrieval`
 - Embedding setup verified: YYYY-MM-DD | not yet API-validated
 ```
 
-Do not store keys or authorization headers. Honor `lexical` and `deferred` without repeatedly prompting during normal queries.
+Do not store keys or authorization headers. `wiki_search.py` reads this persisted mode and enables embeddings only for `openai` or `custom`; a key in the environment is not authorization by itself. Honor `lexical` and `deferred` without repeatedly prompting during normal queries.
 
 ## Validate hybrid setup
 

@@ -88,8 +88,9 @@ When the wiki passes ~150 pages or `index.md` exceeds 300 lines, shard into `wik
 
 - Search is section-level by default: `python skills/llm-wiki/scripts/wiki_search.py "query" --json`.
 - `wiki/.wiki-cache/` holds regenerable retrieval artifacts (parse cache, embedding vectors). Safe to delete at any time; never edit by hand; gitignored.
-- Optional semantic retrieval activates when an embedding endpoint is configured via env: `LLM_WIKI_EMBED_URL` (or `OPENAI_API_KEY` for api.openai.com), `LLM_WIKI_EMBED_KEY`, `LLM_WIKI_EMBED_MODEL` (default `text-embedding-3-small`). Without config, search is lexical BM25 exactly as before. `--no-embed` forces lexical.
-- Embedding mode: `undecided` (`lexical` | `openai` | `custom` | `deferred`). Setup must ask before changing this or making the first billable embedding request.
+- Optional semantic retrieval requires both an approved `Embedding mode: openai | custom` below and provider configuration via `LLM_WIKI_EMBED_URL` (or `OPENAI_API_KEY` for api.openai.com), `LLM_WIKI_EMBED_KEY`, and `LLM_WIKI_EMBED_MODEL` (default `text-embedding-3-small`). `--no-embed` always forces lexical search.
+- Embedding mode: `undecided` (`lexical` | `openai` | `custom` | `deferred`). The search script treats `undecided`, `lexical`, and `deferred` as local-only even if an API key is present. Setup must ask before changing this or making the first billable request.
+- Hybrid data use: every hybrid query sends its query text to the provider; the first build sends every canonical section, and later searches send new or changed sections whose vectors are missing.
 - Embedding setup verified: `not yet API-validated`. Change this only after a real hybrid query succeeds and `wiki/.wiki-cache/embeddings.jsonl` exists.
 
 ## Graph layer

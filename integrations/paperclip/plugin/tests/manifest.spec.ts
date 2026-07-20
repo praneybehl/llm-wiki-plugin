@@ -48,8 +48,8 @@ describe("manifest — identity", () => {
     expect(manifest.apiVersion).toBe(1);
   });
 
-  it("starts at semver 0.0.1, not 0.1.0 (FEASIBILITY pre-publish step)", () => {
-    expect(manifest.version).toBe("0.0.1");
+  it("matches the published package version", () => {
+    expect(manifest.version).toBe("0.5.0");
   });
 
   it("displayName, description, author respect validator length caps", () => {

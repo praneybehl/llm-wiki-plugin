@@ -318,10 +318,10 @@ for (const p of [
 const changelogPath = join(REPO_ROOT, "CHANGELOG.md");
 if (existsSync(changelogPath)) {
   const changelog = readFileSync(changelogPath, "utf-8");
-  const unreleased = changelog.match(/## \[Unreleased\][\s\S]*?(?=## \[)/)?.[0] ?? "";
-  unreleased.includes("paperclip-plugin-llm-wiki")
-    ? ok("CHANGELOG [Unreleased] mentions paperclip-plugin-llm-wiki")
-    : bad("CHANGELOG [Unreleased] does not mention paperclip-plugin-llm-wiki");
+  const releaseMarker = "`paperclip-plugin-llm-wiki` v" + pkg.version;
+  changelog.includes(releaseMarker)
+    ? ok(`CHANGELOG mentions ${releaseMarker}`)
+    : bad(`CHANGELOG does not mention ${releaseMarker}`);
 } else {
   bad("CHANGELOG.md not found at repo root");
 }

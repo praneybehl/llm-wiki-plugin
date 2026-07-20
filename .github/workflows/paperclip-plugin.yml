@@ -5,10 +5,14 @@ on:
     branches: [main]
     paths:
       - "integrations/paperclip/**"
+      - "CHANGELOG.md"
+      - "skills/llm-wiki/references/agent-memory-integration.md"
       - ".github/workflows/paperclip-plugin.yml"
   pull_request:
     paths:
       - "integrations/paperclip/**"
+      - "CHANGELOG.md"
+      - "skills/llm-wiki/references/agent-memory-integration.md"
       - ".github/workflows/paperclip-plugin.yml"
 
 defaults:

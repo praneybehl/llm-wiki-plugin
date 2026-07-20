@@ -19,10 +19,10 @@ From the index, build a short list of pages that look relevant to the query. Be 
 If the index doesn't surface good candidates (the query uses fuzzy or domain-specific language that doesn't match the index summaries), fall back to the search script:
 
 ```bash
-python scripts/wiki_search.py "your query terms" --top 10
+python scripts/wiki_search.py "your query terms" --top 10 --json
 ```
 
-This returns the top-N pages by BM25 score, with optional filters on frontmatter (`--type concept`, `--tag llms`, `--since 2026-01-01`). Use the search script *as a fallback*, not as the default — index-first is cheaper and produces more interpretable results when it works.
+This returns the top-N results by BM25 score, with optional filters on frontmatter (`--type concept`, `--tag llms`, `--since 2026-01-01`). Results are section-level by default — each row carries the matching section's `heading_path`, a snippet, and structured evidence fields under `--json` — so you can jump straight to the relevant part of a page. Pass `--granularity page` to rank whole pages instead (the pre-v2 behavior). When an embedding endpoint is configured via env vars (`LLM_WIKI_EMBED_URL`, or `OPENAI_API_KEY` for api.openai.com), hybrid retrieval activates automatically and fuses semantic matches with BM25; without config it stays lexical, and `--no-embed` forces lexical. Use the search script *as a fallback*, not as the default — index-first is cheaper and produces more interpretable results when it works.
 
 ## Step 2b: Graph-assisted lookup (only if `wiki/graph/graph.sqlite` exists)
 

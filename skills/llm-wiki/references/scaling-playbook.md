@@ -50,7 +50,7 @@ At this scale, two things start to matter:
 
 **Structural lint cadence becomes weekly or per-N-ingests.** Manual oversight stops scaling. Rely on `wiki_lint.py` to surface structural drift and triage with the user.
 
-**The search script may want a real index.** The default `wiki_search.py` rebuilds its BM25 index on every run, which is fine up to a few thousand pages. Beyond that, persist the index to disk (the script supports `--cache .wiki-search-cache.json`).
+**The search script may want a persistent parse cache.** The default `wiki_search.py` rebuilds its BM25 index on every run, which is fine up to a few thousand pages. Beyond that, pass `--cache` to persist an incremental parse cache to disk (default `wiki/.wiki-cache/search-index.json`). It's keyed by each file's content hash, so only changed pages are reparsed and results are guaranteed identical to a cold, cacheless run.
 
 Also consider whether the wiki has organically split into distinct topic clusters that don't really cross-reference each other. If so, a single wiki may be the wrong shape — splitting into per-topic wikis (each with its own `SCHEMA.md`, `index.md`, etc.) may be cleaner. The user should make this call.
 

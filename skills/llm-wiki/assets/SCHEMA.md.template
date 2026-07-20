@@ -84,6 +84,12 @@ Currently flat: a single `wiki/index.md` listing all pages.
 
 When the wiki passes ~150 pages or `index.md` exceeds 300 lines, shard into `wiki/indexes/<type>.md` and update this section.
 
+## Retrieval
+
+- Search is section-level by default: `python skills/llm-wiki/scripts/wiki_search.py "query" --json`.
+- `wiki/.wiki-cache/` holds regenerable retrieval artifacts (parse cache, embedding vectors). Safe to delete at any time; never edit by hand; gitignored.
+- Optional semantic retrieval activates when an embedding endpoint is configured via env: `LLM_WIKI_EMBED_URL` (or `OPENAI_API_KEY` for api.openai.com), `LLM_WIKI_EMBED_KEY`, `LLM_WIKI_EMBED_MODEL` (default `text-embedding-3-small`). Without config, search is lexical BM25 exactly as before. `--no-embed` forces lexical.
+
 ## Graph layer
 
 The wiki has an optional compiled graph layer under `wiki/graph/`:

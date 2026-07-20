@@ -56,6 +56,12 @@ SCHEMA_SECTION_MARKERS = [
         "anchor": "- Graph lint + extract: after every ingest that adds typed `graph.relationships`.",
         "label": "Graph lint + extract cadence (Lint cadence section)",
     },
+    {
+        "marker": "## Retrieval",
+        "version": "2.0.0",
+        "anchor": "## Retrieval",
+        "label": "Retrieval (section search, cache, optional embeddings)",
+    },
 ]
 
 
@@ -77,7 +83,13 @@ def detect_schema_gaps(schema_path: Path) -> list[dict]:
     if not schema_path.exists():
         return []
     text = schema_path.read_text(encoding="utf-8")
-    return [m for m in SCHEMA_SECTION_MARKERS if m["marker"] not in text]
+
+    def marker_present(marker: str) -> bool:
+        if marker.startswith("## "):
+            return any(line.strip() == marker for line in text.splitlines())
+        return marker in text
+
+    return [entry for entry in SCHEMA_SECTION_MARKERS if not marker_present(entry["marker"])]
 
 
 def print_schema_upgrade_guidance(schema_path: Path, gaps: list[dict]) -> None:
@@ -149,6 +161,7 @@ def init_wiki(project_root: Path, wiki_dir: str, raw_dir: str, upgrade: bool = F
         ("ontology.yaml.template", wiki / "graph" / "ontology.yaml"),
         ("graph_README.md.template", wiki / "graph" / "README.md"),
         ("graph_gitignore.template", wiki / "graph" / ".gitignore"),
+        ("wiki-cache_gitignore.template", wiki / ".wiki-cache" / ".gitignore"),
     ]
     for src_name, dst in template_map:
         src = TEMPLATES / src_name

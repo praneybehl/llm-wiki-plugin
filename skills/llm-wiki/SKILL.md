@@ -82,7 +82,7 @@ The single biggest failure mode of the LLM Wiki pattern is the wiki itself becom
 
 **Chunked source ingestion.** Large raw sources (long PDFs, book chapters, lengthy transcripts) should be read in chunks during ingest, not loaded whole. The ingest workflow handles this — see `references/ingest-workflow.md`.
 
-**Search script for large wikis.** Once the wiki passes ~300 pages, plain index lookup may not surface the right pages for fuzzy queries. Use `scripts/wiki_search.py` for BM25-ranked retrieval with optional frontmatter filters. It's a fallback, not the default — index-first is still cheaper when it works.
+**Search script for large wikis.** Once the wiki passes ~300 pages, plain index lookup may not surface the right pages for fuzzy queries. Use `scripts/wiki_search.py` for BM25-ranked retrieval with optional frontmatter filters — it returns section-level results by default (`--granularity page` restores whole-page ranking) and emits structured evidence rows with `--json`. Pass `--cache` to persist an incremental parse index keyed by content hash, so large wikis only reparse changed pages. When an embedding endpoint is configured via env (`LLM_WIKI_EMBED_URL`, or `OPENAI_API_KEY` for api.openai.com), it fuses semantic and lexical matches into a hybrid ranking; without config it stays lexical BM25 and `--no-embed` forces lexical. It's a fallback, not the default — index-first is still cheaper when it works.
 
 For the full scaling playbook including thresholds and migration steps, read `references/scaling-playbook.md`.
 

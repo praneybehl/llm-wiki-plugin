@@ -1,0 +1,577 @@
+/* =============================================================================
+   LLM Wiki — VitePress theme override (Documentify-derived editorial system)
+   -----------------------------------------------------------------------------
+   Design authority : /Users/praneybehl/Downloads/Documentify-docs-style-guide.html
+   Derived brief    : agent://DocumentifyDesignScout
+   Approach         : override VitePress default-theme CSS variables + a few
+                      selectors. We NEVER replace accessible default components
+                      (search, sidebar drawer, outline, skip link, appearance
+                      toggle) — we only re-skin them. No remote font imports.
+
+   Borrowed from Documentify : quiet cool-gray editorial framework, low-contrast
+   hairlines, narrow reading measure, centered search, grouped left rail, sticky
+   right outline, restrained lavender + cyan accents, refined cards/tables/code.
+   Deliberately dropped : the literal floating 1560px panel + 36px canvas margin,
+   drop shadow, version badge, auth CTAs, social row, secondary product nav.
+   ========================================================================== */
+
+/* -----------------------------------------------------------------------------
+   1. Typography — Inter-compatible UI/body + JetBrains-compatible mono.
+   No @font-face / no network: Inter & JetBrains Mono are used only if present
+   locally; otherwise a rich cool system stack takes over (zero-dependency).
+   -------------------------------------------------------------------------- */
+:root {
+  --vp-font-family-base:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    ui-sans-serif, system-ui, 'Helvetica Neue', Arial, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji';
+  --vp-font-family-mono:
+    'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo,
+    Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+/* =============================================================================
+   2. LIGHT TOKEN SET — cool-gray canvas, white article panel
+   ========================================================================== */
+:root {
+  /* Backgrounds: white article, faint-cool side rails, quiet soft fills */
+  --vp-c-bg: #ffffff;          /* article / nav surface                    */
+  --vp-c-bg-alt: #f6f7f8;      /* sidebar rail (quiet, hairline-separated)  */
+  --vp-c-bg-elv: #ffffff;      /* dialogs / search modal                    */
+  --vp-c-bg-soft: #f1f3f5;     /* feature cards, table head, code-group tabs*/
+
+  /* Borders — deliberately low-contrast hairlines */
+  --vp-c-border: #e3e6e9;      /* interactive outlines                      */
+  --vp-c-divider: #edeff2;     /* section hairlines                         */
+  --vp-c-gutter: #edeff2;      /* rail dividers                             */
+
+  /* Text — cool charcoal → gray ramp (headings darkened per-selector below) */
+  --vp-c-text-1: #374151;      /* body ink                                  */
+  --vp-c-text-2: #626b78;      /* muted / inactive nav                      */
+  --vp-c-text-3: #626b78;      /* subtle / placeholders / icons — AA small text */
+
+  /* Brand accent — restrained lavender-indigo (links, active, buttons) */
+  --vp-c-brand-1: #4f46e5;     /* 6.3:1 on white — link/active text         */
+  --vp-c-brand-2: #4338ca;     /* hover                                     */
+  --vp-c-brand-3: #4f46e5;     /* solid bg (white text = 6.3:1)             */
+  --vp-c-brand-soft: rgba(79, 70, 229, 0.12);
+
+  /* Secondary accent — cyan (echoes the hero gradient's cyan end).
+     Retarget the "tip" family from brand→cyan; "note" stays lavender.      */
+  --vp-c-tip-1: #0e7490;       /* 5.4:1 on white                            */
+  --vp-c-tip-2: #0891b2;
+  --vp-c-tip-3: #06b6d4;
+  --vp-c-tip-soft: rgba(6, 182, 212, 0.12);
+
+  /* Warning → warmer amber than VP's default brown */
+  --vp-c-yellow-1: #a35a12;    /* 5.2:1 on white                            */
+  --vp-c-yellow-2: #b45309;
+  --vp-c-yellow-3: #d97706;
+  --vp-c-yellow-soft: rgba(217, 119, 6, 0.12);
+
+  /* Layout geometry (Documentify measure) */
+  --vp-layout-max-width: 1560px;
+  --vp-sidebar-width: 290px;
+  --vp-nav-height: 64px;
+
+  /* Code slab: one elevation below the white article, with a hairline */
+  --vp-code-block-bg: #f6f7f9;
+  --vp-code-color: var(--vp-c-text-1);        /* inline code = dark ink     */
+  --vp-code-bg: var(--vp-c-bg-soft);          /* inline code quiet fill     */
+  --vp-code-line-height: 1.8;
+  --vp-code-font-size: 0.86em;
+
+  /* Home hero — the pastel lavender→cyan gradient lives ONLY here */
+  --vp-home-hero-name-background: linear-gradient(120deg, #4f46e5 5%, #7c6ff0 45%, #0891b2);
+  --vp-home-hero-name-color: transparent;   /* let the gradient show through */
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #b6a4ec 30%, #8fe6ef);
+  --vp-home-hero-image-filter: blur(56px);
+}
+
+/* =============================================================================
+   3. DARK TOKEN SET — intentional cool-charcoal (not inverted white)
+   ========================================================================== */
+.dark {
+  --vp-c-bg: #111827;          /* article / nav panel                       */
+  --vp-c-bg-alt: #0b1018;      /* sidebar rail = outer canvas (recedes)     */
+  --vp-c-bg-elv: #172033;      /* dialogs / search modal (raised)           */
+  --vp-c-bg-soft: #172033;     /* cards, table head, code-group tabs        */
+
+  --vp-c-border: #29344a;
+  --vp-c-divider: #222c3f;
+  --vp-c-gutter: #0b1018;
+
+  --vp-c-text-1: #d1d5db;      /* body ink                                  */
+  --vp-c-text-2: #9ca3af;      /* muted / inactive                          */
+  --vp-c-text-3: #9ca3af;      /* subtle — AA small text on charcoal         */
+
+  /* Lifted lavender so accents stay legible on charcoal */
+  --vp-c-brand-1: #a5a0f5;     /* 7.5:1 on #111827                          */
+  --vp-c-brand-2: #b8b3f8;     /* hover (brighter)                          */
+  --vp-c-brand-3: #635bd6;     /* solid bg (white text = 5.3:1)             */
+  --vp-c-brand-soft: rgba(139, 133, 244, 0.16);
+
+  /* Lifted cyan */
+  --vp-c-tip-1: #67e8f9;
+  --vp-c-tip-2: #22d3ee;
+  --vp-c-tip-3: #0891b2;
+  --vp-c-tip-soft: rgba(34, 211, 238, 0.15);
+
+  --vp-c-yellow-1: #f9b44e;
+  --vp-c-yellow-2: #e0982a;
+  --vp-c-yellow-3: #b45309;
+  --vp-c-yellow-soft: rgba(249, 180, 78, 0.16);
+
+  /* Raised code/card surface (lighter than the panel in dark) */
+  --vp-code-block-bg: #172033;
+  --vp-code-bg: #1f2937;       /* inline code quiet-selected fill           */
+
+  /* Low-luminance hero gradient adaptation for dark */
+  --vp-home-hero-name-background: linear-gradient(120deg, #a5a0f5 10%, #7dd3fc);
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #33295a 30%, #16434b);
+  --vp-home-hero-image-filter: blur(60px);
+}
+
+/* =============================================================================
+   4. NAV BAR — editorial wordmark + centered quiet-fill search
+   ========================================================================== */
+.VPNavBar .title,
+.VPNavBarTitle .title {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--vp-c-text-1);
+}
+.dark .VPNavBar .title,
+.dark .VPNavBarTitle .title { color: #f3f4f6; }
+
+/* Center the local-search trigger in the space between wordmark and menu.
+   .VPNavBarSearch already has flex-grow:1 at >=768px; we just center it. */
+@media (min-width: 768px) {
+  .VPNavBarSearch {
+    justify-content: center;
+    padding-left: 0;
+  }
+}
+.VPNavBarSearch #local-search {
+  width: 100%;
+  max-width: 440px;
+}
+.VPNavBarSearch .DocSearch-Button {
+  width: 100%;
+  max-width: 440px;
+  height: 40px;
+  margin: 0;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  transition: border-color 0.25s, background-color 0.25s;
+}
+.VPNavBarSearch .DocSearch-Button:hover {
+  background: var(--vp-c-bg-soft);
+  border-color: var(--vp-c-border);
+  box-shadow: none;
+}
+.VPNavBarSearch .DocSearch-Button .DocSearch-Search-Icon { color: var(--vp-c-text-3); }
+.VPNavBarSearch .DocSearch-Button-Placeholder {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--vp-c-text-3);
+}
+.VPNavBarSearch .DocSearch-Button-Keys { min-width: auto; }
+.VPNavBarSearch .DocSearch-Button-Key {
+  background: transparent;
+  box-shadow: none;
+  color: var(--vp-c-text-3);
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+}
+
+/* =============================================================================
+   5. LEFT SIDEBAR — grouped rail, pill rows, distinguishable active state
+   ========================================================================== */
+.VPSidebar { padding-top: 8px; }
+
+/* Group headings (level-0): crisp, weighty, generous spacing between groups */
+.VPSidebarItem.level-0 { padding-bottom: 12px; }
+.VPSidebarItem.level-0 > .item > .text,
+.VPSidebarItem.level-0 > .item .text {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--vp-c-text-1);
+}
+.dark .VPSidebarItem.level-0 > .item .text { color: #f3f4f6; }
+.VPSidebarItem.level-0 + .VPSidebarItem.level-0 { margin-top: 18px; }
+
+/* Row links — quiet pills (8px radius), 15.5px, comfortable hit area */
+.VPSidebar .VPSidebarItem .link,
+.VPSidebar .VPSidebarItem .item > .text {
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: background-color 0.2s, color 0.2s;
+}
+.VPSidebar .VPSidebarItem:not(.level-0) .link .text,
+.VPSidebar .VPSidebarItem.is-link .link .text {
+  font-size: 15px;
+  color: var(--vp-c-text-2);
+}
+.VPSidebar .VPSidebarItem .link:hover { background: var(--vp-c-bg-soft); }
+.VPSidebar .VPSidebarItem .link:hover .text { color: var(--vp-c-text-1); }
+
+/* Active page: quiet fill + 2px accent edge + foreground ink (never a black
+   slab — matches the brief's dark-mode instruction, applied to both modes). */
+.VPSidebar .VPSidebarItem.is-active > .item .link {
+  background: var(--vp-c-brand-soft);
+  box-shadow: inset 2px 0 0 var(--vp-c-brand-1);
+}
+.VPSidebar .VPSidebarItem.is-active > .item .link .text {
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+.dark .VPSidebar .VPSidebarItem.is-active > .item .link {
+  background: var(--vp-c-bg-soft);
+}
+.dark .VPSidebar .VPSidebarItem.is-active > .item .link .text { color: #f3f4f6; }
+
+/* =============================================================================
+   6. RIGHT OUTLINE (aside) — sticky on-page nav, wider Documentify rail
+   Only rendered >=1280px by VitePress → naturally hidden below that.
+   .aside / .aside-container / .aside-curtain live in scoped SFC styles, so
+   dimensional overrides need !important.
+   ========================================================================== */
+@media (min-width: 1280px) {
+  .VPDoc.has-aside .aside { max-width: 300px !important; }
+  .VPDoc.has-aside .aside-container,
+  .VPDoc.has-aside .aside-curtain { width: 268px !important; }
+}
+.VPDocAsideOutline .outline-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  letter-spacing: -0.01em;
+}
+.dark .VPDocAsideOutline .outline-title { color: #f3f4f6; }
+.VPDocAsideOutline .outline-link {
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 5px 0;
+  color: var(--vp-c-text-2);
+  transition: color 0.2s;
+}
+.VPDocAsideOutline .outline-link:hover,
+.VPDocAsideOutline .outline-link.active { color: var(--vp-c-text-1); }
+/* The moving indicator = a 2px foreground/accent rule against the 1px rail */
+.VPDocAsideOutline .outline-marker {
+  width: 2px;
+  background-color: var(--vp-c-brand-1);
+}
+
+/* =============================================================================
+   7. ARTICLE MEASURE — narrow, editorial reading column (~72ch / 820px)
+   Overrides scoped VPDoc content-container (default 688px) → !important.
+   ========================================================================== */
+.VPDoc.has-aside .content-container,
+.VPDoc .content-container { max-width: 820px !important; }
+
+/* =============================================================================
+   8. MARKDOWN PROSE (.vp-doc) — compact Inter hierarchy
+   ========================================================================== */
+.vp-doc h1 {
+  font-size: clamp(2rem, 4.5vw + 0.9rem, 2.625rem);  /* 32px → 42px          */
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: #111827;
+}
+.dark .vp-doc h1 { color: #f3f4f6; }
+
+.vp-doc h2 {
+  margin-top: 52px;
+  padding-top: 26px;
+  border-top: 1px solid var(--vp-c-divider);
+  font-size: clamp(1.5rem, 2.2vw + 0.8rem, 1.875rem);  /* 24px → 30px        */
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: #111827;
+}
+.dark .vp-doc h2 { color: #f3f4f6; }
+
+.vp-doc h3 {
+  margin-top: 34px;
+  font-size: 1.25rem;      /* 20px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #111827;
+}
+.dark .vp-doc h3 { color: #f3f4f6; }
+
+.vp-doc h4 { font-size: 1.0625rem; font-weight: 600; color: var(--vp-c-text-1); }
+
+/* Body copy: 17px / 1.65 */
+.vp-doc p,
+.vp-doc li { font-size: 17px; line-height: 1.65; }
+.vp-doc p { margin: 16px 0; }
+
+/* Lede: the intro paragraph immediately after the page title — 19px / 1.5 */
+.vp-doc h1 + p {
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+  margin-top: 12px;
+}
+
+.vp-doc a {
+  color: var(--vp-c-brand-1);
+  font-weight: 500;
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+.vp-doc a:hover { color: var(--vp-c-brand-2); text-decoration: underline; }
+
+.vp-doc ul,
+.vp-doc ol { padding-left: 1.4rem; }
+.vp-doc li + li { margin-top: 6px; }
+
+.vp-doc hr {
+  border: none;
+  border-top: 1px solid var(--vp-c-divider);
+  margin: 40px 0;
+}
+
+.vp-doc blockquote {
+  border-left: 3px solid var(--vp-c-border);
+  padding-left: 16px;
+  color: var(--vp-c-text-2);
+}
+.vp-doc blockquote > p { font-size: 16px; }
+
+/* Header anchor (#) — quiet, appears on hover, brand on focus */
+.vp-doc .header-anchor { color: var(--vp-c-text-3); font-weight: 400; }
+.vp-doc .header-anchor:hover,
+.vp-doc .header-anchor:focus-visible { color: var(--vp-c-brand-1); }
+
+/* =============================================================================
+   9. TABLES — hairline grid, quiet header, subtle zebra (Documentify density)
+   VitePress renders .vp-doc table as display:block; overflow-x:auto already.
+   ========================================================================== */
+.vp-doc table {
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 15px;
+}
+.vp-doc th,
+.vp-doc td {
+  border: 1px solid var(--vp-c-divider);
+  padding: 9px 14px;
+}
+.vp-doc th {
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+  text-align: left;
+}
+.vp-doc tr { background: var(--vp-c-bg); border-top: none; }
+.vp-doc tr:nth-child(2n) { background: var(--vp-c-bg-soft); }
+
+/* =============================================================================
+   10. CODE — light slab in light mode, hairline boundary, visible copy button.
+   Token foreground colors are supplied by Shiki's dual github-light/dark theme
+   (config-side); here we own the slab surface, inline chips, and chrome.
+   ========================================================================== */
+/* Inline code — 6px chip, quiet fill, dark ink, hairline (Documentify) */
+.vp-doc :not(pre) > code {
+  background: var(--vp-code-bg);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 0.85em;
+  color: var(--vp-c-text-1);
+}
+.dark .vp-doc :not(pre) > code { border-color: var(--vp-c-border); color: #e5e7eb; }
+/* Do not double-border code that sits inside links/headings */
+.vp-doc a > code { color: var(--vp-c-brand-1); }
+
+/* Block slab — one elevation off the article, hairline, generous inner pad */
+.vp-doc div[class*='language-'] {
+  border-radius: 12px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-code-block-bg);
+  margin: 20px 0;
+}
+.dark .vp-doc div[class*='language-'] { border-color: var(--vp-c-border); }
+.vp-doc div[class*='language-'] pre {
+  padding: 20px 0;
+  background: transparent;
+}
+.vp-doc div[class*='language-'] code {
+  font-size: 14px;
+  line-height: 1.8;
+  padding: 0 24px;
+}
+/* Language tag — quiet, upper-right */
+.vp-doc div[class*='language-'] > span.lang { color: var(--vp-c-text-3); font-size: 12px; }
+
+/* Copy button — clearly visible (not fully hidden until hover) */
+.vp-doc div[class*='language-'] > button.copy {
+  opacity: 0.55;
+  background-color: var(--vp-code-copy-code-bg);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  transition: opacity 0.2s, border-color 0.2s;
+}
+.vp-doc div[class*='language-']:hover > button.copy,
+.vp-doc div[class*='language-'] > button.copy:focus-visible { opacity: 1; }
+.vp-doc div[class*='language-'] > button.copy:hover { border-color: var(--vp-c-brand-1); }
+
+/* Code groups — quiet tabs on the soft surface */
+.vp-doc .vp-code-group .tabs { background: var(--vp-c-bg-soft); }
+
+/* =============================================================================
+   11. CUSTOM CONTAINERS (::: tip / info / warning / danger / details)
+   Keep VitePress's accessible tinted boxes but add a 3px editorial accent edge
+   and accent-colored titles (echoes the old site's left-border callouts).
+   ========================================================================== */
+.vp-doc .custom-block {
+  border-radius: 10px;
+  border-left: 3px solid var(--vp-c-divider);
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 14px 18px;
+}
+.vp-doc .custom-block .custom-block-title { font-weight: 600; }
+.vp-doc .custom-block p { font-size: 15px; margin: 8px 0; }
+.vp-doc .custom-block.tip     { border-left-color: var(--vp-c-tip-1); }
+.vp-doc .custom-block.tip .custom-block-title { color: var(--vp-c-tip-1); }
+.vp-doc .custom-block.note    { border-left-color: var(--vp-c-brand-1); }
+.vp-doc .custom-block.note .custom-block-title { color: var(--vp-c-brand-1); }
+.vp-doc .custom-block.info    { border-left-color: var(--vp-c-text-3); }
+.vp-doc .custom-block.warning { border-left-color: var(--vp-c-yellow-1); }
+.vp-doc .custom-block.warning .custom-block-title { color: var(--vp-c-yellow-1); }
+.vp-doc .custom-block.danger  { border-left-color: var(--vp-c-danger-1); }
+.vp-doc .custom-block.danger .custom-block-title { color: var(--vp-c-danger-1); }
+.vp-doc .custom-block.details { border-left-color: var(--vp-c-border); }
+
+/* =============================================================================
+   12. MERMAID — diagrams sit in the article column, respect light/dark tokens.
+   We own the container (neutral soft card, centered, horizontal overflow);
+   the SVG's own stroke/fill colors come from the mermaid theme (config-side).
+   ========================================================================== */
+.vp-doc .mermaid {
+  margin: 24px 0;
+  padding: 20px;
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  overflow-x: auto;
+  text-align: center;
+}
+.dark .vp-doc .mermaid { border-color: var(--vp-c-border); }
+.vp-doc .mermaid svg { max-width: none; height: auto; }
+.dark .vp-doc .mermaid .edgeLabel .labelBkg,
+.dark .vp-doc .mermaid span.edgeLabel {
+  background-color: var(--vp-c-bg-alt) !important;
+  color: var(--vp-c-text-1) !important;
+}
+
+/* =============================================================================
+   13. HOME PAGE — hero name gradient (set via vars above) + refined features.
+   Avoid the "identical card grid" slop: quiet bordered boxes, restrained
+   icons, subtle hover lift — no gradient text on metrics, no glass.
+   ========================================================================== */
+.VPHome .VPHero .name { letter-spacing: -0.03em; }
+.VPHome .VPHero .text { color: var(--vp-c-text-1); letter-spacing: -0.02em; }
+.VPHome .VPHero .tagline { color: var(--vp-c-text-2); font-size: 19px; line-height: 1.5; }
+
+.VPFeatures .VPFeature {
+  border: 1px solid var(--vp-c-border);
+  border-radius: 14px;
+  background: var(--vp-c-bg);
+  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+}
+.VPFeatures .VPFeature:hover {
+  border-color: var(--vp-c-brand-1);
+  transform: translateY(-2px);
+  box-shadow: var(--vp-shadow-2);
+}
+.VPFeatures .VPFeature .icon {
+  border-radius: 10px;
+  background: var(--vp-c-brand-soft);
+  font-size: 22px;
+  width: 42px;
+  height: 42px;
+}
+.VPFeatures .VPFeature .title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--vp-c-text-1);
+}
+.dark .VPFeatures .VPFeature .title { color: #f3f4f6; }
+.VPFeatures .VPFeature .details { font-size: 15px; color: var(--vp-c-text-2); }
+
+/* =============================================================================
+   14. DOC FOOTER — prev / next pager (Documentify pager look)
+   ========================================================================== */
+.VPDocFooter .pager-link {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  padding: 14px 18px;
+  transition: border-color 0.25s;
+}
+.VPDocFooter .pager-link:hover { border-color: var(--vp-c-brand-1); }
+.VPDocFooter .pager-link .desc {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vp-c-text-3);
+}
+.VPDocFooter .pager-link .title { color: var(--vp-c-brand-1); font-weight: 600; }
+
+/* =============================================================================
+   15. RESPONSIVE — mobile/tablet. Below 960px VitePress swaps the left rail for
+   its accessible hamburger drawer and (below 1280) hides the right outline;
+   we only adjust the article for comfortable full-width reading.
+   ========================================================================== */
+@media (max-width: 959px) {
+  .vp-doc p,
+  .vp-doc li { font-size: 16.5px; }
+  .vp-doc h2 { margin-top: 40px; padding-top: 22px; }
+  /* Cards collapse to one column (VitePress grid) — keep them full-bleed */
+  .VPFeatures .VPFeature { border-radius: 12px; }
+}
+@media (max-width: 640px) {
+  .vp-doc h1 + p { font-size: 17.5px; }
+  .vp-doc div[class*='language-'] code { padding: 0 16px; }
+}
+
+/* =============================================================================
+   16. FOCUS & MOTION — visible focus rings; honour reduced-motion.
+   ========================================================================== */
+:where(a, button, input, summary, .VPSidebarItem .link, .outline-link):focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Skip-to-content link (VitePress default) — brand it on focus */
+.VPSkipLink:focus,
+.VPSkipLink:focus-visible {
+  background: var(--vp-c-bg-elv);
+  color: var(--vp-c-brand-1);
+  box-shadow: var(--vp-shadow-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .VPFeatures .VPFeature:hover { transform: none; }
+}

@@ -97,7 +97,7 @@ def list_pages_sorted() -> list[tuple[str, str, list[str]]]:
     WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
     FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
     SKIP_FILES = {"SCHEMA.md", "index.md", "log.md"}
-    SKIP_DIRS = {"indexes", "graph"}
+    SKIP_DIRS = {"indexes", "graph", ".wiki-cache"}
 
     pages = []
     paths = sorted(WIKI.rglob("*.md"), key=lambda p: str(p.relative_to(WIKI)))
@@ -142,15 +142,24 @@ def run(args: list[str]) -> str:
 
 
 def main():
-    snapshot = {"queries": [], "filters": [], "backlinks": [], "topLinked": []}
+    snapshot = {"queries": [], "sections": [], "filters": [], "backlinks": [], "topLinked": []}
 
     for q in QUERIES:
-        slugs = parse_search_paths(run([q, "--top", "10"]))
+        slugs = parse_search_paths(run([q, "--top", "10", "--granularity", "page"]))
         snapshot["queries"].append({"query": q, "slugs": slugs})
         print(f"  query  {q!r:36s} -> {slugs}", file=sys.stderr)
+        payload = json.loads(run([
+            q, "--top", "10", "--granularity", "section", "--no-embed", "--json",
+        ]))
+        section_rows = [
+            {"slug": row["slug"], "headingPath": row["heading_path"]}
+            for row in payload["results"]
+        ]
+        snapshot["sections"].append({"query": q, "results": section_rows})
+        print(f"  section {q!r:34s} -> {section_rows}", file=sys.stderr)
 
     for case in FILTER_CASES:
-        slugs = parse_search_paths(run(case["args"]))
+        slugs = parse_search_paths(run([*case["args"], "--granularity", "page"]))
         snapshot["filters"].append({
             "label": case["label"], "args": case["args"], "slugs": slugs,
         })

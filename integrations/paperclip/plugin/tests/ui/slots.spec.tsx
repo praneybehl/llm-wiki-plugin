@@ -173,7 +173,7 @@ describe("WikiContextTab", () => {
     vi.mocked(usePluginData).mockReturnValue(
       dataResult({
         results: [
-          { slug: "transformer", title: "Transformer", type: "entity", score: 1.7 },
+          { slug: "transformer", title: "Transformer", type: "entity", score: 1.7, heading: "Transformer > Architecture" },
           { slug: "attention-mechanism", title: "Attention Mechanism", type: "concept", score: 1.5 },
         ],
       }),
@@ -181,6 +181,7 @@ describe("WikiContextTab", () => {
     render(<WikiContextTab context={ctx} />);
     expect(screen.getByText("Transformer")).toBeDefined();
     expect(screen.getByText("Attention Mechanism")).toBeDefined();
+    expect(screen.getByText("Transformer > Architecture")).toBeDefined();
   });
 
   it("shows an empty state when results is empty", () => {

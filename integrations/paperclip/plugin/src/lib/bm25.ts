@@ -6,8 +6,8 @@
  *   - Tokenizer: /[a-z0-9]+/ (lowercased)
  *   - IDF:       log(1 + (N - df + 0.5) / (df + 0.5))
  *   - Index:     built over the *filtered* page set, not the full corpus.
- *   - Skip:      SCHEMA.md, index.md, log.md at top level; indexes/, graph/
- *                directories; dotfiles.
+ *   - Skip:      SCHEMA.md, index.md, log.md at top level; indexes/, graph/,
+ *                .wiki-cache/ directories; dotfiles.
  *
  * Parity is enforced by tests/lib/bm25.spec.ts against a snapshot captured
  * by tests/fixtures/_gen_bm25_expectations.py. If you change the algorithm,
@@ -32,7 +32,7 @@ const K1 = 1.5;
 const B = 0.75;
 
 const SKIP_TOP_LEVEL_FILES = new Set(["SCHEMA.md", "index.md", "log.md"]);
-const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph"]);
+const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", ".wiki-cache"]);
 
 export interface WikiPage {
   path: string;
@@ -59,6 +59,19 @@ export interface SearchOptions {
 export interface ScoredPage {
   score: number;
   page: WikiPage;
+}
+
+export interface WikiSection {
+  page: WikiPage;
+  headingPath: string[];
+  level: number;
+  text: string;
+  sectionIndex: number;
+}
+
+export interface ScoredSection {
+  score: number;
+  section: WikiSection;
 }
 
 export interface TopLinkedRow {
@@ -205,6 +218,59 @@ export function collectPages(wikiRoot: string): WikiPage[] {
   return pages;
 }
 
+export function splitSections(
+  title: string,
+  body: string,
+): Omit<WikiSection, "page">[] {
+  void title;
+  const sections: Omit<WikiSection, "page">[] = [];
+  const headingStack: { level: number; text: string }[] = [];
+  let headingPath: string[] = [];
+  let level = 0;
+  let lines: string[] = [];
+  let inFence = false;
+  const bodyLines = body.split(/\r\n|[\n\r\v\f\u001c-\u001e\u0085\u2028\u2029]/);
+  if (bodyLines.at(-1) === "") bodyLines.pop();
+
+  const appendSection = (): void => {
+    sections.push({
+      headingPath: [...headingPath],
+      level,
+      text: lines.join("\n"),
+      sectionIndex: sections.length,
+    });
+  };
+
+  for (const line of bodyLines) {
+    const stripped = line.trim();
+    if (stripped.startsWith("```") || stripped.startsWith("~~~")) {
+      inFence = !inFence;
+      lines.push(line);
+      continue;
+    }
+    const heading = inFence
+      ? null
+      : /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+    if (!heading) {
+      lines.push(line);
+      continue;
+    }
+
+    appendSection();
+    level = heading[1]!.length;
+    const headingText = heading[2]!.trim();
+    while (headingStack.at(-1)?.level !== undefined && headingStack.at(-1)!.level >= level) {
+      headingStack.pop();
+    }
+    headingStack.push({ level, text: headingText });
+    headingPath = headingStack.map((item) => item.text);
+    lines = [];
+  }
+
+  appendSection();
+  return sections;
+}
+
 interface Bm25Index {
   N: number;
   df: Map<string, number>;
@@ -213,7 +279,7 @@ interface Bm25Index {
   termFreqs: Map<string, number>[];
 }
 
-function buildIndex(pages: WikiPage[]): Bm25Index {
+function buildIndex(pages: Array<{ tokens: string[] }>): Bm25Index {
   const N = pages.length;
   const df = new Map<string, number>();
   const docLens: number[] = [];
@@ -312,6 +378,52 @@ export function searchPages(
   scored.sort((a, b) => b.score - a.score);
 
   return scored.filter((r) => r.score > 0).slice(0, opts.topK);
+}
+
+export function searchSections(
+  pages: WikiPage[],
+  opts: SearchOptions & { perPage?: number },
+): ScoredSection[] {
+  const filters = opts.filters ?? {};
+  const filtered = pages.filter((page) => passesFilters(page, filters));
+  if (filtered.length === 0) return [];
+
+  const queryTokens = tokenize(opts.query);
+  if (queryTokens.length === 0) return [];
+  const sectionDocs: { section: WikiSection; tokens: string[] }[] = [];
+  for (const page of filtered) {
+    const rawTitle = page.meta["title"];
+    const title = typeof rawTitle === "string" && rawTitle ? rawTitle : page.slug;
+    for (const section of splitSections(title, page.body)) {
+      const searchable = `${title} ${section.headingPath.join(" ")} ${section.text}`;
+      sectionDocs.push({
+        section: { page, ...section },
+        tokens: tokenize(searchable),
+      });
+    }
+  }
+
+  const idx = buildIndex(sectionDocs);
+  const scored = sectionDocs.map((doc, index) => ({
+    score: score(idx, index, queryTokens),
+    section: doc.section,
+    index,
+  }));
+  scored.sort((left, right) => right.score - left.score || left.index - right.index);
+
+  const perPage = opts.perPage ?? 2;
+  const pageCounts = new Map<string, number>();
+  const results: ScoredSection[] = [];
+  for (const row of scored) {
+    if (row.score <= 0) continue;
+    const relPath = row.section.page.relPath;
+    const count = pageCounts.get(relPath) ?? 0;
+    if (count >= perPage) continue;
+    pageCounts.set(relPath, count + 1);
+    results.push({ score: row.score, section: row.section });
+    if (results.length >= opts.topK) break;
+  }
+  return results;
 }
 
 export function backlinks(pages: WikiPage[], target: string): WikiPage[] {

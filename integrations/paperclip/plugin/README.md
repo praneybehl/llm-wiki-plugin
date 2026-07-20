@@ -6,7 +6,7 @@ This is the **human-side** companion to the [`llm-wiki` skill](https://github.co
 
 ## Status
 
-**Pre-release (npm v0.0.1).** The Paperclip plugin runtime and SDK are themselves described by their maintainers as *"still early"* — pin the SDK version exactly (calver, e.g. `2026.428.0`) rather than a range. Expect breaking changes between SDK releases and re-validate against the live SDK source on each upgrade.
+**Pre-release (npm v0.5.0).** The Paperclip plugin runtime and SDK are themselves described by their maintainers as *"still early"* — pin the SDK version exactly (calver, e.g. `2026.428.0`) rather than a range. Expect breaking changes between SDK releases and re-validate against the live SDK source on each upgrade.
 
 ## Contents
 
@@ -104,7 +104,7 @@ The sidebar is the smallest surface and the one you'll touch most. Click the **W
 Three modes, controlled by a single state machine:
 
 1. **Index view (default).** Lists every wiki page grouped by frontmatter `type` (source / entity / concept / synthesis / your custom types). Click any entry to drill in.
-2. **Search view.** Type in the search box at the top. As you type, the worker runs BM25 search across all pages and the panel shows ranked results. The same algorithm the agent uses on heartbeat — results are byte-for-byte identical to `python skills/llm-wiki/scripts/wiki_search.py "<query>"` for the same corpus.
+2. **Search view.** Type in the search box at the top. As you type, the worker runs section-level BM25 and shows ranked page headings. Its lexical results are byte-for-byte identical to `python skills/llm-wiki/scripts/wiki_search.py "<query>" --no-embed` for the same corpus. The plugin intentionally remains lexical-only because its sandbox holds no embedding API keys; optional hybrid retrieval is available from the Python CLI.
 3. **Page view.** Once you click a result or an index entry, the page renders as markdown — including GFM tables, task lists, and `[[wikilink]]` resolution. Wikilinks are rendered as clickable internal links; clicking one navigates to that page within the sidebar without leaving Paperclip. Use the back button to return.
 
 The sidebar is read-only. The "open in editor" link in the corner of the page view (if present in your Paperclip build) handles the handoff to your local editor.
@@ -123,10 +123,10 @@ When you click it, the worker:
 
 1. Reads `issue.title` and `issue.description` via `ctx.issues.get`.
 2. Resolves the wiki path via `ctx.projects.getWorkspaceForIssue` (falls back to the Company's primary workspace if the issue isn't pinned to a specific workspace).
-3. Runs BM25 over the issue's title + description against the full wiki.
-4. Returns the top N results (default 5; configurable via `search_top_k`).
+3. Runs section-level BM25 over the issue's title + description against the full wiki.
+4. Returns the top N unique pages (default 5; configurable via `search_top_k`), keeping each page's highest-ranked section.
 
-Each result shows the page title, frontmatter `type`, and a click-through link. Click any result to read the page (rendered the same way as the sidebar).
+Each result shows the page title, matching heading, frontmatter `type`, and a click-through link. Click any result to read the page (rendered the same way as the sidebar).
 
 This is the surface that earns the plugin its keep — it's the difference between *"I should look up what we know about this competitor"* (and then forgetting) and *"the relevant pages are right there next to the issue"*.
 
@@ -283,7 +283,7 @@ The tab runs BM25 over `issue.title + issue.description`. Empty results usually 
 
 ### Search results from the plugin differ from agent heartbeat output
 
-They shouldn't. Both implementations are tested for byte-for-byte parity against the canonical Python reference (`skills/llm-wiki/scripts/wiki_search.py`) on a fixed corpus — same BM25 constants (k1=1.5, b=0.75), same IDF formula (`log(1 + (N - df + 0.5) / (df + 0.5))`), same skip rules.
+They shouldn't in lexical mode. Both implementations are tested for byte-for-byte section-rank parity against the canonical Python reference (`skills/llm-wiki/scripts/wiki_search.py --no-embed`) on a fixed corpus — same BM25 constants (k1=1.5, b=0.75), same IDF formula (`log(1 + (N - df + 0.5) / (df + 0.5)`), same heading split and skip rules. Hybrid Python searches can differ because the Paperclip sandbox deliberately performs no embedding network calls.
 
 If they diverge, file an issue with:
 

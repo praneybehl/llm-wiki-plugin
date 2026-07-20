@@ -139,10 +139,24 @@ const WIKI_STYLES = `
   padding: 0.45rem 0.6rem;
   border-radius: 4px;
 }
+.llm-wiki-result-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
 .llm-wiki-result-title {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.llm-wiki-result-heading {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.75rem;
+  opacity: 0.65;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

@@ -1,0 +1,268 @@
+[
+  {
+    "id": "q01",
+    "kind": "exact",
+    "query": "RuntimeError expected scalar type Half",
+    "expected": [
+      "quantization"
+    ]
+  },
+  {
+    "id": "q02",
+    "kind": "exact",
+    "query": "past_key_values",
+    "expected": [
+      "kv-cache"
+    ]
+  },
+  {
+    "id": "q03",
+    "kind": "exact",
+    "query": "CUDA_ERROR_OUT_OF_MEMORY",
+    "expected": [
+      "cuda"
+    ]
+  },
+  {
+    "id": "q04",
+    "kind": "exact",
+    "query": "DistributedDataParallel",
+    "expected": [
+      "pytorch"
+    ]
+  },
+  {
+    "id": "q05",
+    "kind": "exact",
+    "query": "load balancing loss",
+    "expected": [
+      "mixture-of-experts"
+    ]
+  },
+  {
+    "id": "q06",
+    "kind": "exact",
+    "query": "ZeRO stage 3",
+    "expected": [
+      "distributed-training"
+    ]
+  },
+  {
+    "id": "q07",
+    "kind": "exact",
+    "query": "nvcc compiler",
+    "expected": [
+      "cuda"
+    ]
+  },
+  {
+    "id": "q08",
+    "kind": "exact",
+    "query": "low-rank adaptation",
+    "expected": [
+      "lora-paper"
+    ]
+  },
+  {
+    "id": "q09",
+    "kind": "exact",
+    "query": "20 tokens per parameter",
+    "expected": [
+      "chinchilla-paper"
+    ]
+  },
+  {
+    "id": "q10",
+    "kind": "exact",
+    "query": "pipeline bubble",
+    "expected": [
+      "distributed-training"
+    ]
+  },
+  {
+    "id": "q11",
+    "kind": "exact",
+    "query": "byte-pair encoding",
+    "expected": [
+      "tokenization"
+    ]
+  },
+  {
+    "id": "q12",
+    "kind": "paraphrase",
+    "query": "focusing relevant neighboring context emphasis weighting salience",
+    "expected": [
+      "attention-mechanism"
+    ]
+  },
+  {
+    "id": "q13",
+    "kind": "paraphrase",
+    "query": "iteratively minimizing prediction error descending slope tuner",
+    "expected": [
+      "gradient-descent"
+    ]
+  },
+  {
+    "id": "q14",
+    "kind": "paraphrase",
+    "query": "splitting written language fragments numeric identifiers dictionary lookup",
+    "expected": [
+      "tokenization"
+    ]
+  },
+  {
+    "id": "q15",
+    "kind": "paraphrase",
+    "query": "reducing bit resolution shrinking served size cheaper hardware",
+    "expected": [
+      "quantization"
+    ]
+  },
+  {
+    "id": "q16",
+    "kind": "paraphrase",
+    "query": "sparse conditional dispatch specialist submodules cheaper throughput",
+    "expected": [
+      "mixture-of-experts"
+    ]
+  },
+  {
+    "id": "q17",
+    "kind": "paraphrase",
+    "query": "reusing prior stored intermediate results faster incremental emission speedup",
+    "expected": [
+      "kv-cache"
+    ]
+  },
+  {
+    "id": "q18",
+    "kind": "paraphrase",
+    "query": "spreading huge neural nets numerous accelerator silicon clusters",
+    "expected": [
+      "distributed-training"
+    ]
+  },
+  {
+    "id": "q19",
+    "kind": "paraphrase",
+    "query": "popular pythonic array toolkit backprop autodiff dynamic graphs",
+    "expected": [
+      "pytorch"
+    ]
+  },
+  {
+    "id": "q20",
+    "kind": "paraphrase",
+    "query": "gpu vendor accelerator toolkit writing routines video card",
+    "expected": [
+      "cuda"
+    ]
+  },
+  {
+    "id": "q21",
+    "kind": "paraphrase",
+    "query": "ideal corpus scale sizing weights bulk restricted flops",
+    "expected": [
+      "chinchilla-paper"
+    ]
+  },
+  {
+    "id": "q22",
+    "kind": "filter",
+    "query": "attention",
+    "expected": [
+      "attention-mechanism",
+      "kv-cache"
+    ],
+    "filters": {
+      "tag": "inference"
+    }
+  },
+  {
+    "id": "q23",
+    "kind": "filter",
+    "query": "training data compute",
+    "expected": [
+      "scaling-laws-paper",
+      "chinchilla-paper"
+    ],
+    "filters": {
+      "type": "source"
+    }
+  },
+  {
+    "id": "q24",
+    "kind": "filter",
+    "query": "quantization",
+    "expected": [
+      "quantization"
+    ],
+    "filters": {
+      "type": "concept"
+    }
+  },
+  {
+    "id": "q25",
+    "kind": "filter",
+    "query": "expert routing",
+    "expected": [
+      "mixture-of-experts"
+    ],
+    "filters": {
+      "type": "concept"
+    }
+  },
+  {
+    "id": "q26",
+    "kind": "filter",
+    "query": "person researcher scientist",
+    "expected": [
+      "ilya-sutskever"
+    ],
+    "filters": {
+      "type": "entity"
+    }
+  },
+  {
+    "id": "q27",
+    "kind": "filter",
+    "query": "gpu memory errors",
+    "expected": [
+      "cuda"
+    ],
+    "filters": {
+      "type": "entity"
+    }
+  },
+  {
+    "id": "q28",
+    "kind": "negative",
+    "query": "sourdough bread yeast fermentation kneading",
+    "expected": []
+  },
+  {
+    "id": "q29",
+    "kind": "negative",
+    "query": "photosynthesis chlorophyll sunlight foliage oxygen",
+    "expected": []
+  },
+  {
+    "id": "q30",
+    "kind": "negative",
+    "query": "mortgage refinancing interest escrow homeowner",
+    "expected": []
+  },
+  {
+    "id": "q31",
+    "kind": "negative",
+    "query": "volcano magma eruption lava crater",
+    "expected": []
+  },
+  {
+    "id": "q32",
+    "kind": "negative",
+    "query": "basketball dribbling championship playoffs referee",
+    "expected": []
+  }
+]

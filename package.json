@@ -1,0 +1,27 @@
+{
+  "name": "llm-wiki-plugin-docs",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "VitePress documentation site for the LLM Wiki plugin.",
+  "homepage": "https://praneybehl.github.io/llm-wiki-plugin/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/praneybehl/llm-wiki-plugin.git"
+  },
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "mermaid": "11.16.0",
+    "vitepress": "1.6.4",
+    "vitepress-plugin-mermaid": "2.0.17"
+  }
+}

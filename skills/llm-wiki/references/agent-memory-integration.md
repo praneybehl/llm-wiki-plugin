@@ -14,6 +14,7 @@ The memory-file convention varies by agent. Use this table to pick the right one
 | OpenCode | `AGENTS.md` | Also reads `CLAUDE.md`, so either works. |
 | Gemini CLI | `GEMINI.md` | Gemini-specific filename. |
 | Pi Agent | `AGENTS.md` | Follows the `agents.md` standard. |
+| OMP (Oh My Pi) | `AGENTS.md` | Follows the `agents.md` standard. |
 | OpenClaw | `AGENTS.md` | Follows the `agents.md` standard. |
 
 If the user runs multiple agents in the same project, prefer `AGENTS.md` as the canonical file and symlink `CLAUDE.md` to it (or duplicate the content). Claude Code will read a symlinked `CLAUDE.md` without issue.
@@ -46,7 +47,7 @@ At init time, after the directory structure is in place and the schema walkthrou
 
 A good script:
 
-1. Ask the user which agent(s) they run in this project. If they say "Claude Code", target `CLAUDE.md`. If they say "Cursor" or "Codex" or "OpenCode" or "multiple", target `AGENTS.md`. If they say "Gemini CLI", target `GEMINI.md`. If they're unsure, target `AGENTS.md` and mention that Claude Code can still read it via a symlink.
+1. Ask the user which agent(s) they run in this project. If they say "Claude Code", target `CLAUDE.md`. If they say "Cursor" or "Codex" or "OpenCode" or "OMP" or "multiple", target `AGENTS.md`. If they say "Gemini CLI", target `GEMINI.md`. If they're unsure, target `AGENTS.md` and mention that Claude Code can still read it via a symlink.
 2. Check whether that file already exists.
    - If **not**, offer to create it with just the LLM Wiki stanza as the content.
    - If **yes**, show the proposed stanza and ask whether to append it.

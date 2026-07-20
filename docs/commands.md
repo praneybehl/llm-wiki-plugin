@@ -1,0 +1,100 @@
+---
+title: Commands
+description: Reference for all seven /wiki:* slash commands — init, ingest, query, lint, stats, graph, upgrade.
+---
+
+<!-- Adapted from: docs/commands.html (source: README.md "Commands" table, commands/wiki/{init,ingest,query,lint,stats,graph,upgrade}.md). -->
+
+# Commands
+
+Seven `/wiki:*` slash commands ship with the Claude Code plugin. In other agents, phrase the same requests in natural language — the underlying skill triggers either way.
+
+| Command | What it does |
+| --- | --- |
+| [`/wiki:init`](#init) | Bootstrap a new wiki structure in the current project. |
+| [`/wiki:ingest <source>`](#ingest) | Process a new source into the wiki; refreshes the graph layer when present. |
+| [`/wiki:query <question>`](#query) | Answer a question from the wiki with citations. |
+| [`/wiki:lint`](#lint) | Structural and semantic health check. |
+| [`/wiki:stats`](#stats) | Show size, link density, and which scaling threshold the wiki is at. |
+| [`/wiki:graph <action>`](#graph) | Compile, lint, or query the typed graph layer. |
+| [`/wiki:upgrade`](#upgrade) | Upgrade an existing wiki to the current plugin version. |
+
+## `/wiki:init` {#init}
+
+Bootstrap a new LLM Wiki in the current project. Optional `--wiki-dir` / `--raw-dir` arguments override the default directory names.
+
+```bash
+/wiki:init
+```
+
+The command confirms where the wiki should live (default `wiki/` and `raw/` at the project root), runs the bootstrap script, walks you through the generated `SCHEMA.md` so you can customize page types and tag taxonomy, notes the seeded graph layer under `wiki/graph/`, and proposes an agent-memory integration. It stops after setup — it does not ingest anything.
+
+## `/wiki:ingest <source>` {#ingest}
+
+Ingest a source (paper, article, transcript, PDF, notes) into the wiki using the skill's ingest workflow.
+
+```bash
+/wiki:ingest raw/attention-is-all-you-need.pdf
+```
+
+The agent reads `SCHEMA.md`, places the raw source under `raw/`, chunk-reads if it is large, discusses key takeaways, surveys the wiki for touched pages, writes the source-summary page, makes surgical `str_replace` updates, creates new pages for new entities and concepts (each with an inbound link), updates the index, and appends one line to `log.md`. If the graph layer is present and the source supports typed edges, it lints and re-extracts the graph. Full detail in [Workflows → Ingest](/workflows#ingest).
+
+## `/wiki:query <question>` {#query}
+
+Answer a question against the wiki with citations.
+
+```bash
+/wiki:query How does attention scale with sequence length?
+```
+
+The agent reads the index (or the relevant shard), identifies and reads candidate pages, follows `[[wikilinks]]` selectively, and synthesizes an answer with citations. If the index doesn't surface good candidates it falls back to BM25 search:
+
+```bash
+python skills/llm-wiki/scripts/wiki_search.py "<query terms>" --top 10 --json
+```
+
+Use `--granularity page` for whole-page ranking; hybrid retrieval activates automatically when embedding env vars are configured. See [Search & retrieval](/search). For relational questions it consults `graph.sqlite` when available. Substantive answers can be filed back into `wiki/synthesis/`.
+
+## `/wiki:lint` {#lint}
+
+Run a structural and semantic health check. Add `--suggest-pages` to surface concepts that should be promoted to their own page.
+
+```bash
+/wiki:lint
+```
+
+The structural pass runs `wiki_lint.py` to catch orphans, broken wikilinks, oversized pages, missing frontmatter, stale pages, and duplicate slugs. The semantic pass reads recently-updated pages and hub pages for contradictions and gaps. Every finding is presented as a proposed edit — nothing is applied silently. Full detail in [Workflows → Lint](/workflows#lint).
+
+## `/wiki:stats` {#stats}
+
+Show wiki size, shape, and link density — and which scaling threshold the wiki is at.
+
+```bash
+/wiki:stats
+```
+
+Runs `wiki_stats.py` and interprets the output: whether you are approaching a sharding threshold (150 pages / 300-line index), the routine-search threshold (300 pages), or a weekly-lint cadence (500 pages); whether any pages exceed the 400-line soft cap or 800-line hard cap; and whether link density looks low.
+
+## `/wiki:graph <action>` {#graph}
+
+Compile, lint, or query the wiki's typed graph layer. The graph is optional and requires `wiki/graph/ontology.yaml`.
+
+```bash
+/wiki:graph extract
+/wiki:graph neighbors --node product:konvy
+/wiki:graph edges --subject person:stephanie-emmanouel
+/wiki:graph path --from person:praney-behl --to product:konvy
+/wiki:graph facts --about product:konvy
+```
+
+`extract` compiles the markdown into `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, and `graph.graphml`; `lint` validates typed edges; the query subcommands navigate the compiled graph. Markdown stays canonical — the graph can be deleted and rebuilt at any time. See the [Graph layer guide](/graph).
+
+## `/wiki:upgrade` {#upgrade}
+
+Upgrade an existing wiki to the current plugin version. Idempotent file operations plus a walked `SCHEMA.md` merge.
+
+```bash
+/wiki:upgrade
+```
+
+Runs `init_wiki.py . --upgrade`, which adds any missing files (graph layer, `wiki/.wiki-cache/.gitignore`) without touching what already exists, then walks you through appending any missing `SCHEMA.md` sections one at a time. No page or frontmatter format changes — existing pages remain valid. See [Upgrade to v2](/upgrade).

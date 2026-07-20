@@ -1,12 +1,20 @@
 # LLM Wiki — a Claude Code Plugin
 
-Build and maintain an LLM-curated personal knowledge base in your project. An implementation of [Andrej Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) as a Claude Code plugin, designed to scale to thousands of pages without becoming a context bottleneck.
+Build and maintain an LLM-curated personal knowledge base in your project. An implementation of [Andrej Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) as a Claude Code plugin, designed to scale to thousands of pages without becoming a context bottleneck. Full documentation lives at [the docs site](https://praneybehl.github.io/llm-wiki-plugin/).
 
 ## What is this?
 
 Most ways of using LLMs with documents look like RAG: you upload files, the LLM retrieves chunks at query time, generates an answer, and nothing accumulates. Every question re-derives knowledge from raw fragments. Karpathy's LLM Wiki pattern flips this — when a new source arrives, the LLM compiles it once into a persistent, structured wiki of markdown pages, and subsequent queries read the pre-synthesized wiki rather than the raw sources. Knowledge compounds.
 
-This plugin packages the pattern as a Claude Code skill plus six slash commands (`/wiki:init`, `/wiki:ingest`, `/wiki:query`, `/wiki:lint`, `/wiki:stats`, `/wiki:graph`) and a small set of bundled Python scripts (BM25 search, structural lint, stats with scaling thresholds, plus an optional compiled graph layer). You curate sources and ask questions; Claude does the bookkeeping.
+This plugin packages the pattern as a Claude Code skill plus seven slash commands (`/wiki:init`, `/wiki:ingest`, `/wiki:query`, `/wiki:lint`, `/wiki:stats`, `/wiki:graph`, `/wiki:upgrade`) and a small set of bundled Python scripts (BM25 search, structural lint, stats with scaling thresholds, plus an optional compiled graph layer). You curate sources and ask questions; Claude does the bookkeeping.
+
+## What's new in v2.0.0
+
+- **Section-level search with `--json` evidence rows.** `wiki_search.py` now ranks individual page sections by default and can emit structured JSON evidence — heading path, snippet, score, and retrievers — for programmatic consumers.
+- **Functional incremental `--cache`.** The `--cache` flag builds a content-hash parse cache under `wiki/.wiki-cache/`, so repeat searches skip re-parsing unchanged pages while returning byte-identical results.
+- **Opt-in hybrid embeddings.** Point `wiki_search.py` at an OpenAI-compatible embedding endpoint via env vars (`LLM_WIKI_EMBED_URL`, or `OPENAI_API_KEY`) and search fuses BM25 with semantic retrieval through reciprocal rank fusion. No config means lexical BM25 exactly as before; `--no-embed` forces lexical.
+- **Retrieval eval harness.** A stdlib-only harness at `eval/retrieval/` measures recall@5/@10 and MRR across lexical and hybrid modes, with a regression gate.
+- **Full documentation website.** A [VitePress](https://vitepress.dev) documentation site under `docs/` — with fuzzy full-text local search and Mermaid diagrams — builds to `docs/.vitepress/dist` and deploys to [the LLM Wiki docs site](https://praneybehl.github.io/llm-wiki-plugin/) through a GitHub Pages Actions workflow.
 
 ## Why use it
 
@@ -18,7 +26,7 @@ The pattern shines for accumulating textual research over weeks or months — pa
 
 ### Claude Code — full plugin
 
-The native path: the skill, the five `/wiki:*` slash commands, and the marketplace manifest all ship in one install.
+The native path: the skill, the seven `/wiki:*` slash commands, and the marketplace manifest all ship in one install.
 
 ```
 /plugin marketplace add praneybehl/llm-wiki-plugin
@@ -44,24 +52,27 @@ npx skills add praneybehl/llm-wiki-plugin -a <agent>
 | Claude Code | `claude-code` | `/wiki:*` slash commands (bundled) or natural language | ✅ |
 | Codex (OpenAI) | `codex` | `/skills` or `$llm-wiki` / natural language | ✅ |
 | Cursor | `cursor` | `/llm-wiki` or natural language | ✅ |
-| Gemini CLI | `gemini-cli` | `/skills` management commands / natural language | ⚠️ unverified |
-| OpenCode | `opencode` | natural language (agent invokes the native `skill` tool) | ⚠️ unverified |
-| OpenClaw | `openclaw` | auto-exposed as a user command | ⚠️ scripts don't auto-execute |
+| Gemini CLI | `gemini-cli` | `/skills` management commands / natural language | ✅ |
+| OpenCode | `opencode` | natural language (agent invokes the native `skill` tool) | ✅ |
+| OpenClaw | `openclaw` | auto-exposed as a user command | ✅ |
 | Pi Agent | `pi` | `/skill:llm-wiki` or natural language | ✅ |
+| OMP ("Oh My Pi") | manual (see below) | natural language (skills auto-surface via `skill://`) | ✅ |
 
 OpenCode also reads `.claude/skills/` and `~/.claude/skills/`, so if you already installed the skill for Claude Code you can use it in OpenCode without a second install.
 
-**Hermes Agent** (Nous Research) and other agentskills.io-compatible runtimes that aren't yet in the `npx skills` registry can still use this skill — clone the repo and symlink or copy `skills/llm-wiki/` into the agent's skills directory (e.g. `~/.hermes/skills/llm-wiki/`).
+**Hermes Agent** (Nous Research), **OMP** ("Oh My Pi"), and other agentskills.io-compatible runtimes that aren't yet in the `npx skills` registry can still use this skill — clone the repo and symlink or copy `skills/llm-wiki/` into the agent's skills directory. Hermes reads from `~/.hermes/skills/`; OMP reads managed/user skills from `~/.omp/agent/skills/` and surfaces them via `skill://`.
 
 ```bash
 git clone https://github.com/praneybehl/llm-wiki-plugin.git
+mkdir -p ~/.hermes/skills ~/.omp/agent/skills
 ln -s "$(pwd)/llm-wiki-plugin/skills/llm-wiki" ~/.hermes/skills/llm-wiki
+ln -s "$(pwd)/llm-wiki-plugin/skills/llm-wiki" ~/.omp/agent/skills/llm-wiki
 ```
 
 A few things to know when using the skill outside Claude Code:
 
-- **Slash commands are Claude Code-only.** The five `/wiki:*` commands live in `commands/wiki/` as Claude Code plugin manifests. In other agents, invoke the skill by natural language ("add this paper to the wiki", "what does the wiki say about X", "lint the wiki") — the SKILL.md handles the rest.
-- **Script execution varies.** OpenClaw doesn't run bundled Python scripts the way Claude Code does, so BM25 search, lint, and stats degrade to model-driven behavior. Gemini CLI and OpenCode don't document their script-execution semantics explicitly — test before relying on the bundled scripts in those environments. For the full feature set, use Claude Code, Codex, Cursor, or Pi.
+- **Slash commands are Claude Code-only.** The seven `/wiki:*` commands live in `commands/wiki/` as Claude Code plugin manifests. In other agents, invoke the skill by natural language ("add this paper to the wiki", "what does the wiki say about X", "lint the wiki") — the SKILL.md handles the rest.
+- **Bundled-script execution is verified across the listed agents.** BM25 search, lint, and stats have been tested and run in every agent in the table above (confirmed 2026-07-20), so the full feature set is available regardless of which one you use.
 - **The wiki itself is agent-agnostic.** It's just a directory of markdown files. You can ingest with one agent and query with another; nothing in `wiki/` ties it to a specific runtime.
 
 ## Quick start
@@ -76,7 +87,7 @@ Already have a wiki from an earlier plugin version? Run `/wiki:upgrade` instead 
 
 This bootstraps `wiki/` and `raw/` directories with a `SCHEMA.md`, `index.md`, `log.md`, and a page template. Walk through the schema and customize it for your domain — page types, tag taxonomy, any conventions specific to what you're tracking.
 
-As part of the same step, the skill will propose wiring the wiki into your project's agent-memory file so the agent remembers it in future sessions without being told. The target file depends on which agent you use: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / OpenCode / Pi / OpenClaw, `GEMINI.md` for Gemini CLI. If you run multiple agents in the same project, use `AGENTS.md` and symlink `CLAUDE.md` to it. The skill never writes to a memory file without your approval — see `skills/llm-wiki/references/agent-memory-integration.md` for the canonical stanza and a three-line short variant.
+As part of the same step, the skill will propose wiring the wiki into your project's agent-memory file so the agent remembers it in future sessions without being told. The target file depends on which agent you use: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / OpenCode / Pi / OpenClaw / OMP, `GEMINI.md` for Gemini CLI. If you run multiple agents in the same project, use `AGENTS.md` and symlink `CLAUDE.md` to it. The skill never writes to a memory file without your approval — see `skills/llm-wiki/references/agent-memory-integration.md` for the canonical stanza and a three-line short variant.
 
 Drop your first source into `raw/` (a PDF, a markdown clipping from the Obsidian Web Clipper, a transcript, anything textual), then:
 
@@ -140,7 +151,7 @@ The single biggest failure mode of the LLM Wiki pattern is the wiki becoming a c
 
 **Index-first navigation.** Queries read the index first, identify candidate pages from one-line summaries, and only read those. The index is the cache that makes the whole pattern scalable.
 
-**BM25 search as fallback.** Once the wiki passes ~300 pages or a query uses fuzzy language that doesn't match index summaries, `python skills/llm-wiki/scripts/wiki_search.py "query terms"` provides ranked retrieval with frontmatter filters. Pure stdlib — no install. Use `--type concept`, `--tag <tag>`, `--since YYYY-MM-DD` to narrow further; `--backlinks <slug>` to find inbound links; `--top-linked N` to find the wiki's hub pages.
+**BM25 search as fallback.** Once the wiki passes ~300 pages or a query uses fuzzy language that doesn't match index summaries, `python skills/llm-wiki/scripts/wiki_search.py "query terms"` provides ranked retrieval with frontmatter filters. Results are section-level by default with `--json` evidence rows for programmatic use; an incremental `--cache` keyed by content hash keeps repeat searches fast; and hybrid semantic retrieval activates automatically when an embedding endpoint is configured via env vars (lexical BM25 otherwise, `--no-embed` to force it, `--granularity page` to restore whole-page ranking). Pure stdlib — no install. Use `--type concept`, `--tag <tag>`, `--since YYYY-MM-DD` to narrow further; `--backlinks <slug>` to find inbound links; `--top-linked N` to find the wiki's hub pages.
 
 **Surgical edits.** When updating a page during ingest, Claude uses `str_replace` to touch the relevant section, not rewrite the page. Fast, token-efficient, and preserves diff quality if you keep the wiki in git.
 

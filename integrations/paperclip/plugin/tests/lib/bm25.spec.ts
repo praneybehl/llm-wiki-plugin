@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   collectPages,
+  pageFromText,
   searchPages,
+  searchSections,
+  splitSections,
   backlinks,
   topLinked,
 } from "../../src/lib/bm25.js";
@@ -30,6 +33,10 @@ const EXPECTATIONS_PATH = resolve(
 
 interface Snapshot {
   queries: { query: string; slugs: string[] }[];
+  sections: {
+    query: string;
+    results: { slug: string; headingPath: string[] }[];
+  }[];
   filters: { label: string; args: string[]; slugs: string[] }[];
   backlinks: { target: string; slugs: string[] }[];
   topLinked: { slug: string; count: number; broken: boolean }[];
@@ -42,8 +49,8 @@ const snapshot = JSON.parse(
 const pages = collectPages(FIXTURES_ROOT);
 
 describe("collectPages", () => {
-  it("walks the fixture wiki and returns 7 pages", () => {
-    expect(pages).toHaveLength(7);
+  it("walks the fixture wiki and returns 8 pages", () => {
+    expect(pages).toHaveLength(8);
   });
 
   it("skips top-level SCHEMA.md / index.md / log.md and indexes/, graph/ dirs", () => {
@@ -72,12 +79,101 @@ describe("collectPages", () => {
   });
 });
 
+describe("splitSections contract", () => {
+  it("retains the empty preface and an empty heading section", () => {
+    expect(splitSections("Page", "# Heading\n")).toEqual([
+      { headingPath: [], level: 0, text: "", sectionIndex: 0 },
+      { headingPath: ["Heading"], level: 1, text: "", sectionIndex: 1 },
+    ]);
+  });
+
+  it("tracks nested headings and resets at a parent level", () => {
+    const sections = splitSections(
+      "Page",
+      "preface\n# One\nalpha\n## Two\nbeta\n# Reset\ngamma",
+    );
+    expect(sections.map((section) => section.headingPath)).toEqual([
+      [],
+      ["One"],
+      ["One", "Two"],
+      ["Reset"],
+    ]);
+  });
+
+  it("replaces same-level siblings when heading levels are skipped", () => {
+    const sections = splitSections(
+      "Page",
+      "## Alpha\none\n## Beta\ntwo\n# One\n### X\nx\n### Y\ny",
+    );
+    expect(sections.map((section) => section.headingPath)).toEqual([
+      [],
+      ["Alpha"],
+      ["Beta"],
+      ["One"],
+      ["One", "X"],
+      ["One", "Y"],
+    ]);
+  });
+
+  it("ignores headings inside backtick and tilde fences", () => {
+    const sections = splitSections(
+      "Page",
+      "# Real\n```md\n## Backtick\n```\n~~~md\n### Tilde\n~~~\n## Next\nbody",
+    );
+    expect(sections.map((section) => section.headingPath)).toEqual([
+      [],
+      ["Real"],
+      ["Real", "Next"],
+    ]);
+    expect(sections[1]?.text).toContain("## Backtick");
+    expect(sections[1]?.text).toContain("### Tilde");
+  });
+  it("matches Python splitlines behavior for lone CR and Unicode separators", () => {
+    const sections = splitSections(
+      "Page",
+      "# Real\rbody\u2028## Next\rfinal",
+    );
+    expect(sections.map((section) => section.headingPath)).toEqual([
+      [],
+      ["Real"],
+      ["Real", "Next"],
+    ]);
+  });
+
+  it("falls back to the slug when frontmatter title is an empty string", () => {
+    const page = pageFromText(
+      "/wiki/zeta-topic.md",
+      "concepts/zeta-topic.md",
+      "---\ntype: concept\ntitle: \"\"\n---\n# Zeta Topic\nbody",
+    );
+    const results = searchSections([page], { query: "zeta topic", topK: 10 });
+    expect(results.map(({ section }) => section.headingPath)).toEqual([
+      ["Zeta Topic"],
+      [],
+    ]);
+  });
+
+});
+
 describe("searchPages — Python parity", () => {
   for (const { query, slugs: expected } of snapshot.queries) {
     it(`query: ${JSON.stringify(query)} ranks identically to wiki_search.py`, () => {
       const results = searchPages(pages, { query, topK: 10 });
       const actualSlugs = results.map((r) => r.page.slug);
       expect(actualSlugs).toEqual(expected);
+    });
+  }
+});
+
+describe("searchSections — Python parity", () => {
+  for (const { query, results: expected } of snapshot.sections) {
+    it(`query: ${JSON.stringify(query)} ranks sections identically to wiki_search.py`, () => {
+      const results = searchSections(pages, { query, topK: 10 });
+      const actual = results.map(({ section }) => ({
+        slug: section.page.slug,
+        headingPath: section.headingPath,
+      }));
+      expect(actual).toEqual(expected);
     });
   }
 });

@@ -11,6 +11,7 @@ interface RelevantResult {
   title: string;
   type: string;
   score: number;
+  heading?: string;
 }
 
 interface RelevantPayload {
@@ -62,7 +63,12 @@ function ContextList({ context }: PluginDetailTabProps): React.ReactElement {
               data-wiki-slug={r.slug}
               className="llm-wiki-result-link"
             >
-              <span className="llm-wiki-result-title">{r.title}</span>
+              <span className="llm-wiki-result-copy">
+                <span className="llm-wiki-result-title">{r.title}</span>
+                {r.heading ? (
+                  <span className="llm-wiki-result-heading">{r.heading}</span>
+                ) : null}
+              </span>
               <span className="llm-wiki-result-type">{r.type}</span>
             </HostLink>
           </li>

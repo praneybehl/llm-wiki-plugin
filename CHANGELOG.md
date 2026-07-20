@@ -6,40 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Added
-
-- **`paperclip-plugin-llm-wiki` v0.4 — Obsidian-style wiki workspace inside Paperclip.** The plugin's page slot at `/{prefix}/llm-wiki` becomes a real three-column workspace: a folder tree on the left (mirroring the on-disk `concepts/`, `entities/`, `sources/`, `synthesis/` structure), a URL-driven Reader in the center, and a metadata rail on the right (Properties + Outline + Backlinks). Wiki pages have per-page URLs (`#concepts/transformer`) so they can be copied, shared, and back-buttoned to. Wikilinks in rendered markdown navigate via these URLs rather than via component state. Markdown rendering picks up `rehype-slug`, `rehype-autolink-headings`, and `rehype-highlight` for stable heading ids, hover-anchors, and code syntax highlighting.
-- **Sidebar slot becomes a launcher.** Drops the in-sidebar reader (cramped and a dead-end) in favour of an Open link, a search input that submits to `?q=…`, a Recent list backed by sessionStorage, a Browse-by-type list, and a condensed health badge. When the wiki is missing, collapses to a single "Set up the wiki →" CTA pointing at the Setup view.
-- **Setup walkthrough (`?view=setup`).** Closes the loop between "I installed the plugin" and "my agents actually use the wiki." The plugin's sandbox can't auto-install the agent-side skill or modify any agent's heartbeat instructions, so the walkthrough lays out the runbook in one place: live status checks for wiki + tool + sample query, copy-paste-ready install commands per adapter (Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Pi), the canonical heartbeat stanza, and the system-prompt addition for HTTP-only agents.
-- **Backlinks worker provider + right-rail panel** — pages that reference the active page. Reuses the symlink-hardened `collectPages` walker; no new capability declared.
-- **`verifySetup` worker provider** — composes wiki resolution + a sample search into a structured payload the Setup view renders ✅/❌ from.
-- **`wiki.query` tool description rewritten to be self-instructive.** Tells agents reading the toolbelt *when* to call (source-of-truth phrasing, before-answering trigger) instead of just describing the algorithm. Single source: defined once in the manifest, imported by the worker.
-- **Quick switcher (⌘K / Ctrl-K).** Fuzzy-search modal of every wiki page, built on Vercel's `cmdk`. Topbar surfaces a clickable breadcrumb and back/forward arrows.
-
-### Changed
-
-- **`paperclip-plugin-llm-wiki`**: 99 new tests (196 → 295), 8 new UI components, 2 new worker providers. The single-column `WikiBrowser` from v0.3 is gone — superseded by the three-column workspace + launcher. Issue detail tab links now resolve to the wiki workspace's `#slug` URLs instead of a fake page-local hash.
-
-## [Unreleased — earlier work]
+## [2.0.0] — 2026-07-20
 
 ### Added
 
-- **Paperclip integration: `paperclip-plugin-llm-wiki` (npm v0.0.1).** A new sub-deliverable under `integrations/paperclip/plugin/` that surfaces the LLM Wiki inside Paperclip's UI as a read-only context lens. Five surfaces: a Company sidebar, a full-page view at `/companies/:c/plugins/llm-wiki`, an issue-detail tab that auto-surfaces relevant wiki pages by BM25 over title + description, a dashboard health widget (page count, lint status, link density, scaling-threshold messages), and a `wiki.query` agent-callable tool for HTTP/webhook adapters that don't run the skill directly. The plugin is strictly read-only — writes still happen through agents on heartbeat (via the skill) or through the operator's existing markdown environment.
-- **Algorithmic parity between the plugin and the canonical Python scripts.** The plugin's TypeScript ports of `wiki_search.py`, `wiki_lint.py`, and `wiki_stats.py` are mechanically tested for byte-for-byte parity against a fixed fixture corpus — same BM25 constants (k1=1.5, b=0.75), same IDF formula, same skip rules. Snapshot regeneration script: `python3 integrations/paperclip/plugin/tests/fixtures/_gen_bm25_expectations.py`. Search results from the plugin and from agent heartbeat will not drift.
-- **`integrations/paperclip/SPEC.md`** — v0.1 plugin design proposal with verbatim references to the live Paperclip plugin SDK.
-- **`integrations/paperclip/FEASIBILITY.md`** — Phase 0 validation report against `paperclipai/paperclip@master`. Documents the 14 SPEC errata that surfaced during validation (e.g., manifest field is `categories` not `category`; tool result is `{ content?, data?, error? }` not `{ content, structured }`; `ErrorBoundary` is not re-exported from `@paperclipai/plugin-sdk/ui`).
-- **CI job** for the plugin package gated to changes under `integrations/paperclip/**`. Runs `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test`, `pnpm run build`, and verifies that `dist/` is included in the publish tarball (the most-cited Paperclip plugin publishing failure mode).
+- **Section-level retrieval with structured evidence.** `wiki_search.py` now ranks ATX-heading sections by default, emits `--json` evidence rows with heading paths, snippets, source metadata, and neighbors, and retains the prior whole-page behavior behind `--granularity page`.
+- **Incremental retrieval cache.** `--cache` stores content-hashed parse results under `wiki/.wiki-cache/`; cold, warm, and uncached searches return byte-identical JSON.
+- **Opt-in hybrid retrieval.** OpenAI-compatible embedding endpoints activate semantic ranking fused with BM25 through reciprocal rank fusion. Embedding vectors are cached locally; backend failures fall back to lexical search without failing the command.
+- **Retrieval evaluation harness.** `eval/retrieval/` ships a 20-page corpus, 32 exact/paraphrase/filter/negative queries, recall/MRR/false-positive metrics, a section-vs-page regression gate, and cache-invariance checks.
+- **Documentation website.** A [VitePress](https://vitepress.dev) site under `docs/` — nine guides with fuzzy full-text local search and Mermaid diagrams — builds to `docs/.vitepress/dist` and deploys to GitHub Pages through a dedicated Actions workflow (`.github/workflows/deploy-docs.yml`).
+- **SEO and agent discovery.** Every guide ships unique descriptions, canonical URLs, Open Graph/Twitter cards, schema.org JSON-LD, and permissive crawl directives. The Pages artifact includes a sitemap, `robots.txt`, `llms.txt`, and a 1200×630 social preview; natural-language FAQs and tuned fuzzy/prefix search improve human and AI retrieval.
+- **Paperclip integration.** `paperclip-plugin-llm-wiki` v0.5.0 provides a three-column wiki workspace, sidebar launcher, setup walkthrough, quick switcher, backlinks panel, issue-context tab, dashboard health, and the agent-callable `wiki.query` tool. The integration remains read-only; agents maintain canonical Markdown through the skill.
+- **Paperclip design and verification assets.** `integrations/paperclip/SPEC.md` and `FEASIBILITY.md` document the design and SDK validation. The Paperclip CI job installs pinned dependencies, typechecks, tests, builds, and checks the publish package.
 
 ### Changed
 
-- Top-level README and the repo layout now document the Paperclip integration. The `SPEC.md` proposal that was at the repo root in pre-release work has moved to `integrations/paperclip/SPEC.md` for co-location with the package it describes.
-- The skill itself, the seven slash commands, the Python scripts, and the wiki schema are unchanged in this release. Existing wikis and existing skill installs are unaffected — the plugin is purely additive.
+- **Paperclip retrieval parity.** The TypeScript port now performs section-level BM25, returns heading/snippet evidence, de-duplicates issue-context results by page, and stays synchronized with Python through generated parity fixtures.
+- **Paperclip workspace.** The former single-column browser is now a URL-driven Reader with a folder tree, metadata rail, stable heading links, syntax highlighting, recent pages, and per-page URLs. Setup and `verifySetup` close the loop between plugin install and agent-side skill configuration.
+- **Idempotent v2 upgrade.** `/wiki:upgrade` and `init_wiki.py --upgrade` create `wiki/.wiki-cache/.gitignore` and surface the new `## Retrieval` schema section without changing existing page content.
+- Agent documentation now records verified bundled-script support across all listed agents, including OMP.
 
-### Notes
+### Notes for upgraders
 
-- The Paperclip plugin SDK uses calver, not semver. The plugin pins `@paperclipai/plugin-sdk` at exactly `2026.428.0` as a peer dependency (per the SDK's own published versioning convention). Updating to a newer SDK should be a deliberate bump that re-runs Phase 0 validation against the new SDK source.
-- Plugin discovery UI in Paperclip is currently invisible — install via the CLI or the local-path HTTP endpoint until the upstream discovery surface ships ([`paperclipai/paperclip` issue #2678](https://github.com/paperclipai/paperclip/issues/2678)).
-- [`paperclipai/paperclip` issue #2276](https://github.com/paperclipai/paperclip/issues/2276) is OPEN but already fixed on master — the bug affects worker-only plugins with no UI slots, not plugins that declare `dashboardWidget`. The plugin's manifest declares a full `ui.slots[]` and matches every slot to its capability, so this issue does not apply to us. Recorded here for traceability against the FEASIBILITY report's earlier (incorrect) framing.
+- Pull v2.0.0 and run `/wiki:upgrade` (or `python skills/llm-wiki/scripts/init_wiki.py . --upgrade`), then approve the `## Retrieval` addition to `wiki/SCHEMA.md`. Existing pages need no content migration.
+- Hybrid embeddings remain opt-in. Without embedding environment variables, search stays stdlib-only lexical BM25.
+- The Paperclip plugin pins `@paperclipai/plugin-sdk` at `2026.428.0`; its calver SDK should be upgraded deliberately and revalidated against upstream source.
 
 ## [0.3.0] — 2026-04-25
 
@@ -102,7 +93,8 @@ Initial release.
 - Surgical `str_replace` edits over rewrites to keep ingest token-cheap and diffs clean.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v0.3.0...HEAD
+[2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.0...HEAD
 [0.3.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.3.0
 [0.2.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.2.0
 [0.1.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.1.0

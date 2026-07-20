@@ -1,6 +1,6 @@
 {
   "name": "llm-wiki",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Build and maintain an LLM-curated personal knowledge base with section-level BM25 search, structured evidence, incremental caching, optional hybrid embeddings, and a compiled graph layer.",
   "author": {
     "name": "Praney Behl"

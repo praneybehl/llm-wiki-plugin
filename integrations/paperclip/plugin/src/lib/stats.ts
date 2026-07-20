@@ -4,7 +4,7 @@
  * Byte-for-byte parity with skills/llm-wiki/scripts/wiki_stats.py:
  *   - Skip rules: SCHEMA.md, log.md, README.md at top level (NOT index.md —
  *     index.md content is read for indexLines and excluded from page stats).
- *     indexes/, graph/ directories skipped. Dotfiles skipped.
+ *     indexes/, graph/, raw/ directories skipped. Dotfiles skipped.
  *   - pages by type from frontmatter `type:` field.
  *   - pages by directory: top-level dir name, or "(root)" for top-level pages.
  *   - link density = totalLinks / totalPages.
@@ -49,7 +49,7 @@ function realpathContained(realRoot: string, target: string): string | null {
 }
 
 const SKIP_TOP_LEVEL_FILES = new Set(["SCHEMA.md", "log.md", "README.md"]);
-const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph"]);
+const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", "raw"]);
 
 export interface StatsResult {
   totalPages: number;

@@ -97,7 +97,7 @@ def list_pages_sorted() -> list[tuple[str, str, list[str]]]:
     WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
     FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
     SKIP_FILES = {"SCHEMA.md", "index.md", "log.md"}
-    SKIP_DIRS = {"indexes", "graph", ".wiki-cache"}
+    SKIP_DIRS = {"indexes", "graph", "raw", ".wiki-cache"}
 
     pages = []
     paths = sorted(WIKI.rglob("*.md"), key=lambda p: str(p.relative_to(WIKI)))

@@ -142,11 +142,13 @@ describe("computeStats — skip rules", () => {
     // Add a graph/ directory file
     mkdirSync(join(root, "graph"), { recursive: true });
     writeFileSync(join(root, "graph/nodes.md"), "graph\n", "utf-8");
+    mkdirSync(join(root, "raw"), { recursive: true });
+    writeFileSync(join(root, "raw/source.md"), "raw\n", "utf-8");
     stats = computeStats(root);
   });
   afterAll(() => rmSync(root, { recursive: true, force: true }));
 
-  it("totalPages excludes SCHEMA / log / README / dotfiles / indexes/ / graph/", () => {
+  it("totalPages excludes metadata, dotfiles, indexes/, graph/, and raw/", () => {
     expect(stats.totalPages).toBe(1);
   });
 
@@ -154,9 +156,10 @@ describe("computeStats — skip rules", () => {
     expect(stats.indexLines).toBe(50);
   });
 
-  it("pagesByDirectory does not include indexes or graph", () => {
+  it("pagesByDirectory excludes indexes, graph, and raw", () => {
     expect(stats.pagesByDirectory.indexes).toBeUndefined();
     expect(stats.pagesByDirectory.graph).toBeUndefined();
+    expect(stats.pagesByDirectory.raw).toBeUndefined();
   });
 });
 

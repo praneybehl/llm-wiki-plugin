@@ -23,7 +23,7 @@ FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "log.md", "README.md"}
-SKIP_TOP_LEVEL_DIRS = {"indexes", "graph"}
+SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw"}
 
 
 def parse_type(text: str) -> str | None:

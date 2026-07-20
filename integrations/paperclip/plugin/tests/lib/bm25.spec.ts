@@ -53,13 +53,13 @@ describe("collectPages", () => {
     expect(pages).toHaveLength(8);
   });
 
-  it("skips top-level SCHEMA.md / index.md / log.md and indexes/, graph/ dirs", () => {
-    // Fixture wiki has none of those, but the rule must hold — assert no
-    // page slug equals one of the skipped names.
+  it("skips metadata and generated/raw directories", () => {
+    // The fixture includes raw/example.md, which must never become a page.
     const slugs = pages.map((p) => p.slug);
     for (const skipped of ["SCHEMA", "index", "log"]) {
       expect(slugs).not.toContain(skipped);
     }
+    expect(pages.every((page) => !page.relPath.startsWith("raw/"))).toBe(true);
   });
 
   it("extracts links from the body, not the frontmatter", () => {

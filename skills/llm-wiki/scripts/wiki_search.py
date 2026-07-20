@@ -162,7 +162,7 @@ def collect_pages(wiki_root: Path, cache_path: Path | None = None) -> list[dict]
         rel = md_path.relative_to(wiki_root)
         if rel.parts[0] in {"SCHEMA.md", "index.md", "log.md"} or rel.name.startswith("."):
             continue
-        if rel.parts[0] in {"indexes", "graph", ".wiki-cache"}:
+        if rel.parts[0] in {"indexes", "graph", "raw", ".wiki-cache"}:
             continue
         rel_path = str(rel)
         try:

@@ -7,7 +7,7 @@
  *   - IDF:       log(1 + (N - df + 0.5) / (df + 0.5))
  *   - Index:     built over the *filtered* page set, not the full corpus.
  *   - Skip:      SCHEMA.md, index.md, log.md at top level; indexes/, graph/,
- *                .wiki-cache/ directories; dotfiles.
+ *                raw/, .wiki-cache/ directories; dotfiles.
  *
  * Parity is enforced by tests/lib/bm25.spec.ts against a snapshot captured
  * by tests/fixtures/_gen_bm25_expectations.py. If you change the algorithm,
@@ -32,7 +32,7 @@ const K1 = 1.5;
 const B = 0.75;
 
 const SKIP_TOP_LEVEL_FILES = new Set(["SCHEMA.md", "index.md", "log.md"]);
-const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", ".wiki-cache"]);
+const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", "raw", ".wiki-cache"]);
 
 export interface WikiPage {
   path: string;

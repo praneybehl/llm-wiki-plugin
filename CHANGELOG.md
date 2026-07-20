@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-07-20
+
+### Fixed
+
+- Exclude a top-level `raw/` directory from Python and Paperclip search, lint, stats, and graph compilation. This supports wikis that keep immutable raw sources inside the wiki root without allowing raw documents to pollute canonical page retrieval or graph output.
+
 ## [2.0.0] — 2026-07-20
 
 ### Added
@@ -94,7 +100,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.1
 [0.3.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.3.0
 [0.2.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.2.0
 [0.1.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v0.1.0

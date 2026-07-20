@@ -9,7 +9,7 @@ import { lintWiki, type LintFindings } from "../../src/lib/lint.js";
  * (lines 119-241). Same finding categories, same thresholds, same skip
  * rules — soft cap 400, hard cap 800, staleness 90d for hubs with ≥3
  * inbound. Skips SCHEMA.md, index.md, log.md, README.md at top level and
- * indexes/, graph/ directories, plus dotfiles.
+ * indexes/, graph/, raw/ directories, plus dotfiles.
  *
  * Fixture wiki is built at test time so the seeded issues are visible in
  * the test source (no large dummy .md files in the repo).
@@ -205,6 +205,7 @@ this frontmatter never ends
   write("README.md", "# readme (must be skipped per lint rule)");
   write("indexes/by-type.md", "# sharded index (skipped dir)");
   write("graph/nodes.md", "# graph file (skipped dir)");
+  write("raw/source.md", "# immutable raw source (skipped dir)");
   write(".hidden.md", "# dotfile, must be skipped");
 
   // Run lint with small caps so the dummy oversize bodies trip the cap.
@@ -302,7 +303,7 @@ describe("lintWiki — finding categories", () => {
     }
   });
 
-  it("skips indexes/ and graph/ directories", () => {
+  it("skips indexes/, graph/, and raw/ directories", () => {
     const allPaths = [
       ...findings.orphans.map((o) => o.path),
       ...findings.missingFrontmatter.map((m) => m.path),
@@ -310,6 +311,7 @@ describe("lintWiki — finding categories", () => {
     for (const p of allPaths) {
       expect(p.startsWith("indexes/")).toBe(false);
       expect(p.startsWith("graph/")).toBe(false);
+      expect(p.startsWith("raw/")).toBe(false);
     }
   });
 

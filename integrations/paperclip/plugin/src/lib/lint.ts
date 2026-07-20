@@ -9,7 +9,7 @@
  *     with ≥3 inbound; required fm fields = type, title, tags, created,
  *     updated.
  *   - Skip rules: SCHEMA.md, index.md, log.md, README.md at top level,
- *     plus indexes/, graph/ directories and dotfiles.
+ *     plus indexes/, graph/, raw/ directories and dotfiles.
  *
  * Conservative — reports findings, never edits.
  *
@@ -59,7 +59,7 @@ const SKIP_TOP_LEVEL_FILES = new Set([
   "log.md",
   "README.md",
 ]);
-const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph"]);
+const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", "raw"]);
 
 export interface LintOptions {
   softCap?: number;

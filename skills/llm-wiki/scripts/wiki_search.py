@@ -21,6 +21,8 @@ Options:
     --per-page N            Maximum section results per page (default: 2)
     --json                  Emit structured evidence rows
     --no-embed              Force lexical-only BM25
+    --approve-embedding-build
+                            Approve an initial/full provider-specific vector build
 
 Examples:
     python wiki_search.py "diffusion training stability" --top 5
@@ -51,10 +53,13 @@ EMBEDDING_MODE_RE = re.compile(
     r"^\s*-\s*Embedding mode:\s*`?(lexical|openai|custom|deferred|undecided)`?",
     re.IGNORECASE | re.MULTILINE,
 )
-EMBEDDING_CACHE_VERSION = 2
+EMBEDDING_CACHE_VERSION = 3
 
 
 class LegacyEmbeddingCacheError(RuntimeError):
+    pass
+
+class EmbeddingBuildApprovalError(RuntimeError):
     pass
 
 
@@ -413,6 +418,15 @@ def embed_texts(texts: list[str], cfg: dict) -> list[list[float]]:
     return vectors
 
 
+def embedding_failure_label(exc: Exception) -> str:
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, urllib_error.HTTPError):
+            return f"HTTP {current.code}"
+        current = current.__cause__
+    return type(exc).__name__
+
+
 def cosine_similarity(left: list[float], right: list[float]) -> float:
     if len(left) != len(right):
         raise ValueError(f"embedding dimension mismatch: {len(left)} != {len(right)}")
@@ -423,51 +437,84 @@ def cosine_similarity(left: list[float], right: list[float]) -> float:
     return sum(a * b for a, b in zip(left, right)) / (left_norm * right_norm)
 
 
-def load_embedding_cache(path: Path) -> tuple[dict[str, list[float]], bool]:
-    vectors = {}
-    has_legacy_rows = False
-    has_current_rows = False
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except FileNotFoundError:
-        return vectors, False
-    for line in lines:
-        try:
-            row = json.loads(line)
-            if not isinstance(row.get("key"), str) or not isinstance(row.get("vec"), list):
-                continue
-            if row.get("cache_version") != EMBEDDING_CACHE_VERSION:
-                has_legacy_rows = True
-                continue
-            vectors[row["key"]] = [float(value) for value in row["vec"]]
-            has_current_rows = True
-        except (json.JSONDecodeError, TypeError, ValueError):
-            continue
-    return vectors, has_legacy_rows and not has_current_rows
-
-
-def section_embedding_key(cfg: dict, text: str) -> str:
-    provider_identity = "\n".join((
+def embedding_provider_identity(cfg: dict) -> str:
+    return "\n".join((
         cfg["provider"],
         cfg["url"].rstrip("/"),
         cfg["model"],
     ))
-    return hashlib.sha256(f"{provider_identity}\n{text}".encode("utf-8")).hexdigest()
 
 
-def section_vectors(sections: list[dict], wiki_root: Path, cfg: dict) -> list[list[float]]:
+def embedding_provider_fingerprint(cfg: dict) -> str:
+    identity = embedding_provider_identity(cfg)
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
+
+def load_embedding_cache(
+    path: Path,
+    cfg: dict,
+) -> tuple[dict[str, list[float]], bool, bool]:
+    vectors = {}
+    has_legacy_rows = False
+    provider_approved = False
+    fingerprint = embedding_provider_fingerprint(cfg)
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return vectors, False, False
+    for line in lines:
+        try:
+            row = json.loads(line)
+            if row.get("cache_version") != EMBEDDING_CACHE_VERSION:
+                if (
+                    row.get("cache_version") is not None
+                    or (
+                        isinstance(row.get("key"), str)
+                        and isinstance(row.get("vec"), list)
+                    )
+                ):
+                    has_legacy_rows = True
+                continue
+            if row.get("kind") == "provider_marker":
+                if row.get("provider_fingerprint") == fingerprint:
+                    provider_approved = True
+                continue
+            if isinstance(row.get("key"), str) and isinstance(row.get("vec"), list):
+                vectors[row["key"]] = [float(value) for value in row["vec"]]
+        except (json.JSONDecodeError, TypeError, ValueError):
+            continue
+    return vectors, has_legacy_rows, provider_approved
+
+
+def section_embedding_key(cfg: dict, text: str) -> str:
+    fingerprint = embedding_provider_fingerprint(cfg)
+    return hashlib.sha256(f"{fingerprint}\n{text}".encode("utf-8")).hexdigest()
+
+
+def section_vectors(
+    sections: list[dict],
+    wiki_root: Path,
+    cfg: dict,
+    approve_build: bool = False,
+) -> list[list[float]]:
     path = wiki_root / ".wiki-cache" / "embeddings.jsonl"
-    cached, legacy_only = load_embedding_cache(path)
+    cached, legacy_only, provider_approved = load_embedding_cache(path, cfg)
     if legacy_only:
         raise LegacyEmbeddingCacheError(
             "legacy embedding cache detected; approve a full rebuild, then remove "
-            f"{path} and rerun hybrid search"
+            f"{path} and rerun with --approve-embedding-build"
         )
     keys = [section_embedding_key(cfg, section["searchable_text"]) for section in sections]
     missing = {}
     for key, section in zip(keys, sections):
         if key not in cached and key not in missing:
             missing[key] = section["searchable_text"]
+    if missing and not provider_approved and not approve_build:
+        raise EmbeddingBuildApprovalError(
+            "provider's initial embedding build requires explicit approval; rerun "
+            "with --approve-embedding-build only after the user approves sending "
+            "all missing canonical sections"
+        )
     if missing:
         print(f"embedding {len(missing)} new sections via {cfg['model']}...", file=sys.stderr)
         missing_keys = list(missing)
@@ -479,11 +526,28 @@ def section_vectors(sections: list[dict], wiki_root: Path, cfg: dict) -> list[li
                 handle.write(json.dumps({
                     "cache_version": EMBEDDING_CACHE_VERSION,
                     "provider": cfg["provider"],
-                    "endpoint": cfg["url"].rstrip("/"),
                     "key": key,
                     "model": cfg["model"],
                     "vec": vector,
                 }) + "\n")
+            if approve_build and not provider_approved:
+                handle.write(json.dumps({
+                    "cache_version": EMBEDDING_CACHE_VERSION,
+                    "kind": "provider_marker",
+                    "provider": cfg["provider"],
+                    "model": cfg["model"],
+                    "provider_fingerprint": embedding_provider_fingerprint(cfg),
+                }) + "\n")
+    elif approve_build and not provider_approved:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps({
+                "cache_version": EMBEDDING_CACHE_VERSION,
+                "kind": "provider_marker",
+                "provider": cfg["provider"],
+                "model": cfg["model"],
+                "provider_fingerprint": embedding_provider_fingerprint(cfg),
+            }) + "\n")
     return [cached[key] for key in keys]
 
 
@@ -598,7 +662,12 @@ def cmd_search(args, pages: list[dict]) -> None:
         )
     if cfg:
         try:
-            vectors = section_vectors(sections, args.wiki, cfg)
+            vectors = section_vectors(
+                sections,
+                args.wiki,
+                cfg,
+                approve_build=args.approve_embedding_build,
+            )
             query_vector = embed_texts([args.query], cfg)[0]
             embedding_ranked = [
                 (cosine_similarity(query_vector, vector), index)
@@ -628,10 +697,13 @@ def cmd_search(args, pages: list[dict]) -> None:
                 ranked.append((score, index, retrievers))
             ranked.sort(key=lambda item: -item[0])
             mode = "hybrid"
+        except EmbeddingBuildApprovalError as exc:
+            print(f"warning: {exc}; falling back to lexical", file=sys.stderr)
         except LegacyEmbeddingCacheError as exc:
             print(f"warning: {exc}; falling back to lexical", file=sys.stderr)
         except Exception as exc:
-            print(f"warning: embedding backend failed ({exc}); falling back to lexical", file=sys.stderr)
+            label = embedding_failure_label(exc)
+            print(f"warning: embedding backend failed ({label}); falling back to lexical", file=sys.stderr)
 
     page_counts = Counter()
     top_sections = []
@@ -726,6 +798,11 @@ def main():
                         help="Maximum section results per page (default: 2).")
     parser.add_argument("--json", action="store_true", help="Emit structured JSON search results.")
     parser.add_argument("--no-embed", action="store_true", help="Force lexical-only search.")
+    parser.add_argument(
+        "--approve-embedding-build",
+        action="store_true",
+        help="Approve an initial/full provider-specific vector build.",
+    )
     args = parser.parse_args()
     cache_path = None
     if args.cache:

@@ -51,10 +51,10 @@ Do not store keys or authorization headers. `wiki_search.py` reads this persiste
 
 ## Validate hybrid setup
 
-A real validation is billable and sends text to the provider, so get explicit approval before running it. If `embeddings.jsonl` contains rows without `cache_version: 2`, treat it as a legacy cache: stay lexical, explain that provider-isolated keys require a full rebuild, and ask for approval before deleting the cache and resending canonical sections. Then:
+A real validation is billable and sends text to the provider, so get explicit approval before running it. A new provider identity has no approval marker and therefore stays lexical until the approved run includes `--approve-embedding-build`; after that, the marker permits automatic embedding of only new or changed sections. If `embeddings.jsonl` contains rows whose `cache_version` is not `3` (including v2 rows that may expose a raw endpoint), stay lexical, explain that a safe provider-fingerprinted cache requires a full rebuild, and ask for approval before deleting the cache. Then:
 
-1. Run one representative `wiki_search.py` query with `--cache --json` and without `--no-embed`.
+1. Run one representative `wiki_search.py` query with `--cache --approve-embedding-build --json` and without `--no-embed`.
 2. Confirm the JSON response reports `"mode": "hybrid"`.
 3. Confirm `wiki/.wiki-cache/embeddings.jsonl` exists and is non-empty.
 4. Run the same query again to confirm cached vectors are reused.
-5. If the provider rejects the request, report the exact failure and the BM25 fallback. Keep the setup state as configured but not API-validated.
+5. If the provider rejects the request, report the HTTP status or safe failure class and the BM25 fallback; never echo endpoint credentials or provider response bodies. Keep the setup state as configured but not API-validated.

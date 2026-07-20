@@ -141,10 +141,10 @@ First set `- Embedding mode: openai` under `## Retrieval` in `wiki/SCHEMA.md` af
 ```bash
 export OPENAI_API_KEY=sk-your-key-here
 python skills/llm-wiki/scripts/wiki_search.py "how does self-attention weigh tokens" \
-  --wiki wiki --json --top 5
+  --wiki wiki --json --top 5 --approve-embedding-build
 ```
 
-Uses `text-embedding-3-small` on `api.openai.com` by default. The first run embeds every section (one `embedding N new sections…` line to stderr); later runs only embed what changed.
+Uses `text-embedding-3-small` on `api.openai.com` by default. Use `--approve-embedding-build` only on the first run after explicit approval; it embeds every section and stores a provider marker. Later runs omit the flag and automatically embed only new or changed sections.
 
 ### Worked config: local Ollama
 First set `- Embedding mode: custom` under `## Retrieval` in `wiki/SCHEMA.md` after the user approves the data transfer and ongoing provider use.
@@ -153,11 +153,11 @@ First set `- Embedding mode: custom` under `## Retrieval` in `wiki/SCHEMA.md` af
 export LLM_WIKI_EMBED_URL=http://localhost:11434/v1/embeddings
 export LLM_WIKI_EMBED_MODEL=nomic-embed-text
 python skills/llm-wiki/scripts/wiki_search.py "how does self-attention weigh tokens" \
-  --wiki wiki --json --top 5
+  --wiki wiki --json --top 5 --approve-embedding-build
 ```
 
 No key is needed for a local endpoint — leave `LLM_WIKI_EMBED_KEY` unset and no `Authorization` header is sent. The same pattern works for LM Studio or any other OpenAI-compatible server.
 
 ## The cache directory
 
-`wiki/.wiki-cache/` holds every regenerable retrieval artifact — the parse cache and embedding vectors. Vector keys include the approved provider identity, normalized endpoint, model, and section text, so switching providers cannot reuse incompatible vectors even when model names match. If an older cache has no `cache_version: 2` rows, search stays lexical and asks for approval before the cache is deleted and all canonical sections are re-embedded; it never silently triggers a billable rebuild. The directory is gitignored, safe to delete after approval, and should never be edited by hand.
+`wiki/.wiki-cache/` holds every regenerable retrieval artifact — the parse cache and embedding vectors. Vector keys and approval markers use a SHA-256 fingerprint of provider mode, normalized endpoint, and model; raw custom endpoints, URL credentials, and query tokens are never persisted. A new or switched provider has no matching marker, so search stays lexical until an explicitly approved run uses `--approve-embedding-build`; later same-provider searches embed only new or changed sections without asking again. Legacy caches also stay lexical until deletion and rebuild are approved.

@@ -6,12 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.7] - 2026-07-20
+
+### Fixed
+
+- Require `--approve-embedding-build` before a new or switched provider can upload canonical sections, then persist a provider-fingerprint approval marker after success.
+- Permit later same-provider searches to embed only new or changed sections without repeated approval, including one-section wikis where every current section changed.
+- Add regressions for deferred first builds, provider switches, marker persistence, and same-provider incremental updates.
+- Persist only a SHA-256 provider fingerprint in cache version 3; custom endpoint URLs, embedded credentials, and signed query tokens are never written to new rows. Version 2 caches are treated as legacy and require an approved delete/rebuild so previously persisted raw endpoints are removed.
+- Redact backend failure details from CLI fallback warnings so credential-bearing endpoint URLs and provider response bodies cannot leak to stderr.
+
 ## [2.0.6] - 2026-07-20
 
 ### Fixed
 
 - Detect legacy embedding caches before hybrid retrieval and fall back to lexical with an explicit approve/delete/rebuild instruction instead of silently resending every canonical section.
-- Stamp new vector rows with cache version and non-secret provider metadata; add a subprocess regression proving legacy caches remain untouched without approval.
+- Stamp new vector rows with cache version and provider metadata; add a subprocess regression proving legacy caches remain untouched without approval.
 
 ## [2.0.5] - 2026-07-20
 
@@ -137,7 +147,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.6...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.7...HEAD
+[2.0.7]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.7
 [2.0.6]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.6
 [2.0.5]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.5
 [2.0.4]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.4

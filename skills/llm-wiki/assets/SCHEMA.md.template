@@ -90,7 +90,7 @@ When the wiki passes ~150 pages or `index.md` exceeds 300 lines, shard into `wik
 - `wiki/.wiki-cache/` holds regenerable retrieval artifacts (parse cache, embedding vectors). Safe to delete at any time; never edit by hand; gitignored.
 - Optional semantic retrieval is provider-bound. `Embedding mode: openai` uses only `https://api.openai.com/v1/embeddings`, `OPENAI_API_KEY`, and `LLM_WIKI_EMBED_MODEL` (default `text-embedding-3-small`). `Embedding mode: custom` requires `LLM_WIKI_EMBED_URL` plus `LLM_WIKI_EMBED_MODEL`, optionally uses `LLM_WIKI_EMBED_KEY`, and never falls back to OpenAI. `--no-embed` always forces lexical search.
 - Embedding mode: `undecided` (`lexical` | `openai` | `custom` | `deferred`). The search script treats `undecided`, `lexical`, and `deferred` as local-only even if an API key is present. Setup must ask before changing this or making the first billable request.
-- Hybrid data use: every hybrid query sends its query text to the provider; the first build sends every canonical section, and later searches send new or changed sections whose vectors are missing.
+- Hybrid data use: every hybrid query sends its query text; an initial or switched-provider build sends canonical sections only when an approved run includes `--approve-embedding-build`. Its provider fingerprint marker then permits later same-provider searches to send only new or changed sections.
 - Embedding setup verified: `not yet API-validated`. Change this only after a real hybrid query succeeds and `wiki/.wiki-cache/embeddings.jsonl` exists.
 
 ## Graph layer

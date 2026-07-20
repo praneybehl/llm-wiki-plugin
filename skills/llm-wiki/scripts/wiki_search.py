@@ -51,6 +51,11 @@ EMBEDDING_MODE_RE = re.compile(
     r"^\s*-\s*Embedding mode:\s*`?(lexical|openai|custom|deferred|undecided)`?",
     re.IGNORECASE | re.MULTILINE,
 )
+EMBEDDING_CACHE_VERSION = 2
+
+
+class LegacyEmbeddingCacheError(RuntimeError):
+    pass
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
@@ -418,20 +423,27 @@ def cosine_similarity(left: list[float], right: list[float]) -> float:
     return sum(a * b for a, b in zip(left, right)) / (left_norm * right_norm)
 
 
-def load_embedding_cache(path: Path) -> dict[str, list[float]]:
+def load_embedding_cache(path: Path) -> tuple[dict[str, list[float]], bool]:
     vectors = {}
+    has_legacy_rows = False
+    has_current_rows = False
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except FileNotFoundError:
-        return vectors
+        return vectors, False
     for line in lines:
         try:
             row = json.loads(line)
-            if isinstance(row.get("key"), str) and isinstance(row.get("vec"), list):
-                vectors[row["key"]] = [float(value) for value in row["vec"]]
+            if not isinstance(row.get("key"), str) or not isinstance(row.get("vec"), list):
+                continue
+            if row.get("cache_version") != EMBEDDING_CACHE_VERSION:
+                has_legacy_rows = True
+                continue
+            vectors[row["key"]] = [float(value) for value in row["vec"]]
+            has_current_rows = True
         except (json.JSONDecodeError, TypeError, ValueError):
             continue
-    return vectors
+    return vectors, has_legacy_rows and not has_current_rows
 
 
 def section_embedding_key(cfg: dict, text: str) -> str:
@@ -445,7 +457,12 @@ def section_embedding_key(cfg: dict, text: str) -> str:
 
 def section_vectors(sections: list[dict], wiki_root: Path, cfg: dict) -> list[list[float]]:
     path = wiki_root / ".wiki-cache" / "embeddings.jsonl"
-    cached = load_embedding_cache(path)
+    cached, legacy_only = load_embedding_cache(path)
+    if legacy_only:
+        raise LegacyEmbeddingCacheError(
+            "legacy embedding cache detected; approve a full rebuild, then remove "
+            f"{path} and rerun hybrid search"
+        )
     keys = [section_embedding_key(cfg, section["searchable_text"]) for section in sections]
     missing = {}
     for key, section in zip(keys, sections):
@@ -459,7 +476,14 @@ def section_vectors(sections: list[dict], wiki_root: Path, cfg: dict) -> list[li
         with path.open("a", encoding="utf-8") as handle:
             for key, vector in zip(missing_keys, new_vectors):
                 cached[key] = vector
-                handle.write(json.dumps({"key": key, "model": cfg["model"], "vec": vector}) + "\n")
+                handle.write(json.dumps({
+                    "cache_version": EMBEDDING_CACHE_VERSION,
+                    "provider": cfg["provider"],
+                    "endpoint": cfg["url"].rstrip("/"),
+                    "key": key,
+                    "model": cfg["model"],
+                    "vec": vector,
+                }) + "\n")
     return [cached[key] for key in keys]
 
 
@@ -604,6 +628,8 @@ def cmd_search(args, pages: list[dict]) -> None:
                 ranked.append((score, index, retrievers))
             ranked.sort(key=lambda item: -item[0])
             mode = "hybrid"
+        except LegacyEmbeddingCacheError as exc:
+            print(f"warning: {exc}; falling back to lexical", file=sys.stderr)
         except Exception as exc:
             print(f"warning: embedding backend failed ({exc}); falling back to lexical", file=sys.stderr)
 

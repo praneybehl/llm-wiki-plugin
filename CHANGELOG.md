@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.6] - 2026-07-20
+
+### Fixed
+
+- Detect legacy embedding caches before hybrid retrieval and fall back to lexical with an explicit approve/delete/rebuild instruction instead of silently resending every canonical section.
+- Stamp new vector rows with cache version and non-secret provider metadata; add a subprocess regression proving legacy caches remain untouched without approval.
+
 ## [2.0.5] - 2026-07-20
 
 ### Fixed
@@ -130,7 +137,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.5...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.6...HEAD
+[2.0.6]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.6
 [2.0.5]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.5
 [2.0.4]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.4
 [2.0.3]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.3

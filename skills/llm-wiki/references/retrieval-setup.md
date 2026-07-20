@@ -51,7 +51,7 @@ Do not store keys or authorization headers. `wiki_search.py` reads this persiste
 
 ## Validate hybrid setup
 
-A real validation is billable and sends text to the provider, so get explicit approval before running it. Then:
+A real validation is billable and sends text to the provider, so get explicit approval before running it. If `embeddings.jsonl` contains rows without `cache_version: 2`, treat it as a legacy cache: stay lexical, explain that provider-isolated keys require a full rebuild, and ask for approval before deleting the cache and resending canonical sections. Then:
 
 1. Run one representative `wiki_search.py` query with `--cache --json` and without `--no-embed`.
 2. Confirm the JSON response reports `"mode": "hybrid"`.

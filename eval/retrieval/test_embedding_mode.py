@@ -163,6 +163,44 @@ class EmbeddingModeTests(unittest.TestCase):
             WIKI_SEARCH.section_embedding_key(trailing, "text"),
         )
 
+    def test_legacy_cache_requires_approved_rebuild(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wiki = Path(tmp)
+            (wiki / "concepts").mkdir()
+            (wiki / ".wiki-cache").mkdir()
+            (wiki / "SCHEMA.md").write_text(
+                "# Schema\n\n## Retrieval\n\n- Embedding mode: `custom`.\n",
+                encoding="utf-8",
+            )
+            (wiki / "concepts" / "retrieval.md").write_text(
+                "---\ntype: concept\ntitle: Retrieval\ntags: [search]\n"
+                "created: 2026-07-20\nupdated: 2026-07-20\n---\n\n"
+                "# Retrieval\n\nLexical retrieval finds exact words.\n",
+                encoding="utf-8",
+            )
+            cache = wiki / ".wiki-cache" / "embeddings.jsonl"
+            legacy = '{"key":"legacy","model":"shared-model","vec":[1.0,0.0]}\n'
+            cache.write_text(legacy, encoding="utf-8")
+            env = os.environ.copy()
+            for name in ("OPENAI_API_KEY", "LLM_WIKI_EMBED_KEY"):
+                env.pop(name, None)
+            env["LLM_WIKI_EMBED_URL"] = "http://127.0.0.1:9/embeddings"
+            env["LLM_WIKI_EMBED_MODEL"] = "shared-model"
+
+            result = subprocess.run(
+                ["python3", str(SEARCH), "lexical retrieval", "--wiki", str(wiki), "--json"],
+                env=env,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            self.assertEqual(json.loads(result.stdout)["mode"], "lexical")
+            self.assertIn("legacy embedding cache detected", result.stderr)
+            self.assertIn("approve a full rebuild", result.stderr)
+            self.assertNotIn("embedding 1 new sections", result.stderr)
+            self.assertEqual(cache.read_text(encoding="utf-8"), legacy)
+
 
 if __name__ == "__main__":
     unittest.main()

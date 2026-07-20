@@ -16,7 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Declare pinned FastEmbed and sqlite-vec dependencies through PEP 723 for isolated `uv run --script` execution.
 - Add `setup_wiki.py` as the mandatory init/upgrade runtime gate: it installs pinned FastEmbed 0.8.0, sqlite-vec 0.1.9, and PyYAML 6.0.3, caches the local model, builds the parse cache, synchronizes every wiki section, and emits a machine-readable readiness report.
 - Give graph lint and extraction their own pinned PyYAML PEP 723 metadata so every dependency-bearing agent tool runs reproducibly through `uv run --script`.
-- Bump the Paperclip companion to v0.5.1 for its updated v3 local-retrieval agent setup guidance.
+- Bump the Paperclip companion, `paperclip-plugin-llm-wiki` v0.5.1, for its updated v3 local-retrieval agent setup guidance.
 - Replace provider consent, credential, endpoint, and cache-marker setup with local model-download and index-build guidance.
 - Add an idempotent v3 upgrade marker; existing Markdown needs no migration and legacy `embeddings.jsonl` caches are ignored.
 - Make initialization and upgrade fail closed when `uv` or runtime setup is unavailable instead of reporting a partially ready wiki.

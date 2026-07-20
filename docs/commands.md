@@ -98,4 +98,4 @@ Upgrade an existing wiki with idempotent file operations, mandatory runtime inst
 /wiki:upgrade
 ```
 
-Runs `init_wiki.py . --upgrade`, which leaves existing content untouched, installs and verifies the complete pinned local runtime, synchronizes the parse/vector indexes, then walks through missing `SCHEMA.md` sections one at a time. Existing pages remain valid. See [Upgrade to v3](/upgrade).
+Resolves the installed `init_wiki.py` separately from the current project's absolute root, then runs it with `--upgrade`. Existing content stays untouched while the complete pinned local runtime is installed and verified, parse/vector indexes synchronize, and missing `SCHEMA.md` sections are walked one at a time. See [Upgrade to v3](/upgrade).

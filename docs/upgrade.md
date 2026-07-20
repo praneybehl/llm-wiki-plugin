@@ -38,11 +38,13 @@ The default section search now initializes a local model and sqlite-vec index in
    /wiki:upgrade
    ```
 
-   Or directly, from the plugin's skill directory (add `--wiki-dir` / `--raw-dir` if you use non-default names):
+   Or directly, pass the installed script and the target project as separate absolute paths (add `--wiki-dir` / `--raw-dir` if you use non-default names):
 
    ```bash
-   python skills/llm-wiki/scripts/init_wiki.py . --upgrade
+   python "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/init_wiki.py" "<absolute-project-root>" --upgrade
    ```
+
+   For a skill-only install, replace `${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki` with that agent's installed `llm-wiki` skill directory. Never use the plugin or skill directory as `<absolute-project-root>`.
 
    > **Expected** — Idempotent file operations leave existing pages untouched. Runtime setup then reports `"status": "ready"` with pinned dependency versions, model, page count, section count, and vector-index path before the command reports the missing SCHEMA marker.
 3. **Approve the SCHEMA.md merge.** Add the local semantic backend lines from the current template to your existing `## Retrieval` section. SCHEMA.md is co-evolved with you and is never modified silently.

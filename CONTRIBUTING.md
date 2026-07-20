@@ -165,7 +165,7 @@ If a feature can be made backward-compatible (e.g. a new frontmatter field with 
 
 - **Claude Code:** `/plugin marketplace update` followed by `/plugin install llm-wiki@llm-wiki`. Claude Code compares the resolved `version` against the cached one and refreshes when they differ.
 - **Other agents installed via `npx skills add`:** `npx skills update llm-wiki`, or re-run the original `npx skills add praneybehl/llm-wiki-plugin -a <agent>` command.
-- **Existing wikis bootstrapped under an older plugin version:** users run `/wiki:upgrade` (or `python skills/llm-wiki/scripts/init_wiki.py . --upgrade` from the CLI). The upgrade flow is idempotent for files and walked-through for SCHEMA.md merges.
+- **Existing wikis bootstrapped under an older plugin version:** users run `/wiki:upgrade` (or `python /path/to/llm-wiki-plugin/skills/llm-wiki/scripts/init_wiki.py /absolute/path/to/project --upgrade` from the CLI). The script path and target project must be separate; the upgrade flow is idempotent for files and walked-through for SCHEMA.md merges.
 
 ### What does NOT need to change on every release
 

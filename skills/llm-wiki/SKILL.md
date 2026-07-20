@@ -106,7 +106,7 @@ The full workflow is in `references/ingest-workflow.md`; what follows is the sha
 
 ## The query workflow (summary)
 
-Full version in `references/query-workflow.md`. To answer a query against the wiki: read `index.md` (or the relevant shard) first; identify candidate pages from one-line summaries; read those pages (and any backlinks they list that look relevant); synthesize the answer with `[[wikilink]]` citations to the pages you used; offer to file the synthesized answer back into `wiki/synthesis/` so future queries benefit. If the index doesn't surface good candidates, fall back to `python scripts/wiki_search.py "query terms"` for ranked retrieval. If the wiki appears to lack coverage of the topic, say so plainly rather than confabulating — flag it as a candidate ingest target.
+Full version in `references/query-workflow.md`. To answer a query against the wiki: read `index.md` (or the relevant shard) first; identify candidate pages from one-line summaries; read those pages (and any backlinks they list that look relevant); synthesize the answer with `[[wikilink]]` citations to the pages you used; offer to file the synthesized answer back into `wiki/synthesis/` so future queries benefit. If the index doesn't surface good candidates, run `uv run --script <skill-root>/scripts/wiki_search.py "query terms" --wiki <project-root>/wiki` for ranked local hybrid retrieval; add `--no-embed` only for dependency-free lexical BM25. Keep the installed skill path and target wiki path explicit. If the wiki appears to lack coverage of the topic, say so plainly rather than confabulating — flag it as a candidate ingest target.
 
 ## The lint workflow (summary)
 

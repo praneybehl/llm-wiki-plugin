@@ -358,6 +358,7 @@ def embed_config(mode: str) -> dict | None:
         if not key:
             return None
         return {
+            "provider": "openai",
             "url": "https://api.openai.com/v1/embeddings",
             "key": key,
             "model": os.environ.get("LLM_WIKI_EMBED_MODEL") or "text-embedding-3-small",
@@ -368,6 +369,7 @@ def embed_config(mode: str) -> dict | None:
         if not url or not model:
             return None
         return {
+            "provider": "custom",
             "url": url,
             "key": os.environ.get("LLM_WIKI_EMBED_KEY"),
             "model": model,
@@ -432,14 +434,19 @@ def load_embedding_cache(path: Path) -> dict[str, list[float]]:
     return vectors
 
 
-def section_embedding_key(model: str, text: str) -> str:
-    return hashlib.sha256(f"{model}\n{text}".encode("utf-8")).hexdigest()
+def section_embedding_key(cfg: dict, text: str) -> str:
+    provider_identity = "\n".join((
+        cfg["provider"],
+        cfg["url"].rstrip("/"),
+        cfg["model"],
+    ))
+    return hashlib.sha256(f"{provider_identity}\n{text}".encode("utf-8")).hexdigest()
 
 
 def section_vectors(sections: list[dict], wiki_root: Path, cfg: dict) -> list[list[float]]:
     path = wiki_root / ".wiki-cache" / "embeddings.jsonl"
     cached = load_embedding_cache(path)
-    keys = [section_embedding_key(cfg["model"], section["searchable_text"]) for section in sections]
+    keys = [section_embedding_key(cfg, section["searchable_text"]) for section in sections]
     missing = {}
     for key, section in zip(keys, sections):
         if key not in cached and key not in missing:

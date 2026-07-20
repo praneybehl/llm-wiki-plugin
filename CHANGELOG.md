@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.5] - 2026-07-20
+
+### Fixed
+
+- Bind cached section vectors to the approved provider identity, normalized endpoint, model, and text. Switching providers can no longer reuse vectors produced elsewhere under the same model name.
+- Add cross-provider cache and URL-normalization regression tests.
+
 ## [2.0.4] - 2026-07-20
 
 ### Fixed
@@ -123,7 +130,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.4...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.5...HEAD
+[2.0.5]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.5
 [2.0.4]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.4
 [2.0.3]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.3
 [2.0.2]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.2

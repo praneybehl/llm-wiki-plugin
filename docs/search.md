@@ -160,4 +160,4 @@ No key is needed for a local endpoint — leave `LLM_WIKI_EMBED_KEY` unset and n
 
 ## The cache directory
 
-`wiki/.wiki-cache/` holds every regenerable retrieval artifact — the parse cache and the embedding vectors. It is gitignored, safe to delete at any time (deleting it is the reset), and should never be edited by hand.
+`wiki/.wiki-cache/` holds every regenerable retrieval artifact — the parse cache and embedding vectors. Vector keys include the approved provider identity, normalized endpoint, model, and section text, so switching providers cannot reuse incompatible vectors even when model names match. The directory is gitignored, safe to delete at any time (deleting it is the reset), and should never be edited by hand.

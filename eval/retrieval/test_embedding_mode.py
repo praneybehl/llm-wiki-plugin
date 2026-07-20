@@ -120,6 +120,49 @@ class EmbeddingModeTests(unittest.TestCase):
     def test_openai_mode_requires_openai_key(self):
         self.assertIsNone(WIKI_SEARCH.embed_config("openai"))
 
+    def test_embedding_cache_isolated_by_provider(self):
+        sections = [{"searchable_text": "same model and text"}]
+        openai = {
+            "provider": "openai",
+            "url": "https://api.openai.com/v1/embeddings",
+            "key": "openai-key",
+            "model": "shared-model",
+        }
+        custom = {
+            "provider": "custom",
+            "url": "https://custom.example/embeddings",
+            "key": "custom-key",
+            "model": "shared-model",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(
+                WIKI_SEARCH,
+                "embed_texts",
+                side_effect=[[[1.0, 0.0]], [[0.0, 1.0]]],
+            ) as embed:
+                self.assertEqual(
+                    WIKI_SEARCH.section_vectors(sections, Path(tmp), openai),
+                    [[1.0, 0.0]],
+                )
+                self.assertEqual(
+                    WIKI_SEARCH.section_vectors(sections, Path(tmp), custom),
+                    [[0.0, 1.0]],
+                )
+                self.assertEqual(embed.call_count, 2)
+
+    def test_embedding_cache_normalizes_trailing_url_slash(self):
+        base = {
+            "provider": "custom",
+            "url": "https://custom.example/embeddings",
+            "key": None,
+            "model": "shared-model",
+        }
+        trailing = {**base, "url": f"{base['url']}/"}
+        self.assertEqual(
+            WIKI_SEARCH.section_embedding_key(base, "text"),
+            WIKI_SEARCH.section_embedding_key(trailing, "text"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

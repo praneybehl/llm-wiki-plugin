@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /llm-wiki-plugin/
+
+Sitemap: https://praneybehl.github.io/llm-wiki-plugin/sitemap.xml

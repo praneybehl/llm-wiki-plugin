@@ -11,3 +11,8 @@ __pycache__/
 launch-posts.md
 .leankg/
 .remember/
+
+# Node / VitePress docs toolchain
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/

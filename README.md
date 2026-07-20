@@ -1,26 +1,35 @@
-# LLM Wiki — a Claude Code Plugin
+# LLM Wiki — a second brain for AI agents
 
-Build and maintain an LLM-curated personal knowledge base in your project. An implementation of [Andrej Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) as a Claude Code plugin, designed to scale to thousands of pages without becoming a context bottleneck. Full documentation lives at [the docs site](https://praneybehl.github.io/llm-wiki-plugin/).
+Turn PDFs, articles, transcripts, and notes into a shared wiki that your AI agents can search, cite, and keep up to date. Add a source once. Ask questions later. Keep the useful answers.
 
-## What is this?
+Works with Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, and OMP. [Read the documentation](https://praneybehl.github.io/llm-wiki-plugin/).
 
-Most ways of using LLMs with documents look like RAG: you upload files, the LLM retrieves chunks at query time, generates an answer, and nothing accumulates. Every question re-derives knowledge from raw fragments. Karpathy's LLM Wiki pattern flips this — when a new source arrives, the LLM compiles it once into a persistent, structured wiki of markdown pages, and subsequent queries read the pre-synthesized wiki rather than the raw sources. Knowledge compounds.
+## What is LLM Wiki?
 
-This plugin packages the pattern as a Claude Code skill plus seven slash commands (`/wiki:init`, `/wiki:ingest`, `/wiki:query`, `/wiki:lint`, `/wiki:stats`, `/wiki:graph`, `/wiki:upgrade`) and a small set of bundled Python scripts (BM25 search, structural lint, stats with scaling thresholds, plus an optional compiled graph layer). You curate sources and ask questions; Claude does the bookkeeping.
+AI agents are good at the task in front of them, but a new session starts with limited context. LLM Wiki gives them a shared memory that lives inside your project.
+
+When you add a source, the agent turns it into linked Markdown pages. Later, it can find the right section and answer with citations. Useful answers can be saved back into the wiki, so the knowledge grows instead of being rebuilt from scratch.
+
+Everything stays in readable Markdown. You do not need a vector database or an embedding service to get started.
 
 ## What's new in v2.0.0
 
-- **Section-level search with `--json` evidence rows.** `wiki_search.py` now ranks individual page sections by default and can emit structured JSON evidence — heading path, snippet, score, and retrievers — for programmatic consumers.
-- **Functional incremental `--cache`.** The `--cache` flag builds a content-hash parse cache under `wiki/.wiki-cache/`, so repeat searches skip re-parsing unchanged pages while returning byte-identical results.
-- **Opt-in hybrid embeddings.** Point `wiki_search.py` at an OpenAI-compatible embedding endpoint via env vars (`LLM_WIKI_EMBED_URL`, or `OPENAI_API_KEY`) and search fuses BM25 with semantic retrieval through reciprocal rank fusion. No config means lexical BM25 exactly as before; `--no-embed` forces lexical.
-- **Retrieval eval harness.** A stdlib-only harness at `eval/retrieval/` measures recall@5/@10 and MRR across lexical and hybrid modes, with a regression gate.
-- **Full documentation website.** A [VitePress](https://vitepress.dev) documentation site under `docs/` — with fuzzy full-text local search and Mermaid diagrams — builds to `docs/.vitepress/dist` and deploys to [the LLM Wiki docs site](https://praneybehl.github.io/llm-wiki-plugin/) through a GitHub Pages Actions workflow.
+- **More precise search.** Search now finds the best section of a page instead of ranking only whole pages.
+- **Clear evidence.** Add `--json` to return the heading, excerpt, score, source details, and retrieval method behind each result.
+- **Faster repeat searches.** Add `--cache` to skip files that have not changed.
+- **Optional meaning-based search.** Connect any OpenAI-compatible embedding service to combine exact-word and semantic results. Without one, local BM25 search works as before.
+- **Quality checks.** The retrieval eval reports recall@5, recall@10, and MRR so search changes can be measured before release.
+- **A complete docs site.** Guides, local full-text search, diagrams, and upgrade instructions now live at [the documentation site](https://praneybehl.github.io/llm-wiki-plugin/).
 
-## Why use it
+## Why use it?
 
-The maintenance burden is what kills personal wikis. Updating cross-references, keeping summaries current, noting when new data contradicts old claims, maintaining consistency across dozens of pages — humans abandon this work. LLMs don't get bored, don't forget to update a backlink, and can touch fifteen files in one pass. The wiki stays alive because the cost of maintenance is near zero.
+- **Stop repeating project context.** Your agent can read the knowledge you already collected.
+- **Use the same wiki across agents.** The files are plain Markdown, not tied to one model or tool.
+- **Trace every answer.** Citations point back to the wiki page and original source.
+- **Keep the wiki healthy.** The agent updates links, summaries, and contradictions as new sources arrive.
+- **Stay in control.** Your pages remain readable, editable, and versionable.
 
-The pattern shines for accumulating textual research over weeks or months — papers, articles, transcripts, meeting notes, book chapters, customer calls — and degrades for highly relational data where a real database would serve better.
+LLM Wiki works best for knowledge that grows over time: research, meeting notes, customer calls, papers, articles, and project decisions. Use a regular database when your main problem is structured records and transactions.
 
 ## Installation
 

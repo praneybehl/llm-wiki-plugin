@@ -1,38 +1,53 @@
 ---
-title: LLM Wiki — LLM-curated knowledge base
+title: LLM Wiki — shared memory for AI agents
 titleTemplate: false
-description: Build and maintain an LLM-curated personal knowledge base that scales to thousands of pages without becoming a context bottleneck.
+description: Turn documents and project notes into a shared wiki that AI agents can search, cite, and keep up to date.
 ---
 
 <!-- Adapted from: docs/index.html (source: README.md "What is this?", "Why use it", "Quick start"). -->
 
 # LLM Wiki
 
-Build and maintain an LLM-curated personal knowledge base in your project — an implementation of [Andrej Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), designed to scale to thousands of pages without becoming a context bottleneck.
+Turn PDFs, articles, transcripts, and notes into a shared wiki that your AI agents can search, cite, and keep up to date.
 
-Most ways of using LLMs with documents look like RAG: you upload files, the model retrieves chunks at query time, generates an answer, and nothing accumulates. Every question re-derives knowledge from raw fragments. The LLM Wiki pattern flips this — when a new source arrives, the model compiles it *once* into a persistent, structured wiki of markdown pages, and later queries read the pre-synthesized wiki rather than the raw sources. Knowledge compounds.
+AI agents are good at the task in front of them, but a new session starts with limited context. LLM Wiki gives them a shared memory that lives inside your project.
 
-The maintenance burden is what kills personal wikis: updating cross-references, keeping summaries current, noting when new data contradicts old claims. LLMs don't get bored, don't forget a backlink, and can touch fifteen files in one pass. The wiki stays alive because the cost of maintenance drops to near zero.
+Add a source once. The agent turns it into linked Markdown pages. Later, it can find the right section, answer with citations, and save useful learning back into the wiki.
+
+Everything stays in readable Markdown. You do not need a vector database or an embedding service to get started.
+
+## Why this exists
+
+AI agents can do good work in one session. The problem is what happens after the chat ends.
+
+A useful answer may be buried in last week's conversation. A decision may live in a meeting transcript. A correction may sit in an issue. When that context is scattered, the next agent has to find the same files and rebuild the same understanding.
+
+LLM Wiki gives that work somewhere durable to go. Sources become linked Markdown, answers keep their citations, and useful conclusions can be saved for the next session or the next agent.
+
+Use it when knowledge should outlive one conversation: long-running research, customer calls, project decisions, recurring questions, and work shared across agents. For one-off questions or structured records, a chat or regular database may be the better tool.
+
+![Illustrated overview of scattered context becoming a shared Markdown wiki that compounds across AI agent sessions](/assets/llm-wiki-explained.png)
+
+*Add sources once, retrieve cited evidence later, and save useful learning back so the next session starts with more than the last one did.*
 
 ::: tip New in v2.0.0
-Section-level search with `--json` evidence rows, a functional incremental `--cache`, opt-in hybrid embeddings, a retrieval eval harness, and this documentation site. See [Search & retrieval](/search) and [Upgrade to v2](/upgrade).
+Search is now more precise, repeat searches are faster, and meaning-based search is optional. See [Search & retrieval](/search) and [Upgrade to v2](/upgrade).
 :::
 
 ## How it works
 
-Compile each source once, then read the pre-synthesized wiki for every later question. Knowledge accumulates in canonical markdown; the optional graph layer is rebuilt from those same pages.
+Add each source once. Later questions use the shared wiki instead of starting from the raw files again.
 
 ```mermaid
 flowchart LR
-  raw["raw source (PDF, article, transcript)"] --> ingest["wiki:ingest"]
-  ingest --> wiki["canonical wiki (markdown pages)"]
-  wiki --> query["wiki:query"]
-  wiki --> lint["wiki:lint"]
-  query --> answer["cited answer"]
-  answer -. file back .-> synth["wiki/synthesis"]
-  synth --> wiki
-  wiki -. optional .-> gnode["typed graph layer"]
-  gnode --> query
+  raw["PDF, article, or transcript"] --> ingest["add once"]
+  ingest --> wiki["shared Markdown wiki"]
+  wiki --> query["ask a question"]
+  wiki --> lint["check wiki health"]
+  query --> answer["answer with sources"]
+  answer -. save useful answer .-> wiki
+  wiki -. optional .-> relmap["relationship map"]
+  relmap --> query
 ```
 
 ## Three steps to a working wiki
@@ -72,15 +87,15 @@ Not a Claude Code user? The same skill runs in Codex, Cursor, Pi, OMP, and more 
 
 ### What is an LLM Wiki?
 
-An LLM Wiki is a persistent, agent-maintained knowledge base compiled from project sources into structured Markdown pages. Instead of re-reading raw documents for every question, the agent ingests each source once, maintains links and summaries over time, and answers later questions from the accumulated wiki.
+LLM Wiki is a shared knowledge base for AI agents. It turns your sources into linked Markdown pages, keeps them organized, and answers later questions with citations.
 
-### How is an LLM Wiki different from RAG?
+### How is LLM Wiki different from RAG?
 
-RAG retrieves chunks from raw documents at query time, so each question reconstructs context from fragments. An LLM Wiki compiles sources into canonical pages during ingestion. Retrieval then searches the already-synthesized knowledge, letting corrections, cross-links, provenance, and contradictions compound across sessions.
+RAG usually searches raw document chunks each time you ask a question. LLM Wiki organizes each source into useful pages first. Later questions search that growing body of knowledge, including its links, corrections, and source history.
 
 ### Does LLM Wiki require embeddings or a vector database?
 
-No. The default retrieval path is dependency-free section-level BM25 with an incremental local cache. Embeddings are optional and can be fused with lexical results through reciprocal rank fusion. The typed graph is also optional, while canonical Markdown remains the source of truth.
+No. Local search works without either one. You can add embeddings later if you want meaning-based search alongside exact-word search. Markdown remains the source of truth.
 
 ### Which coding agents support LLM Wiki?
 

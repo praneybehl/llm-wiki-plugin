@@ -16,3 +16,8 @@ launch-posts.md
 node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+# Local launch assets (never commit)
+release-assets/
+docs/public/assets/second-brain-*.png
+docs/public/assets/llm-wiki-second-brain-*.png

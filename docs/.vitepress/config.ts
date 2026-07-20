@@ -14,27 +14,27 @@ const faqItems = [
   {
     question: 'What is an LLM Wiki?',
     answer:
-      'An LLM Wiki is a persistent, agent-maintained knowledge base compiled from project sources into structured Markdown pages. Sources are ingested once, while links, summaries, provenance, and later answers accumulate over time.',
+      'An LLM Wiki is a persistent, agent-maintained knowledge base compiled from project sources into structured Markdown pages. Instead of re-reading raw documents for every question, the agent ingests each source once, maintains links and summaries over time, and answers later questions from the accumulated wiki.',
   },
   {
     question: 'How is an LLM Wiki different from RAG?',
     answer:
-      'RAG retrieves chunks from raw documents at query time. An LLM Wiki compiles sources into canonical pages during ingestion, then searches the already-synthesized knowledge so corrections, cross-links, provenance, and contradictions compound across sessions.',
+      'RAG retrieves chunks from raw documents at query time, so each question reconstructs context from fragments. An LLM Wiki compiles sources into canonical pages during ingestion. Retrieval then searches the already-synthesized knowledge, letting corrections, cross-links, provenance, and contradictions compound across sessions.',
   },
   {
     question: 'Does LLM Wiki require embeddings or a vector database?',
     answer:
-      'No. The default retrieval path is dependency-free section-level BM25 with an incremental local cache. Embeddings and the typed graph are optional; canonical Markdown remains the source of truth.',
+      'No. The default retrieval path is dependency-free section-level BM25 with an incremental local cache. Embeddings are optional and can be fused with lexical results through reciprocal rank fusion. The typed graph is also optional, while canonical Markdown remains the source of truth.',
   },
   {
     question: 'Which coding agents support LLM Wiki?',
     answer:
-      'The skill is verified with Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, and OMP. Claude Code receives slash commands through the plugin, while other agents invoke the same workflows through natural language.',
+      'The agentskills.io-compatible skill is verified with Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, and OMP. Claude Code also receives /wiki:* slash commands through the plugin; other agents invoke the same workflows through natural language. See the agent support matrix.',
   },
   {
     question: 'How do I install and start using LLM Wiki?',
     answer:
-      'Install the plugin or skill, initialize the wiki, ingest a source, query the accumulated knowledge with citations, and lint periodically. The getting-started guide provides exact commands for every supported agent.',
+      'Install the plugin or skill for your agent, run /wiki:init, ingest a source with /wiki:ingest, then ask a cited question with /wiki:query. Run /wiki:lint periodically to catch structural and semantic issues. The getting-started guide lists exact commands for every supported agent.',
   },
 ]
 
@@ -49,6 +49,7 @@ function structuredData(
   title: string,
   description: string,
   url: string,
+  lastUpdated: number,
 ): Record<string, unknown> {
   const website = {
     '@type': 'WebSite',
@@ -71,7 +72,7 @@ function structuredData(
           description,
           url,
           codeRepository: repo,
-          downloadUrl: repo,
+          image: socialImage,
           license: `${repo}/blob/main/LICENSE`,
           programmingLanguage: ['Python', 'TypeScript'],
           author: { '@id': author['@id'] },
@@ -83,6 +84,9 @@ function structuredData(
           description,
           url,
           mainEntityOfPage: url,
+          image: socialImage,
+          datePublished: '2026-07-20',
+          dateModified: new Date(lastUpdated).toISOString(),
           isPartOf: { '@id': website['@id'] },
           author: { '@id': author['@id'] },
           inLanguage: 'en-US',
@@ -137,7 +141,7 @@ export default withMermaid(
       const description =
         pageData.description ||
         'Build and maintain an agent-curated, continuously compiled knowledge base for your projects.'
-      const data = structuredData(pageData.relativePath, title, description, url)
+      const data = structuredData(pageData.relativePath, title, description, url, pageData.lastUpdated)
 
       pageData.frontmatter.head ??= []
       pageData.frontmatter.head.push(
@@ -181,6 +185,9 @@ export default withMermaid(
     mermaid: {
       securityLevel: 'strict',
       startOnLoad: false,
+      flowchart: {
+        useMaxWidth: false,
+      },
     },
 
     themeConfig: {

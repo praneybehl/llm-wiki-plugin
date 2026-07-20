@@ -2,7 +2,7 @@
 
 > LLM Wiki is an open-source skill and plugin for building an agent-maintained, continuously compiled knowledge base from project sources. It implements Andrej Karpathy's LLM Wiki pattern with canonical Markdown pages, section-level retrieval, optional typed graphs, and support for multiple coding agents.
 
-The canonical project is https://github.com/praneybehl/llm-wiki-plugin. The documentation below is public, server-rendered, and maintained with the v2.0.0 release.
+The canonical project is https://github.com/praneybehl/llm-wiki-plugin. The documentation below is public, pre-rendered as static HTML, and maintained with the v2.0.0 release.
 
 ## Start here
 

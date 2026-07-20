@@ -47,8 +47,8 @@
 
   /* Text — cool charcoal → gray ramp (headings darkened per-selector below) */
   --vp-c-text-1: #374151;      /* body ink                                  */
-  --vp-c-text-2: #6b7280;      /* muted / inactive nav                      */
-  --vp-c-text-3: #9ca3af;      /* subtle / placeholders / icons             */
+  --vp-c-text-2: #626b78;      /* muted / inactive nav                      */
+  --vp-c-text-3: #626b78;      /* subtle / placeholders / icons — AA small text */
 
   /* Brand accent — restrained lavender-indigo (links, active, buttons) */
   --vp-c-brand-1: #4f46e5;     /* 6.3:1 on white — link/active text         */
@@ -103,7 +103,7 @@
 
   --vp-c-text-1: #d1d5db;      /* body ink                                  */
   --vp-c-text-2: #9ca3af;      /* muted / inactive                          */
-  --vp-c-text-3: #6b7280;      /* subtle                                    */
+  --vp-c-text-3: #9ca3af;      /* subtle — AA small text on charcoal         */
 
   /* Lifted lavender so accents stay legible on charcoal */
   --vp-c-brand-1: #a5a0f5;     /* 7.5:1 on #111827                          */
@@ -149,7 +149,14 @@
 /* Center the local-search trigger in the space between wordmark and menu.
    .VPNavBarSearch already has flex-grow:1 at >=768px; we just center it. */
 @media (min-width: 768px) {
-  .VPNavBarSearch { justify-content: center; }
+  .VPNavBarSearch {
+    justify-content: center;
+    padding-left: 0;
+  }
+}
+.VPNavBarSearch #local-search {
+  width: 100%;
+  max-width: 440px;
 }
 .VPNavBarSearch .DocSearch-Button {
   width: 100%;
@@ -463,7 +470,12 @@
   text-align: center;
 }
 .dark .vp-doc .mermaid { border-color: var(--vp-c-border); }
-.vp-doc .mermaid svg { max-width: 100%; height: auto; }
+.vp-doc .mermaid svg { max-width: none; height: auto; }
+.dark .vp-doc .mermaid .edgeLabel .labelBkg,
+.dark .vp-doc .mermaid span.edgeLabel {
+  background-color: var(--vp-c-bg-alt) !important;
+  color: var(--vp-c-text-1) !important;
+}
 
 /* =============================================================================
    13. HOME PAGE — hero name gradient (set via vars above) + refined features.

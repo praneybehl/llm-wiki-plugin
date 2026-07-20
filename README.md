@@ -215,6 +215,8 @@ The bundled scripts (`init_wiki.py`, `wiki_search.py`, `wiki_lint.py`, `wiki_sta
 
 The pattern is from Andrej Karpathy's [llm-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), April 2026. This plugin is one implementation of the pattern; others worth looking at include [vanillaflava/llm-wiki-claude-skills](https://github.com/vanillaflava/llm-wiki-claude-skills), [skyllwt/OmegaWiki](https://github.com/skyllwt/OmegaWiki), and [axoviq-ai/synthadoc](https://github.com/axoviq-ai/synthadoc).
 
+The v2 retrieval architecture was informed by Cerebras's engineering article, [How We Built Our Knowledge Base](https://www.cerebras.ai/blog/how-we-built-our-knowledge-base), especially its section-level retrieval, multi-retriever fusion, evidence packaging, and evaluation approach.
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).

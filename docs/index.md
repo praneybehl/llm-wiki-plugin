@@ -107,4 +107,4 @@ Install the plugin or skill for your agent, run `/wiki:init`, ingest a source wi
 
 ---
 
-LLM Wiki plugin — MIT licensed. [Source on GitHub](https://github.com/praneybehl/llm-wiki-plugin). Based on [Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
+LLM Wiki plugin, MIT licensed. [Source on GitHub](https://github.com/praneybehl/llm-wiki-plugin). Based on [Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), with v2 retrieval informed by Cerebras's [How We Built Our Knowledge Base](https://www.cerebras.ai/blog/how-we-built-our-knowledge-base).

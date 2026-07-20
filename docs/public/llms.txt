@@ -27,3 +27,4 @@ The canonical project is https://github.com/praneybehl/llm-wiki-plugin. The docu
 - [GitHub repository](https://github.com/praneybehl/llm-wiki-plugin): Source code, skill files, commands, integrations, tests, and release history.
 - [License](https://github.com/praneybehl/llm-wiki-plugin/blob/main/LICENSE): MIT.
 - [Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f): The original pattern that inspired this implementation.
+- [Cerebras: How We Built Our Knowledge Base](https://www.cerebras.ai/blog/how-we-built-our-knowledge-base): Engineering reference that informed v2 section retrieval, fusion, evidence packaging, and evaluation.

@@ -38,6 +38,7 @@ interface SearchResult {
   title: string;
   type: string;
   score: number;
+  heading?: string;
 }
 
 interface SearchPayload {
@@ -257,8 +258,8 @@ function SearchView({
         </p>
       </header>
       <ul className="llm-wiki-results">
-        {(searchResult.data?.results ?? []).map((r) => (
-          <li key={r.slug} className="llm-wiki-result">
+        {(searchResult.data?.results ?? []).map((r, index) => (
+          <li key={`${r.slug}:${r.heading ?? ""}:${index}`} className="llm-wiki-result">
             <HostLink
               href={wikiHref(context.companyPrefix, {
                 kind: "page",
@@ -267,7 +268,12 @@ function SearchView({
               data-wiki-slug={r.slug}
               className="llm-wiki-result-link"
             >
-              <span className="llm-wiki-result-title">{r.title}</span>
+              <span className="llm-wiki-result-copy">
+                <span className="llm-wiki-result-title">{r.title}</span>
+                {r.heading ? (
+                  <span className="llm-wiki-result-heading">{r.heading}</span>
+                ) : null}
+              </span>
               <span className="llm-wiki-result-type">{r.type}</span>
             </HostLink>
           </li>

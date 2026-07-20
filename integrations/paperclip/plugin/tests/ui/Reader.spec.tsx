@@ -66,6 +66,7 @@ function setupIndexAndPage() {
             title: "Transformer",
             type: "concept",
             score: 1.5,
+            heading: "Transformer > Architecture",
           },
         ],
       }) as never;
@@ -127,6 +128,7 @@ describe("Reader dispatch", () => {
     );
     expect(container.querySelector(".llm-wiki-search-view")).not.toBeNull();
     expect(getByText("Transformer")).toBeDefined();
+    expect(getByText("Transformer > Architecture")).toBeDefined();
     const link = container.querySelector(
       "a[data-wiki-slug='concepts/transformer']",
     );

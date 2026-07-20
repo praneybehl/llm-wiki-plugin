@@ -25,9 +25,10 @@
         "scaling-laws-paper",
         "gpt-3",
         "scaling-laws",
-        "transformer-vs-rnn",
+        "rag-pipeline",
         "attention-paper",
-        "transformer"
+        "transformer",
+        "transformer-vs-rnn"
       ]
     },
     {
@@ -78,6 +79,277 @@
       "slugs": [
         "transformer",
         "scaling-laws-paper"
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "query": "transformer attention",
+      "results": [
+        {
+          "slug": "transformer",
+          "headingPath": [
+            "Transformer"
+          ]
+        },
+        {
+          "slug": "attention-mechanism",
+          "headingPath": [
+            "Attention Mechanism"
+          ]
+        },
+        {
+          "slug": "attention-paper",
+          "headingPath": [
+            "Attention Is All You Need"
+          ]
+        },
+        {
+          "slug": "transformer",
+          "headingPath": []
+        },
+        {
+          "slug": "attention-mechanism",
+          "headingPath": []
+        },
+        {
+          "slug": "attention-paper",
+          "headingPath": []
+        },
+        {
+          "slug": "transformer-vs-rnn",
+          "headingPath": [
+            "Why transformers replaced RNNs"
+          ]
+        },
+        {
+          "slug": "gpt-3",
+          "headingPath": [
+            "GPT-3"
+          ]
+        }
+      ]
+    },
+    {
+      "query": "scaling laws",
+      "results": [
+        {
+          "slug": "scaling-laws",
+          "headingPath": []
+        },
+        {
+          "slug": "scaling-laws-paper",
+          "headingPath": []
+        },
+        {
+          "slug": "scaling-laws-paper",
+          "headingPath": [
+            "Scaling Laws for Neural Language Models"
+          ]
+        },
+        {
+          "slug": "scaling-laws",
+          "headingPath": [
+            "Scaling Laws"
+          ]
+        },
+        {
+          "slug": "gpt-3",
+          "headingPath": [
+            "GPT-3"
+          ]
+        },
+        {
+          "slug": "transformer-vs-rnn",
+          "headingPath": [
+            "Why transformers replaced RNNs"
+          ]
+        }
+      ]
+    },
+    {
+      "query": "language model",
+      "results": [
+        {
+          "slug": "scaling-laws-paper",
+          "headingPath": [
+            "Scaling Laws for Neural Language Models"
+          ]
+        },
+        {
+          "slug": "gpt-3",
+          "headingPath": [
+            "GPT-3"
+          ]
+        },
+        {
+          "slug": "scaling-laws",
+          "headingPath": [
+            "Scaling Laws"
+          ]
+        },
+        {
+          "slug": "scaling-laws-paper",
+          "headingPath": []
+        },
+        {
+          "slug": "rag-pipeline",
+          "headingPath": [
+            "RAG Pipeline",
+            "Generation"
+          ]
+        },
+        {
+          "slug": "attention-paper",
+          "headingPath": [
+            "Attention Is All You Need"
+          ]
+        },
+        {
+          "slug": "transformer-vs-rnn",
+          "headingPath": [
+            "Why transformers replaced RNNs"
+          ]
+        },
+        {
+          "slug": "transformer",
+          "headingPath": [
+            "Transformer"
+          ]
+        }
+      ]
+    },
+    {
+      "query": "GPT",
+      "results": [
+        {
+          "slug": "gpt-3",
+          "headingPath": []
+        },
+        {
+          "slug": "gpt-3",
+          "headingPath": [
+            "GPT-3"
+          ]
+        },
+        {
+          "slug": "attention-paper",
+          "headingPath": [
+            "Attention Is All You Need"
+          ]
+        },
+        {
+          "slug": "scaling-laws",
+          "headingPath": [
+            "Scaling Laws"
+          ]
+        },
+        {
+          "slug": "scaling-laws-paper",
+          "headingPath": [
+            "Scaling Laws for Neural Language Models"
+          ]
+        },
+        {
+          "slug": "transformer",
+          "headingPath": [
+            "Transformer"
+          ]
+        }
+      ]
+    },
+    {
+      "query": "Vaswani",
+      "results": [
+        {
+          "slug": "attention-paper",
+          "headingPath": [
+            "Attention Is All You Need"
+          ]
+        },
+        {
+          "slug": "transformer",
+          "headingPath": [
+            "Transformer"
+          ]
+        }
+      ]
+    },
+    {
+      "query": "few-shot learning",
+      "results": [
+        {
+          "slug": "gpt-3",
+          "headingPath": [
+            "GPT-3"
+          ]
+        }
+      ]
+    },
+    {
+      "query": "Chinchilla",
+      "results": [
+        {
+          "slug": "scaling-laws-paper",
+          "headingPath": [
+            "Scaling Laws for Neural Language Models"
+          ]
+        }
+      ]
+    },
+    {
+      "query": "encoder decoder",
+      "results": [
+        {
+          "slug": "transformer",
+          "headingPath": [
+            "Transformer"
+          ]
+        },
+        {
+          "slug": "attention-paper",
+          "headingPath": [
+            "Attention Is All You Need"
+          ]
+        },
+        {
+          "slug": "gpt-3",
+          "headingPath": [
+            "GPT-3"
+          ]
+        }
+      ]
+    },
+    {
+      "query": "softmax",
+      "results": [
+        {
+          "slug": "attention-mechanism",
+          "headingPath": [
+            "Attention Mechanism"
+          ]
+        }
+      ]
+    },
+    {
+      "query": "neural network",
+      "results": [
+        {
+          "slug": "scaling-laws-paper",
+          "headingPath": []
+        },
+        {
+          "slug": "transformer",
+          "headingPath": [
+            "Transformer"
+          ]
+        },
+        {
+          "slug": "scaling-laws-paper",
+          "headingPath": [
+            "Scaling Laws for Neural Language Models"
+          ]
+        }
       ]
     }
   ],

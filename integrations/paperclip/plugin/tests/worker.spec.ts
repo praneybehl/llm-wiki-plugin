@@ -181,7 +181,7 @@ describe("worker — searchWiki", () => {
 
   it("returns BM25 results identical to lib/bm25 for the same query", async () => {
     const result = await harness.getData<{
-      results: { slug: string; score: number }[];
+      results: { slug: string; score: number; heading?: string; snippet?: string }[];
     }>("searchWiki", {
       companyId: COMPANY_ID,
       projectId: PROJECT_ID,
@@ -193,9 +193,11 @@ describe("worker — searchWiki", () => {
       "transformer",
       "attention-mechanism",
       "attention-paper",
-      "transformer-vs-rnn",
-      "gpt-3",
+      "transformer",
+      "attention-mechanism",
     ]);
+    expect(result.results[0]?.heading).toBe("Transformer");
+    expect(result.results[0]?.snippet).toContain("self-attention");
   });
 
   it("respects the topK cap", async () => {
@@ -223,11 +225,11 @@ describe("worker — loadIndex", () => {
     harness = await makeWorker();
   });
 
-  it("returns the seven fixture pages with title + type + relPath", async () => {
+  it("returns the eight fixture pages with title + type + relPath", async () => {
     const result = await harness.getData<{
       pages: { slug: string; title: string; type: string; relPath: string }[];
     }>("loadIndex", { companyId: COMPANY_ID, projectId: PROJECT_ID });
-    expect(result.pages).toHaveLength(7);
+    expect(result.pages).toHaveLength(8);
     const titles = new Set(result.pages.map((p) => p.title));
     expect(titles.has("Transformer")).toBe(true);
     expect(titles.has("Attention Mechanism")).toBe(true);
@@ -289,6 +291,7 @@ describe("worker — relevantForIssue", () => {
     expect(["transformer", "attention-mechanism", "attention-paper"]).toContain(
       slugs[0],
     );
+    expect(new Set(slugs).size).toBe(slugs.length);
   });
 
   it("returns empty results when the issue does not exist", async () => {
@@ -330,7 +333,7 @@ describe("worker — wiki.query tool", () => {
       { companyId: COMPANY_ID, projectId: PROJECT_ID, agentId: "a", runId: "r" },
     );
     const slugs = result.data?.results.map((r) => r.slug) ?? [];
-    expect(slugs).toEqual(["attention-mechanism"]);
+    expect(slugs).toEqual(["attention-mechanism", "attention-mechanism"]);
   });
 });
 
@@ -472,8 +475,8 @@ describe("worker — Company-scoped fallback finds the project that has the wiki
     }>("loadIndex", { companyId: COMPANY_ID });
     // First project synthesized a workspace without our wiki; second has
     // it. Old behavior: 0 pages (broke on first project's synthetic ws).
-    // New behavior: 7 pages from the fixture.
-    expect(result.pages).toHaveLength(7);
+    // New behavior: 8 pages from the fixture.
+    expect(result.pages).toHaveLength(8);
   });
 
   it("wikiHealth reports real counts on the Company-scoped path", async () => {
@@ -483,7 +486,7 @@ describe("worker — Company-scoped fallback finds the project that has the wiki
       wikiPathMissing: boolean;
     }>("wikiHealth", { companyId: COMPANY_ID });
     expect(result.wikiPathMissing).toBe(false);
-    expect(result.pageCount).toBe(7);
+    expect(result.pageCount).toBe(8);
   });
 
   it("explicit projectId pointing at a wiki-less project does NOT silently fall back", async () => {

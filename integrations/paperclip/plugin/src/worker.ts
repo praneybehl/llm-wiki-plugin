@@ -26,7 +26,11 @@ import {
   extractWikilinks,
   type FrontmatterValue,
 } from "./lib/frontmatter.js";
-import { collectPages, searchPages } from "./lib/bm25.js";
+import {
+  collectPages,
+  searchSections,
+  type ScoredSection,
+} from "./lib/bm25.js";
 import { lintWiki, type LintFindings } from "./lib/lint.js";
 import { computeStats } from "./lib/stats.js";
 import { WIKI_QUERY_DESCRIPTION } from "./manifest.js";
@@ -49,6 +53,8 @@ interface PageRefResult {
   type: string;
   score?: number;
   relPath?: string;
+  heading?: string;
+  snippet?: string;
 }
 
 function isString(v: unknown): v is string {
@@ -58,6 +64,19 @@ function isString(v: unknown): v is string {
 function metaString(meta: Record<string, FrontmatterValue>, key: string): string {
   const v = meta[key];
   return typeof v === "string" ? v : "";
+}
+
+
+function sectionResult({ score, section }: ScoredSection): PageRefResult {
+  const heading = section.headingPath.join(" > ");
+  return {
+    slug: section.page.slug,
+    title: metaString(section.page.meta, "title") || section.page.slug,
+    type: metaString(section.page.meta, "type") || "(none)",
+    score,
+    ...(heading ? { heading } : {}),
+    snippet: section.text.trim().replace(/\s+/g, " ").slice(0, 400),
+  };
 }
 
 function escapeForRegex(s: string): string {
@@ -379,13 +398,8 @@ const plugin = definePlugin({
       const root = await resolveWikiRoot(ctx, companyId, projectId);
       if (!root) return { results: [] };
       const pages = collectPages(root);
-      const scored = searchPages(pages, { query, topK, filters });
-      const results: PageRefResult[] = scored.map(({ score, page }) => ({
-        slug: page.slug,
-        title: metaString(page.meta, "title") || page.slug,
-        type: metaString(page.meta, "type") || "(none)",
-        score,
-      }));
+      const scored = searchSections(pages, { query, topK, filters });
+      const results: PageRefResult[] = scored.map(sectionResult);
       return { results };
     });
 
@@ -545,7 +559,7 @@ const plugin = definePlugin({
           const pages = collectPages(root);
           pageCount = pages.length;
           const start = Date.now();
-          const scored = searchPages(pages, { query: sampleQuery, topK: 5 });
+          const scored = searchSections(pages, { query: sampleQuery, topK: 5 });
           sampleDurationMs = Date.now() - start;
           sampleResults = scored.length;
         } catch {
@@ -623,13 +637,16 @@ const plugin = definePlugin({
       if (queryText.length === 0) return { results: [] };
 
       const pages = collectPages(root);
-      const scored = searchPages(pages, { query: queryText, topK });
-      const results: PageRefResult[] = scored.map(({ score, page }) => ({
-        slug: page.slug,
-        title: metaString(page.meta, "title") || page.slug,
-        type: metaString(page.meta, "type") || "(none)",
-        score,
-      }));
+      const scored = searchSections(pages, { query: queryText, topK: topK * 2 });
+      const uniqueBySlug = new Map<string, ScoredSection>();
+      for (const row of scored) {
+        if (!uniqueBySlug.has(row.section.page.slug)) {
+          uniqueBySlug.set(row.section.page.slug, row);
+        }
+      }
+      const results: PageRefResult[] = [...uniqueBySlug.values()]
+        .slice(0, topK)
+        .map(sectionResult);
       return { results };
     });
 
@@ -676,13 +693,8 @@ const plugin = definePlugin({
           };
         }
         const pages = collectPages(root);
-        const scored = searchPages(pages, { query, topK, filters });
-        const results: PageRefResult[] = scored.map(({ score, page }) => ({
-          slug: page.slug,
-          title: metaString(page.meta, "title") || page.slug,
-          type: metaString(page.meta, "type") || "(none)",
-          score,
-        }));
+        const scored = searchSections(pages, { query, topK, filters });
+        const results: PageRefResult[] = scored.map(sectionResult);
 
         if (results.length === 0) {
           return {
@@ -692,10 +704,10 @@ const plugin = definePlugin({
         }
 
         const lines = [
-          `Top ${results.length} wiki pages for ${JSON.stringify(query)}:`,
+          `Top ${results.length} wiki sections for ${JSON.stringify(query)}:`,
           "",
           ...results.map(
-            (r) => `- [[${r.slug}]] (${r.type}) — ${r.title}`,
+            (r) => `- [[${r.slug}]] (${r.type}) — ${r.title}${r.heading ? ` § ${r.heading}` : ""}`,
           ),
         ];
         return {

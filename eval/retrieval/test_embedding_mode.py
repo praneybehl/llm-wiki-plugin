@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Regression tests for persisted embedding consent."""
+"""Regression tests for default local semantic retrieval."""
 
+import contextlib
 import importlib.util
+import io
 import json
-import os
-import subprocess
 import tempfile
 import unittest
-from unittest import mock
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 
 REPO = Path(__file__).resolve().parents[2]
@@ -17,412 +18,264 @@ SPEC = importlib.util.spec_from_file_location("wiki_search", SEARCH)
 WIKI_SEARCH = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(WIKI_SEARCH)
 
+try:
+    import sqlite_vec
+except ImportError:
+    sqlite_vec = None
 
-class EmbeddingModeTests(unittest.TestCase):
-    def run_search(
-        self,
-        mode: str | None,
-        *,
-        no_embed: bool = False,
-        endpoint: bool = True,
-        endpoint_url: str | None = None,
-        approve_build: bool = False,
-    ):
+
+class FakeModel:
+    def __init__(self):
+        self.passage_calls = []
+
+    def passage_embed(self, texts, batch_size=64):
+        texts = list(texts)
+        self.passage_calls.append(texts)
+        for text in texts:
+            yield [1.0, 0.0] if "attention" in text else [0.0, 1.0]
+
+    def query_embed(self, _query):
+        yield [1.0, 0.0]
+
+class MetricModel:
+    def passage_embed(self, texts, batch_size=64):
+        for text in texts:
+            yield [10.0, 0.0] if "long-axis" in text else [1.0, 1.0]
+
+    def query_embed(self, _query):
+        yield [1.0, 0.0]
+
+class FilterModel:
+    def passage_embed(self, texts, batch_size=64):
+        for text in texts:
+            yield [1.0, 0.0] if "exact" in text else [0.9, 0.4]
+
+    def query_embed(self, _query):
+        yield [1.0, 0.0]
+
+
+
+
+def make_section(rel_path, index, text):
+    return {
+        "page": {"rel_path": rel_path},
+        "section_index": index,
+        "searchable_text": text,
+    }
+
+
+@unittest.skipUnless(sqlite_vec, "sqlite-vec is not installed")
+class VectorIndexTests(unittest.TestCase):
+    def test_index_is_incremental_and_removes_deleted_sections(self):
+        model = FakeModel()
+        original = [
+            make_section("concepts/a.md", 0, "attention tokens"),
+            make_section("concepts/b.md", 0, "database storage"),
+        ]
         with tempfile.TemporaryDirectory() as tmp:
-            wiki = Path(tmp)
-            (wiki / "concepts").mkdir()
-            (wiki / "concepts" / "retrieval.md").write_text(
-                "---\ntype: concept\ntitle: Retrieval\ntags: [search]\n"
-                "created: 2026-07-20\nupdated: 2026-07-20\n---\n\n"
-                "# Retrieval\n\nLexical retrieval finds exact words.\n",
-                encoding="utf-8",
-            )
-            if mode is not None:
-                (wiki / "SCHEMA.md").write_text(
-                    f"# Schema\n\n## Retrieval\n\n- Embedding mode: `{mode}`.\n",
-                    encoding="utf-8",
-                )
+            root = Path(tmp)
+            connection = WIKI_SEARCH.open_vector_index(root, sqlite_vec, 2)
+            try:
+                first = WIKI_SEARCH.sync_vector_index(connection, sqlite_vec, model, original)
+                second = WIKI_SEARCH.sync_vector_index(connection, sqlite_vec, model, original)
+                self.assertEqual(first, second)
+                self.assertEqual(len(model.passage_calls), 1)
 
-            env = os.environ.copy()
-            for name in ("OPENAI_API_KEY", "LLM_WIKI_EMBED_URL", "LLM_WIKI_EMBED_KEY", "LLM_WIKI_EMBED_MODEL"):
-                env.pop(name, None)
-            if endpoint:
-                env["LLM_WIKI_EMBED_URL"] = endpoint_url or "http://127.0.0.1:9/embeddings"
-                env["LLM_WIKI_EMBED_MODEL"] = "test-model"
-
-            command = ["python3", str(SEARCH), "lexical retrieval", "--wiki", str(wiki), "--json"]
-            if no_embed:
-                command.append("--no-embed")
-            if approve_build:
-                command.append("--approve-embedding-build")
-            result = subprocess.run(command, env=env, capture_output=True, text=True, check=True)
-            return json.loads(result.stdout), result.stderr
-
-    def test_lexical_mode_ignores_configured_endpoint(self):
-        payload, stderr = self.run_search("lexical")
-        self.assertEqual(payload["mode"], "lexical")
-        self.assertEqual(stderr, "")
-
-    def test_missing_mode_defaults_to_local_only(self):
-        payload, stderr = self.run_search(None)
-        self.assertEqual(payload["mode"], "lexical")
-        self.assertEqual(stderr, "")
-
-    def test_hybrid_mode_without_backend_falls_back_cleanly(self):
-        payload, stderr = self.run_search("openai", endpoint=False)
-        self.assertEqual(payload["mode"], "lexical")
-        self.assertIn("provider is not configured", stderr)
-
-    def test_no_embed_overrides_hybrid_mode(self):
-        payload, stderr = self.run_search("custom", no_embed=True)
-        self.assertEqual(payload["mode"], "lexical")
-        self.assertEqual(stderr, "")
-
-    @mock.patch.dict(
-        os.environ,
-        {
-            "OPENAI_API_KEY": "openai-approved-key",
-            "LLM_WIKI_EMBED_URL": "https://custom.invalid/embeddings",
-            "LLM_WIKI_EMBED_KEY": "custom-key",
-            "LLM_WIKI_EMBED_MODEL": "approved-model",
-        },
-        clear=True,
-    )
-    def test_openai_mode_ignores_custom_provider_config(self):
-        config = WIKI_SEARCH.embed_config("openai")
-        self.assertEqual(config["url"], "https://api.openai.com/v1/embeddings")
-        self.assertEqual(config["key"], "openai-approved-key")
-
-    @mock.patch.dict(
-        os.environ,
-        {
-            "OPENAI_API_KEY": "must-not-be-reused",
-            "LLM_WIKI_EMBED_URL": "https://custom.example/embeddings",
-            "LLM_WIKI_EMBED_MODEL": "custom-model",
-        },
-        clear=True,
-    )
-    def test_custom_mode_never_falls_back_to_openai_key(self):
-        config = WIKI_SEARCH.embed_config("custom")
-        self.assertEqual(config["url"], "https://custom.example/embeddings")
-        self.assertIsNone(config["key"])
-
-    @mock.patch.dict(
-        os.environ,
-        {
-            "OPENAI_API_KEY": "must-not-enable-custom",
-            "LLM_WIKI_EMBED_MODEL": "custom-model",
-        },
-        clear=True,
-    )
-    def test_custom_mode_requires_custom_endpoint(self):
-        self.assertIsNone(WIKI_SEARCH.embed_config("custom"))
-
-    @mock.patch.dict(
-        os.environ,
-        {
-            "LLM_WIKI_EMBED_URL": "https://custom.example/embeddings",
-            "LLM_WIKI_EMBED_KEY": "must-not-enable-openai",
-            "LLM_WIKI_EMBED_MODEL": "custom-model",
-        },
-        clear=True,
-    )
-    def test_openai_mode_requires_openai_key(self):
-        self.assertIsNone(WIKI_SEARCH.embed_config("openai"))
-
-    def test_embedding_cache_isolated_by_provider(self):
-        sections = [{"searchable_text": "same model and text"}]
-        openai = {
-            "provider": "openai",
-            "url": "https://api.openai.com/v1/embeddings",
-            "key": "openai-key",
-            "model": "shared-model",
-        }
-        custom = {
-            "provider": "custom",
-            "url": "https://custom.example/embeddings",
-            "key": "custom-key",
-            "model": "shared-model",
-        }
-        with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(
-                WIKI_SEARCH,
-                "embed_texts",
-                side_effect=[[[1.0, 0.0]], [[0.0, 1.0]]],
-            ) as embed:
+                changed = [make_section("concepts/a.md", 0, "attention heads")]
+                WIKI_SEARCH.sync_vector_index(connection, sqlite_vec, model, changed)
+                self.assertEqual(len(model.passage_calls), 2)
                 self.assertEqual(
-                    WIKI_SEARCH.section_vectors(sections, Path(tmp), openai, approve_build=True),
-                    [[1.0, 0.0]],
+                    connection.execute("SELECT count(*) FROM semantic_sections").fetchone()[0],
+                    1,
                 )
                 self.assertEqual(
-                    WIKI_SEARCH.section_vectors(sections, Path(tmp), custom, approve_build=True),
-                    [[0.0, 1.0]],
+                    connection.execute("SELECT count(*) FROM semantic_vectors").fetchone()[0],
+                    1,
                 )
-                self.assertEqual(embed.call_count, 2)
+            finally:
+                connection.close()
 
-    def test_provider_switch_requires_build_approval(self):
-        sections = [{"searchable_text": "same model and text"}]
-        openai = {
-            "provider": "openai",
-            "url": "https://api.openai.com/v1/embeddings",
-            "key": "openai-key",
-            "model": "shared-model",
-        }
-        custom = {
-            "provider": "custom",
-            "url": "https://custom.example/embeddings",
-            "key": "custom-key",
-            "model": "shared-model",
-        }
+    def test_dimension_change_rebuilds_derived_index(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(
-                WIKI_SEARCH,
-                "embed_texts",
-                return_value=[[1.0, 0.0]],
-            ) as embed:
-                WIKI_SEARCH.section_vectors(
-                    sections,
-                    Path(tmp),
-                    openai,
-                    approve_build=True,
+            root = Path(tmp)
+            connection = WIKI_SEARCH.open_vector_index(root, sqlite_vec, 2)
+            connection.close()
+            connection = WIKI_SEARCH.open_vector_index(root, sqlite_vec, 3)
+            try:
+                meta = dict(connection.execute("SELECT key, value FROM semantic_meta"))
+                self.assertEqual(meta["dimension"], "3")
+                self.assertEqual(
+                    connection.execute("SELECT count(*) FROM semantic_sections").fetchone()[0],
+                    0,
                 )
-                with self.assertRaises(WIKI_SEARCH.EmbeddingBuildApprovalError):
-                    WIKI_SEARCH.section_vectors(sections, Path(tmp), custom)
-                self.assertEqual(embed.call_count, 1)
+            finally:
+                connection.close()
 
-    def test_approved_provider_embeds_only_changed_sections(self):
-        original = [{"searchable_text": "original section"}]
-        expanded = [*original, {"searchable_text": "new section"}]
-        config = {
-            "provider": "custom",
-            "url": "https://custom.example/embeddings",
-            "key": None,
-            "model": "shared-model",
-        }
-        with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(
-                WIKI_SEARCH,
-                "embed_texts",
-                side_effect=[[[1.0, 0.0]], [[0.0, 1.0]]],
-            ) as embed:
-                WIKI_SEARCH.section_vectors(
-                    original,
-                    Path(tmp),
-                    config,
-                    approve_build=True,
-                )
-                vectors = WIKI_SEARCH.section_vectors(expanded, Path(tmp), config)
-                self.assertEqual(vectors, [[1.0, 0.0], [0.0, 1.0]])
-                self.assertEqual(embed.call_count, 2)
-
-    def test_approved_one_section_wiki_can_reembed_after_edit(self):
-        original = [{"searchable_text": "original section"}]
-        edited = [{"searchable_text": "edited section"}]
-        config = {
-            "provider": "custom",
-            "url": "https://custom.example/embeddings",
-            "key": None,
-            "model": "shared-model",
-        }
-        with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(
-                WIKI_SEARCH,
-                "embed_texts",
-                side_effect=[[[1.0, 0.0]], [[0.0, 1.0]]],
-            ) as embed:
-                WIKI_SEARCH.section_vectors(
-                    original,
-                    Path(tmp),
-                    config,
-                    approve_build=True,
-                )
-                vectors = WIKI_SEARCH.section_vectors(edited, Path(tmp), config)
-                self.assertEqual(vectors, [[0.0, 1.0]])
-                self.assertEqual(embed.call_count, 2)
-
-    def test_new_cache_requires_cli_build_approval(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            wiki = Path(tmp)
-            (wiki / "concepts").mkdir()
-            (wiki / "SCHEMA.md").write_text(
-                "# Schema\n\n## Retrieval\n\n- Embedding mode: `custom`.\n",
-                encoding="utf-8",
+    def test_unfiltered_semantic_search_uses_cosine_distance(self):
+        model = MetricModel()
+        sections = [
+            make_section("concepts/cosine.md", 0, "long-axis"),
+            make_section("concepts/l2.md", 0, "near-origin"),
+        ]
+        allowed = {WIKI_SEARCH.section_locator(section) for section in sections}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            WIKI_SEARCH,
+            "load_local_embedding_backend",
+            return_value=(model, sqlite_vec, 2),
+        ):
+            order = WIKI_SEARCH.local_semantic_order(
+                "axis",
+                sections,
+                allowed,
+                Path(tmp),
             )
-            (wiki / "concepts" / "retrieval.md").write_text(
-                "---\ntype: concept\ntitle: Retrieval\ntags: [search]\n"
-                "created: 2026-07-20\nupdated: 2026-07-20\n---\n\n"
-                "# Retrieval\n\nLexical retrieval finds exact words.\n",
-                encoding="utf-8",
+        self.assertEqual(order[0], WIKI_SEARCH.section_locator(sections[0]))
+
+
+    def test_filtered_semantic_search_ranks_only_allowed_sections(self):
+        model = FilterModel()
+        sections = [
+            make_section("concepts/disallowed.md", 0, "exact semantic match"),
+            make_section("concepts/allowed.md", 0, "near semantic match"),
+        ]
+        allowed = {WIKI_SEARCH.section_locator(sections[1])}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            WIKI_SEARCH,
+            "load_local_embedding_backend",
+            return_value=(model, sqlite_vec, 2),
+        ):
+            order = WIKI_SEARCH.local_semantic_order(
+                "semantic match",
+                sections,
+                allowed,
+                Path(tmp),
             )
-            env = os.environ.copy()
-            for name in ("OPENAI_API_KEY", "LLM_WIKI_EMBED_KEY"):
-                env.pop(name, None)
-            env["LLM_WIKI_EMBED_URL"] = "http://127.0.0.1:9/embeddings"
-            env["LLM_WIKI_EMBED_MODEL"] = "shared-model"
+        self.assertEqual(order, [WIKI_SEARCH.section_locator(sections[1])])
 
-            result = subprocess.run(
-                ["python3", str(SEARCH), "lexical retrieval", "--wiki", str(wiki), "--json"],
-                env=env,
-                capture_output=True,
-                text=True,
-                check=True,
+    def test_semantic_search_rejects_low_similarity_results(self):
+        model = FakeModel()
+        sections = [make_section("concepts/b.md", 0, "database storage")]
+        allowed = {WIKI_SEARCH.section_locator(sections[0])}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            WIKI_SEARCH,
+            "load_local_embedding_backend",
+            return_value=(model, sqlite_vec, 2),
+        ):
+            order = WIKI_SEARCH.local_semantic_order(
+                "attention",
+                sections,
+                allowed,
+                Path(tmp),
             )
+        self.assertEqual(order, [])
 
-            self.assertEqual(json.loads(result.stdout)["mode"], "lexical")
-            self.assertIn("requires explicit approval", result.stderr)
-            self.assertIn("--approve-embedding-build", result.stderr)
-            self.assertNotIn("embedding 1 new sections", result.stderr)
-            self.assertFalse((wiki / ".wiki-cache" / "embeddings.jsonl").exists())
 
-    def test_embedding_cache_normalizes_trailing_url_slash(self):
-        base = {
-            "provider": "custom",
-            "url": "https://custom.example/embeddings",
-            "key": None,
-            "model": "shared-model",
-        }
-        trailing = {**base, "url": f"{base['url']}/"}
-        self.assertEqual(
-            WIKI_SEARCH.section_embedding_key(base, "text"),
-            WIKI_SEARCH.section_embedding_key(trailing, "text"),
+class LocalFallbackTests(unittest.TestCase):
+    def make_wiki(self, root):
+        concepts = root / "concepts"
+        concepts.mkdir()
+        (concepts / "retrieval.md").write_text(
+            "---\ntype: concept\ntitle: Retrieval\ntags: [search]\n"
+            "created: 2026-07-20\nupdated: 2026-07-20\n---\n\n"
+            "# Retrieval\n\nLexical retrieval finds exact words.\n",
+            encoding="utf-8",
         )
 
-    def test_cache_never_persists_custom_endpoint_or_credentials(self):
-        config = {
-            "provider": "custom",
-            "url": "https://user:secret@custom.example/embeddings?token=signed",
-            "key": "secret-key",
-            "model": "shared-model",
-        }
+    def search_args(self, wiki, no_embed=False, query="lexical retrieval"):
+        return SimpleNamespace(
+            query=query,
+            wiki=wiki,
+            top=10,
+            type=None,
+            tag=[],
+            since=None,
+            granularity="section",
+            per_page=2,
+            json=True,
+            no_embed=no_embed,
+        )
+
+    def run_cmd(self, wiki, no_embed=False, query="lexical retrieval"):
+        args = self.search_args(wiki, no_embed, query)
+        pages = WIKI_SEARCH.collect_pages(wiki)
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            WIKI_SEARCH.cmd_search(args, pages)
+        return json.loads(stdout.getvalue()), stderr.getvalue()
+
+    def test_no_embed_never_initializes_local_backend(self):
         with tempfile.TemporaryDirectory() as tmp:
+            wiki = Path(tmp)
+            self.make_wiki(wiki)
             with mock.patch.object(
                 WIKI_SEARCH,
-                "embed_texts",
-                return_value=[[1.0, 0.0]],
+                "local_semantic_order",
+                side_effect=AssertionError("semantic backend should not run"),
             ):
-                WIKI_SEARCH.section_vectors(
-                    [{"searchable_text": "section"}],
-                    Path(tmp),
-                    config,
-                    approve_build=True,
-                )
-            cache = (
-                Path(tmp) / ".wiki-cache" / "embeddings.jsonl"
-            ).read_text(encoding="utf-8")
-            self.assertNotIn(config["url"], cache)
-            self.assertNotIn("user:secret", cache)
-            self.assertNotIn("signed", cache)
-            self.assertIn("provider_fingerprint", cache)
-
-    def test_backend_failure_never_echoes_endpoint_credentials(self):
-        payload, stderr = self.run_search(
-            "custom",
-            endpoint_url=(
-                "https://user:secret@custom.example/embeddings?token=signed"
-            ),
-            approve_build=True,
-        )
+                payload, stderr = self.run_cmd(wiki, no_embed=True)
         self.assertEqual(payload["mode"], "lexical")
-        self.assertIn("embedding backend failed", stderr)
-        self.assertNotIn("user:secret", stderr)
-        self.assertNotIn("signed", stderr)
+        self.assertEqual(stderr, "")
 
-    def test_legacy_cache_requires_approved_rebuild(self):
+    def test_local_backend_failure_falls_back_to_valid_lexical_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             wiki = Path(tmp)
-            (wiki / "concepts").mkdir()
-            (wiki / ".wiki-cache").mkdir()
-            (wiki / "SCHEMA.md").write_text(
-                "# Schema\n\n## Retrieval\n\n- Embedding mode: `custom`.\n",
-                encoding="utf-8",
-            )
-            (wiki / "concepts" / "retrieval.md").write_text(
-                "---\ntype: concept\ntitle: Retrieval\ntags: [search]\n"
-                "created: 2026-07-20\nupdated: 2026-07-20\n---\n\n"
-                "# Retrieval\n\nLexical retrieval finds exact words.\n",
-                encoding="utf-8",
-            )
-            cache = wiki / ".wiki-cache" / "embeddings.jsonl"
-            legacy = '{"key":"legacy","model":"shared-model","vec":[1.0,0.0]}\n'
-            cache.write_text(legacy, encoding="utf-8")
-            env = os.environ.copy()
-            for name in ("OPENAI_API_KEY", "LLM_WIKI_EMBED_KEY"):
-                env.pop(name, None)
-            env["LLM_WIKI_EMBED_URL"] = "http://127.0.0.1:9/embeddings"
-            env["LLM_WIKI_EMBED_MODEL"] = "shared-model"
+            self.make_wiki(wiki)
+            with mock.patch.object(
+                WIKI_SEARCH,
+                "local_semantic_order",
+                side_effect=RuntimeError("private path and payload"),
+            ):
+                payload, stderr = self.run_cmd(wiki)
+        self.assertEqual(payload["mode"], "lexical")
+        self.assertIn("local semantic search unavailable (RuntimeError)", stderr)
+        self.assertNotIn("private path", stderr)
+        self.assertTrue(payload["results"])
 
-            result = subprocess.run(
-                ["python3", str(SEARCH), "lexical retrieval", "--wiki", str(wiki), "--json"],
-                env=env,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-
-            self.assertEqual(json.loads(result.stdout)["mode"], "lexical")
-            self.assertIn("legacy embedding cache detected", result.stderr)
-            self.assertIn("approve a full rebuild", result.stderr)
-            self.assertNotIn("embedding 1 new sections", result.stderr)
-            self.assertEqual(cache.read_text(encoding="utf-8"), legacy)
-
-    def test_v2_cache_with_raw_endpoint_is_legacy(self):
-        config = {
-            "provider": "custom",
-            "url": "https://user:secret@custom.example/embeddings?token=signed",
-            "key": "secret-key",
-            "model": "shared-model",
-        }
-        legacy = (
-            '{"cache_version":2,"provider":"custom",'
-            '"endpoint":"https://user:secret@custom.example/embeddings?token=signed",'
-            '"key":"legacy","model":"shared-model","vec":[1.0,0.0]}\n'
-            '{"cache_version":2,"kind":"provider_marker","provider":"custom",'
-            '"endpoint":"https://user:secret@custom.example/embeddings?token=signed",'
-            '"model":"shared-model","provider_identity":"raw-identity"}\n'
-        )
-        with tempfile.TemporaryDirectory() as tmp:
-            cache = Path(tmp) / "embeddings.jsonl"
-            cache.write_text(legacy, encoding="utf-8")
-            vectors, legacy_only, provider_approved = (
-                WIKI_SEARCH.load_embedding_cache(cache, config)
-            )
-            self.assertEqual(vectors, {})
-            self.assertTrue(legacy_only)
-            self.assertFalse(provider_approved)
-            self.assertEqual(cache.read_text(encoding="utf-8"), legacy)
-
-    def test_mixed_v2_v3_cache_stays_blocked_until_rebuild(self):
-        config = {
-            "provider": "custom",
-            "url": "https://custom.example/embeddings",
-            "key": None,
-            "model": "shared-model",
-        }
-        sections = [{"searchable_text": "section"}]
-        fingerprint = WIKI_SEARCH.embedding_provider_fingerprint(config)
-        key = WIKI_SEARCH.section_embedding_key(config, "section")
-        rows = (
-            '{"cache_version":2,"endpoint":"https://user:secret@example.test",'
-            '"key":"legacy","vec":[1.0,0.0]}\n'
-            f'{{"cache_version":3,"kind":"provider_marker",'
-            f'"provider_fingerprint":"{fingerprint}"}}\n'
-            f'{{"cache_version":3,"key":"{key}","vec":[1.0,0.0]}}\n'
-        )
+    def test_empty_hybrid_preserves_json_envelope(self):
         with tempfile.TemporaryDirectory() as tmp:
             wiki = Path(tmp)
-            cache = wiki / ".wiki-cache" / "embeddings.jsonl"
-            cache.parent.mkdir()
-            cache.write_text(rows, encoding="utf-8")
-            with mock.patch.object(WIKI_SEARCH, "embed_texts") as embed:
-                with self.assertRaises(WIKI_SEARCH.LegacyEmbeddingCacheError):
-                    WIKI_SEARCH.section_vectors(
-                        sections,
-                        wiki,
-                        config,
-                        approve_build=True,
-                    )
-            embed.assert_not_called()
-            self.assertEqual(cache.read_text(encoding="utf-8"), rows)
+            self.make_wiki(wiki)
+            with mock.patch.object(
+                WIKI_SEARCH,
+                "local_semantic_order",
+                return_value=[],
+            ):
+                payload, _stderr = self.run_cmd(wiki, query="sourdough")
+        self.assertEqual(payload["mode"], "hybrid")
+        self.assertEqual(payload["wiki"], str(wiki))
+        self.assertEqual(payload["granularity"], "section")
+        self.assertEqual(payload["results"], [])
+
+    def test_empty_fallback_preserves_lexical_envelope(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wiki = Path(tmp)
+            self.make_wiki(wiki)
+            with mock.patch.object(
+                WIKI_SEARCH,
+                "local_semantic_order",
+                side_effect=RuntimeError("backend failed"),
+            ):
+                payload, _stderr = self.run_cmd(wiki, query="sourdough")
+        self.assertEqual(payload["mode"], "lexical")
+        self.assertEqual(payload["wiki"], str(wiki))
+        self.assertEqual(payload["granularity"], "section")
+        self.assertEqual(payload["results"], [])
+
+    def test_extension_load_failure_closes_database(self):
+        class BrokenSqliteVec:
+            @staticmethod
+            def load(_connection):
+                raise RuntimeError("cannot load")
+
+        connection = mock.Mock()
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            WIKI_SEARCH.sqlite3,
+            "connect",
+            return_value=connection,
+        ), self.assertRaises(RuntimeError):
+            WIKI_SEARCH.open_vector_index(Path(tmp), BrokenSqliteVec, 2)
+        connection.close.assert_called_once_with()
 
 
 if __name__ == "__main__":

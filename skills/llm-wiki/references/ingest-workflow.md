@@ -99,8 +99,8 @@ If `index.md` exceeds 300 lines after this update, that's the signal to shard. D
 If the wiki has the optional graph layer:
 
 1. Add typed `graph.relationships[]` only when the source explicitly supports them (predicate, source-page slug, evidence quote, confidence, status). When uncertain, prefer a plain `[[wikilink]]` in the body — the body wikilink already produces a `mentions` edge.
-2. Run `python scripts/wiki_graph_lint.py wiki/`. Triage findings with the user before extracting; do not silently rewrite typed edges.
-3. Run `python scripts/wiki_graph_extract.py wiki/` to regenerate `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml`.
+2. Run `uv run --script scripts/wiki_graph_lint.py wiki/`. Triage findings with the user before extracting; do not silently rewrite typed edges.
+3. Run `uv run --script scripts/wiki_graph_extract.py wiki/` to regenerate `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml`.
 
 Skip this entire step if the ingest added no `graph:` metadata and created no new pages — the compiled artifacts are unchanged. Full reference: `references/graph-workflow.md`.
 

@@ -31,18 +31,19 @@ If a single shard later exceeds 300 lines (most likely `entities.md` or `concept
 
 ## Threshold 3: ~300 pages
 
-Time to introduce the **search script as a routine fallback**. Index navigation still works for direct lookups ("the page on diffusion models"), but fuzzy queries ("which papers discuss training stability") benefit from BM25 ranking.
+Time to use the **search script as a routine fallback**. Index navigation still works for direct lookups, while fuzzy queries benefit from default local semantic + BM25 ranking.
 
 `scripts/wiki_search.py` provides:
 
-- `python scripts/wiki_search.py "query terms"` — top-N pages by BM25 score.
+- `uv run --script scripts/wiki_search.py "query terms"` — section-level local hybrid results.
+- `python scripts/wiki_search.py "query terms" --no-embed` — dependency-free lexical BM25 (bypasses PEP 723 dependency resolution).
 - `--type concept` — filter by frontmatter type.
 - `--tag <tag>` — filter by tag.
 - `--since 2026-01-01` — filter by `updated` date.
 - `--backlinks <slug>` — find pages that link to a given page.
 - `--top-linked N` — find the N most-linked-to pages (hubs).
 
-Update the schema to declare the search script as a sanctioned fallback, so that future LLM sessions know to reach for it rather than degenerating into recursive grep.
+The model cache is shared under `~/.cache/llm-wiki/fastembed/`; per-wiki vectors stay in `.wiki-cache/embeddings.sqlite`. Future sessions should reach for this bounded retrieval path instead of recursive grep.
 
 ## Threshold 4: ~500 pages
 

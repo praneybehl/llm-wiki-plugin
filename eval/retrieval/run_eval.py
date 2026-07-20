@@ -7,9 +7,9 @@ reports retrieval quality per mode:
 
   * ``page``    -- whole-page BM25 (``--granularity page --no-embed``)
   * ``section`` -- section-level BM25 (``--no-embed``)
-  * ``hybrid``  -- RRF fusion of BM25 + embeddings; only evaluated when an
-                   embedding endpoint is configured (env vars), detected by
-                   running one search and reading the JSON ``mode`` field.
+  * ``hybrid``  -- RRF fusion of BM25 + local FastEmbed/sqlite-vec retrieval;
+                   evaluated when those optional packages are installed,
+                   detected by running one search and reading its JSON mode.
 
 Metrics are computed over the non-negative queries, matching on page slug
 (a section hit counts for its page): recall@5, recall@10, and MRR, all
@@ -21,9 +21,12 @@ The harness also verifies the ``--cache`` byte-identical invariant: three
 fixed queries produce identical ``--json`` output with no cache, with a
 cold cache, and with a warm cache.
 
-Stdlib only. Run from anywhere; paths resolve relative to this file.
+Lexical checks use only stdlib. Use ``uv run --script`` on the search script
+or install its pinned optional packages before evaluating hybrid retrieval.
 
-  python3 eval/retrieval/run_eval.py          # print the report
+  python3 eval/retrieval/run_eval.py          # lexical report
+  uv run --with fastembed==0.8.0 --with sqlite-vec==0.1.9 \
+    python eval/retrieval/run_eval.py          # include hybrid
   python3 eval/retrieval/run_eval.py --gate   # + regression gate (CI)
 """
 
@@ -139,11 +142,11 @@ def evaluate_mode(mode_opts, queries):
 
 
 def hybrid_available():
-    """True when a configured embedding backend produces a hybrid search.
+    """True when the local embedding backend produces a hybrid search.
 
     Runs one section search without --no-embed and reads the JSON ``mode``.
-    Returns False both when no endpoint is configured and when a configured
-    endpoint fails (wiki_search falls back to lexical mode).
+    Returns False when local dependencies are absent or fail to initialize
+    (wiki_search falls back to lexical mode).
     """
     try:
         payload = json.loads(run_search("attention", no_embed=False))
@@ -184,7 +187,10 @@ def main():
     )
     parser.add_argument(
         "--gate", action="store_true",
-        help="Exit 1 if section-mode recall@10 < page-mode recall@10.",
+        help=(
+            "Exit 1 if section recall regresses from page mode, or available "
+            "hybrid retrieval regresses section recall/false-positive rate."
+        ),
     )
     args = parser.parse_args()
 
@@ -196,7 +202,7 @@ def main():
     if hybrid_available():
         modes.append("hybrid")
     else:
-        print("hybrid: skipped (no embedding endpoint configured)", file=sys.stderr)
+        print("hybrid: skipped (local semantic dependencies unavailable)", file=sys.stderr)
 
     rows = {mode: evaluate_mode(MODES[mode], queries) for mode in modes}
     print_table(rows)
@@ -209,14 +215,20 @@ def main():
         exit_code = 1  # mismatch fails regardless of --gate
 
     if args.gate:
+        failures = []
         if rows["section"]["recall@10"] < rows["page"]["recall@10"]:
-            print(
-                "gate: FAIL (section recall@10 < page recall@10)",
-                file=sys.stderr,
-            )
+            failures.append("section recall@10 < page recall@10")
+        if "hybrid" in rows:
+            if rows["hybrid"]["recall@10"] < rows["section"]["recall@10"]:
+                failures.append("hybrid recall@10 < section recall@10")
+            if rows["hybrid"]["fp_rate"] > rows["section"]["fp_rate"]:
+                failures.append("hybrid fp_rate > section fp_rate")
+        if failures:
+            print(f"gate: FAIL ({'; '.join(failures)})", file=sys.stderr)
             exit_code = 1
         else:
-            print("gate: PASS (section recall@10 >= page recall@10)")
+            compared = "section/page + hybrid" if "hybrid" in rows else "section/page"
+            print(f"gate: PASS ({compared} retrieval quality)")
 
     sys.exit(exit_code)
 

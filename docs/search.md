@@ -1,18 +1,18 @@
 ---
 title: Search & retrieval
-description: Section-level BM25, JSON evidence rows, the incremental cache, and optional hybrid embeddings.
+description: Local FastEmbed + sqlite-vec hybrid retrieval, section-level BM25, JSON evidence rows, and incremental caches.
 ---
 
-<!-- Adapted from: docs/search.html (source: v2 retrieval design — section search, --json, --cache, hybrid embeddings). -->
+<!-- Source: v3 local hybrid design — FastEmbed, sqlite-vec, BM25/RRF, JSON evidence, and incremental caches. -->
 
 # Search & retrieval
 
-v2.0.0 rebuilds the retrieval layer: search is section-level by default, emits structured `--json` evidence rows, keeps an incremental parse cache, and can fuse in optional semantic embeddings — all with pure stdlib Python, no install.
+v3.0.0 makes section-level hybrid search local and default: FastEmbed produces semantic vectors, sqlite-vec stores and ranks them, BM25 preserves exact-term precision, and RRF fuses both result lists. Structured `--json` evidence rows and content-hashed incremental caches remain unchanged.
 
 The search script is the fallback for when the index's one-line summaries don't surface good candidates (see the [query workflow](/workflows#query)). It runs from the repo root:
 
 ```bash
-python skills/llm-wiki/scripts/wiki_search.py "attention mechanism" --wiki wiki --json
+uv run --script skills/llm-wiki/scripts/wiki_search.py "attention mechanism" --wiki wiki --json
 ```
 
 ```mermaid
@@ -78,6 +78,8 @@ The `--json` flag emits one machine-readable object to stdout — ideal for feed
 | `updated`, `tags`, `sources` | Straight from frontmatter (`null` / `[]` when absent). |
 | `neighbors` | The headings of the adjacent sections on the same page (`null` at page edges). |
 
+Semantic candidates must also clear a conservative cosine-similarity floor before RRF. This prevents unrelated vector neighbors from turning out-of-domain questions into confident-looking results; exact BM25 matches remain unaffected.
+
 Without `--json`, results print in the familiar human format, with a `§` line showing the heading path for section hits.
 
 ## Whole-page ranking
@@ -85,7 +87,7 @@ Without `--json`, results print in the familiar human format, with a `§` line s
 Pass `--granularity page` to rank whole pages exactly as v1 did — the pre-v2 behavior, byte-for-byte. Page-granularity rows carry an empty `heading_path` and a `null` `section_index`, and are always lexical (embeddings apply only to section granularity).
 
 ```bash
-python skills/llm-wiki/scripts/wiki_search.py "attention mechanism" --wiki wiki --granularity page --json
+python skills/llm-wiki/scripts/wiki_search.py "attention mechanism" --wiki wiki --granularity page --no-embed --json
 ```
 
 ## Filters
@@ -93,7 +95,7 @@ python skills/llm-wiki/scripts/wiki_search.py "attention mechanism" --wiki wiki 
 Narrow results with frontmatter filters, all combinable:
 
 ```bash
-python skills/llm-wiki/scripts/wiki_search.py "diffusion" --wiki wiki \
+uv run --script skills/llm-wiki/scripts/wiki_search.py "diffusion" --wiki wiki \
   --type concept --tag generative --since 2026-01-01 --top 10 --per-page 3
 ```
 
@@ -105,10 +107,10 @@ The `--cache` flag keeps an incremental parse cache so large wikis don't re-pars
 
 ```bash
 # Use the default cache location
-python skills/llm-wiki/scripts/wiki_search.py "attention" --wiki wiki --json --cache
+uv run --script skills/llm-wiki/scripts/wiki_search.py "attention" --wiki wiki --json --cache
 
 # Or an explicit path
-python skills/llm-wiki/scripts/wiki_search.py "attention" --wiki wiki --json --cache /tmp/idx.json
+uv run --script skills/llm-wiki/scripts/wiki_search.py "attention" --wiki wiki --json --cache /tmp/idx.json
 ```
 
 Each file is keyed by the SHA-256 of its raw bytes: unchanged files are reused, changed files are reparsed, deleted files are dropped. A cache that is missing, unparseable, or from an older schema is rebuilt from scratch, with a single `cache: rebuilding (<reason>)` line to stderr. The cache is written atomically.
@@ -117,47 +119,32 @@ Each file is keyed by the SHA-256 of its raw bytes: unchanged files are reused, 
 `--json` output with and without `--cache` is byte-identical for the same query — the cache only changes speed, never ranking. This invariant is checked by the eval harness.
 :::
 
-## Optional hybrid embeddings
+## Default local hybrid retrieval
 
-Section search becomes *hybrid* only when `SCHEMA.md` records an approved provider mode and that provider's configuration is complete. `openai` is pinned to `https://api.openai.com/v1/embeddings` and uses only `OPENAI_API_KEY`; it ignores custom URL/key variables. `custom` requires `LLM_WIKI_EMBED_URL` and `LLM_WIKI_EMBED_MODEL`, optionally uses `LLM_WIKI_EMBED_KEY`, and never falls back to OpenAI or `OPENAI_API_KEY`. BM25 and semantic similarity are fused with Reciprocal Rank Fusion (RRF, `k=60`, equal weights).
+Section search uses `BAAI/bge-small-en-v1.5` through FastEmbed and stores its 384-dimensional vectors in a sqlite-vec virtual table. BM25 and semantic ranks are fused with Reciprocal Rank Fusion (RRF, `k=60`, equal weights). No API key or service is involved, and wiki sections and query text never leave the machine.
 
-| Variable | Purpose |
-| --- | --- |
-| `OPENAI_API_KEY` | Required only for `Embedding mode: openai`; sent only to the fixed OpenAI endpoint. |
-| `LLM_WIKI_EMBED_URL` | Required only for `Embedding mode: custom`; the approved custom endpoint. |
-| `LLM_WIKI_EMBED_KEY` | Optional custom-provider key. Omit for keyless local endpoints; never falls back to `OPENAI_API_KEY`. |
-| `LLM_WIKI_EMBED_MODEL` | Required for `custom`; optional for `openai` (defaults to `text-embedding-3-small`). |
+The script carries pinned [PEP 723](https://peps.python.org/pep-0723/) dependencies. Run it with `uv` so those packages are available without modifying your project environment:
 
-`undecided`, `lexical`, and `deferred` modes remain local BM25 even if an API key is present. In hybrid mode, JSON `mode` becomes `"hybrid"` and each row's `retrievers` lists which retrievers found it. Section vectors are cached in `wiki/.wiki-cache/embeddings.jsonl`; only new or changed sections are embedded. Every hybrid query sends its query text to the provider, the first build sends every canonical section, and later searches send uncached new or changed sections. Provider requests may be billable. Pass `--no-embed` to force lexical for one run.
+```bash
+uv run --script skills/llm-wiki/scripts/wiki_search.py \
+  "how does self-attention weigh tokens" --wiki wiki --json --top 5
+```
+
+Initialization and every upgrade run `setup_wiki.py`: FastEmbed model artifacts are cached under `~/.cache/llm-wiki/fastembed/` (override with `FASTEMBED_CACHE_PATH`), and every current section is synchronized into `wiki/.wiki-cache/embeddings.sqlite`. Subsequent searches and upgrades embed only new or changed sections and remove deleted ones.
+
+In hybrid mode JSON `mode` is `"hybrid"` and every row's `retrievers` field shows whether BM25, embeddings, or both surfaced it.
 
 ::: warning Failures never break search
-If the embedding backend errors, times out, or returns bad data, the command prints a warning to stderr, falls back to plain BM25, and exits 0 with `mode: "lexical"`. A hybrid search can degrade, but it cannot fail the command.
+If FastEmbed is unavailable, model initialization fails, or sqlite-vec cannot load, the command emits a non-sensitive warning to stderr, falls back to BM25, and exits 0 with `mode: "lexical"`. To choose the dependency-free path explicitly, bypass PEP 723 resolution: `python skills/llm-wiki/scripts/wiki_search.py "<query>" --no-embed`.
 :::
-
-### Worked config: OpenAI
-
-First set `- Embedding mode: openai` under `## Retrieval` in `wiki/SCHEMA.md` after the user approves the data transfer and ongoing API usage.
-
-```bash
-export OPENAI_API_KEY=sk-your-key-here
-python skills/llm-wiki/scripts/wiki_search.py "how does self-attention weigh tokens" \
-  --wiki wiki --json --top 5 --approve-embedding-build
-```
-
-Uses `text-embedding-3-small` on `api.openai.com` by default. Use `--approve-embedding-build` only on the first run after explicit approval; it embeds every section and stores a provider marker. Later runs omit the flag and automatically embed only new or changed sections.
-
-### Worked config: local Ollama
-First set `- Embedding mode: custom` under `## Retrieval` in `wiki/SCHEMA.md` after the user approves the data transfer and ongoing provider use.
-
-```bash
-export LLM_WIKI_EMBED_URL=http://localhost:11434/v1/embeddings
-export LLM_WIKI_EMBED_MODEL=nomic-embed-text
-python skills/llm-wiki/scripts/wiki_search.py "how does self-attention weigh tokens" \
-  --wiki wiki --json --top 5 --approve-embedding-build
-```
-
-No key is needed for a local endpoint — leave `LLM_WIKI_EMBED_KEY` unset and no `Authorization` header is sent. The same pattern works for LM Studio or any other OpenAI-compatible server.
 
 ## The cache directory
 
-`wiki/.wiki-cache/` holds every regenerable retrieval artifact — the parse cache and embedding vectors. Vector keys and approval markers use a SHA-256 fingerprint of provider mode, normalized endpoint, and model; raw custom endpoints, URL credentials, and query tokens are never persisted. A new or switched provider has no matching marker, so search stays lexical until an explicitly approved run uses `--approve-embedding-build`; later same-provider searches embed only new or changed sections without asking again. Legacy caches also stay lexical until deletion and rebuild are approved.
+`wiki/.wiki-cache/` contains two independent, fully regenerable indexes:
+
+| File | Purpose |
+| --- | --- |
+| `search-index.json` | Parsed page/section cache used by `--cache`. |
+| `embeddings.sqlite` | Section locators, content hashes, and sqlite-vec vectors. |
+
+Both are gitignored and safe to delete. The next query rebuilds what is missing. A model, dimension, or vector-schema change also rebuilds `embeddings.sqlite` automatically. Legacy `embeddings.jsonl` provider caches are ignored and may be removed.

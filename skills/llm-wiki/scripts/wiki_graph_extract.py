@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "pyyaml==6.0.3",
+# ]
+# ///
 """
 wiki_graph_extract.py — Compile the markdown wiki into a queryable graph.
 
@@ -7,12 +13,10 @@ and edges (typed semantic edges from `graph.relationships`, plus implicit
 `mentions`, `sourced_from`, `summarizes_raw` edges), and emits artifacts under
 `<wiki>/graph/` that can be deleted and rebuilt at any time.
 
-Requires PyYAML (`pip install pyyaml`) — the new graph layer uses real YAML
-parsing for its nested frontmatter, unlike the stdlib-only lint/search/stats
-scripts.
+Carries a pinned PyYAML dependency; run with `uv run --script`.
 
 Usage:
-    python wiki_graph_extract.py <wiki-dir> [options]
+    uv run --script wiki_graph_extract.py <wiki-dir> [options]
 
 Options:
     --out <dir>                  Output directory (default: <wiki-dir>/graph)
@@ -22,8 +26,8 @@ Options:
                                  (default: <wiki-dir>/graph/ontology.yaml)
 
 Examples:
-    python wiki_graph_extract.py wiki/
-    python wiki_graph_extract.py wiki/ --out wiki/graph --formats jsonl,sqlite
+    uv run --script wiki_graph_extract.py wiki/
+    uv run --script wiki_graph_extract.py wiki/ --out wiki/graph --formats jsonl,sqlite
 """
 
 import argparse
@@ -40,8 +44,8 @@ try:
     import yaml
 except ImportError:
     print(
-        "wiki_graph_extract.py requires PyYAML.\n"
-        "Install with:  pip install pyyaml",
+        "wiki_graph_extract.py requires PyYAML. "
+        "Run it with `uv run --script wiki_graph_extract.py ...`.",
         file=sys.stderr,
     )
     sys.exit(2)

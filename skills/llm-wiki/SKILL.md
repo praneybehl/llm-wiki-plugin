@@ -35,8 +35,8 @@ Pages can carry typed `graph:` metadata in frontmatter. A bundled extractor comp
 The conventions for the graph layer (predicate vocabulary, node id format, required fields) live in `wiki/graph/ontology.yaml`. The full reference is `references/graph-workflow.md`. Run the bundled scripts after substantive ingests:
 
 ```bash
-python scripts/wiki_graph_lint.py wiki/      # check ontology + evidence + alias collisions
-python scripts/wiki_graph_extract.py wiki/   # rebuild nodes.jsonl, edges.jsonl, graph.sqlite, graph.graphml
+uv run --script scripts/wiki_graph_lint.py wiki/      # check ontology + evidence + alias collisions
+uv run --script scripts/wiki_graph_extract.py wiki/   # rebuild nodes.jsonl, edges.jsonl, graph.sqlite, graph.graphml
 python scripts/wiki_graph_query.py wiki/ neighbors --node product:konvy
 ```
 
@@ -82,7 +82,7 @@ The single biggest failure mode of the LLM Wiki pattern is the wiki itself becom
 
 **Chunked source ingestion.** Large raw sources (long PDFs, book chapters, lengthy transcripts) should be read in chunks during ingest, not loaded whole. The ingest workflow handles this — see `references/ingest-workflow.md`.
 
-**Search script for large wikis.** Once the wiki passes ~300 pages, plain index lookup may not surface the right pages for fuzzy queries. Use `scripts/wiki_search.py` for BM25-ranked retrieval with optional frontmatter filters — it returns section-level results by default (`--granularity page` restores whole-page ranking) and emits structured evidence rows with `--json`. Pass `--cache` to persist an incremental parse index keyed by content hash, so large wikis only reparse changed pages. Hybrid retrieval is provider-bound: `Embedding mode: openai` uses only the fixed OpenAI endpoint plus `OPENAI_API_KEY`; `Embedding mode: custom` requires `LLM_WIKI_EMBED_URL` and `LLM_WIKI_EMBED_MODEL`, optionally uses `LLM_WIKI_EMBED_KEY`, and never falls back to OpenAI. Other modes stay lexical, and `--no-embed` always forces lexical. Hybrid sends every query and any uncached new or changed section to the approved provider. It's a fallback, not the default — index-first is still cheaper when it works.
+**Search script for large wikis.** Once the wiki passes ~300 pages, plain index lookup may not surface the right pages for fuzzy queries. Use `scripts/wiki_search.py` for section-level hybrid retrieval with optional frontmatter filters and structured `--json` evidence rows. The default path runs the local `BAAI/bge-small-en-v1.5` FastEmbed model, stores derived vectors in `wiki/.wiki-cache/embeddings.sqlite` through sqlite-vec, and fuses semantic and BM25 ranks with RRF. Initialization and upgrade run `scripts/setup_wiki.py` through `uv`, installing pinned FastEmbed, sqlite-vec, and PyYAML, caching the model, and synchronizing every section before setup is reported ready. No wiki or query text leaves the machine. For dependency-free BM25, bypass PEP 723 resolution with `python scripts/wiki_search.py "query" --no-embed`.
 
 For the full scaling playbook including thresholds and migration steps, read `references/scaling-playbook.md`.
 
@@ -94,9 +94,9 @@ If the project does not contain a `wiki/` directory (or whatever the user calls 
 python scripts/init_wiki.py <project-root> [--wiki-dir wiki] [--raw-dir raw]
 ```
 
-This creates the directory structure, drops in templates for `SCHEMA.md`, `index.md`, and `log.md`, and seeds a starter page convention document. After bootstrapping, briefly walk the user through the schema and ask whether they want to customize anything (e.g. domain-specific page types, custom tags) before the first ingest. The schema is meant to evolve — encourage editing it.
+This creates the directory structure, drops in templates for `SCHEMA.md`, `index.md`, and `log.md`, then runs mandatory local runtime setup. Setup installs the pinned dependencies through `uv`, downloads `BAAI/bge-small-en-v1.5` when absent, builds the parse cache, and embeds every current section. Do not treat initialization or upgrade as complete unless setup emits `"status": "ready"`.
 
-Before treating setup as complete, run the grouped interview in `references/retrieval-setup.md`. Ask about wiki/raw paths, retrieval mode (local BM25, OpenAI hybrid, custom OpenAI-compatible hybrid, or defer), whether the user authorizes a first embedding-cache build, graph usage, and agent-memory integration. Explain that hybrid sends the query text on every search and sends each new or changed canonical section when its vector is missing; provider requests may be billable. A new or switched provider remains lexical until an explicitly approved run includes `--approve-embedding-build`; its fingerprint marker then permits later same-provider incremental updates. Inspect environment-variable presence without printing secrets. A present key means **configured, not API-validated** until a real request succeeds; a wiki is **embedded** only after `wiki/.wiki-cache/embeddings.jsonl` exists and a hybrid query is observed.
+Before running the bootstrap, use the grouped interview in `references/retrieval-setup.md` to confirm paths, model-cache location, graph usage, and agent-memory integration. Do not ask for API keys or provider consent: there is no remote embedding path. `--no-embed` remains the deterministic lexical escape hatch for later searches, not a way to skip mandatory setup.
 
 Then propose wiring the wiki into the project's agent-memory file so the running agent remembers the wiki in future sessions without being told. The target file depends on the agent: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / OpenCode / Pi / OpenClaw, `GEMINI.md` for Gemini CLI, with `AGENTS.md` as the safe default if the user runs multiple agents or is unsure. Full workflow, canonical stanza, and a three-line short variant are in `references/agent-memory-integration.md`. Never write to the memory file without the user's approval — show them the proposed stanza, ask whether to append to an existing file or create a new one, and honour a "skip" answer without pushing.
 
@@ -135,19 +135,20 @@ The reference files are the source of truth for the detailed procedures. Read th
 - `references/page-conventions.md` — frontmatter schema, page naming, link syntax, page-type definitions, sizing rules
 - `references/scaling-playbook.md` — thresholds at which to shard the index, when to introduce the search script, signals that the wiki has outgrown its current conventions
 - `references/agent-memory-integration.md` — how to wire the wiki into the project's agent-memory file (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), canonical stanza and short variant, and the bootstrap conversation script
-- `references/retrieval-setup.md` — the grouped setup interview for paths, lexical vs hybrid retrieval, secret handling, first-build authorization, precise validation states, and recording the non-secret decision in `SCHEMA.md`
+- `references/retrieval-setup.md` — mandatory init/upgrade setup: paths, model cache, pinned local dependencies, full-corpus vector synchronization, readiness checks, and non-secret `SCHEMA.md` state
 - `references/graph-workflow.md` — the optional graph layer: ontology, frontmatter schema, when to add typed edges vs plain wikilinks, and the extract/lint/query flow
 
 ## Bundled scripts
 
 The scripts are intentionally minimal — they exist so the LLM doesn't reinvent the same helpers on every invocation. Each is documented in its own `--help` output and at the top of the file.
 
-- `scripts/init_wiki.py` — bootstrap a new wiki structure in a project, seeding the templates
-- `scripts/wiki_search.py` — BM25 search over wiki pages with optional frontmatter filters; fallback when index navigation doesn't surface the right pages
+- `scripts/init_wiki.py` — bootstrap or upgrade a wiki, then require verified runtime/index setup
+- `scripts/setup_wiki.py` — install pinned FastEmbed/sqlite-vec/PyYAML through `uv`, cache the local model, and synchronize parse/vector indexes
+- `scripts/wiki_search.py` — section-level local hybrid retrieval with JSON evidence, filters, incremental caches, and dependency-free lexical fallback
 - `scripts/wiki_lint.py` — structural health check (orphans, broken links, oversized pages, frontmatter validation, stale dates)
 - `scripts/wiki_stats.py` — quick summary of wiki size, page count by type, link density; useful for deciding when to shard the index
-- `scripts/wiki_graph_extract.py` — compile `graph:` metadata + body wikilinks into `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml` (requires PyYAML)
-- `scripts/wiki_graph_lint.py` — validate typed edges against `graph/ontology.yaml`: unknown predicates, missing evidence, broken object refs, alias collisions
+- `scripts/wiki_graph_extract.py` — compile graph metadata and wikilinks into JSONL, SQLite, and GraphML through pinned PyYAML
+- `scripts/wiki_graph_lint.py` — validate typed edges against the ontology through pinned PyYAML
 - `scripts/wiki_graph_query.py` — neighbors / edges / facts / shortest-path queries over `graph.sqlite`
 
 ## Templates

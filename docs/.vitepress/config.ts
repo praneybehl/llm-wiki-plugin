@@ -24,7 +24,7 @@ const faqItems = [
   {
     question: 'Does LLM Wiki require embeddings or a vector database?',
     answer:
-      'No. The default retrieval path is dependency-free section-level BM25 with an incremental local cache. Embeddings are optional and can be fused with lexical results through reciprocal rank fusion. The typed graph is also optional, while canonical Markdown remains the source of truth.',
+      'No hosted service is required. Default search uses local FastEmbed embeddings in a disposable sqlite-vec index and fuses them with BM25. Run the search script directly with Python and --no-embed for dependency-free lexical retrieval. The typed graph is also optional, while canonical Markdown remains the source of truth.',
   },
   {
     question: 'Which coding agents support LLM Wiki?',
@@ -68,7 +68,7 @@ function structuredData(
           name: 'LLM Wiki',
           applicationCategory: 'DeveloperApplication',
           operatingSystem: 'Cross-platform',
-          softwareVersion: '2.0.0',
+          softwareVersion: '3.0.0',
           description,
           url,
           codeRepository: repo,
@@ -213,9 +213,9 @@ export default withMermaid(
           activeMatch: '^/(integrations|agents)',
         },
         {
-          text: 'v2.0.0',
+          text: 'v3.0.0',
           items: [
-            { text: 'Upgrade to v2', link: '/upgrade' },
+            { text: 'Upgrade to v3', link: '/upgrade' },
             { text: 'Changelog', link: `${repo}/blob/main/CHANGELOG.md` },
             { text: 'Releases', link: `${repo}/releases` },
           ],
@@ -248,7 +248,7 @@ export default withMermaid(
         },
         {
           text: 'Release',
-          items: [{ text: 'Upgrade to v2', link: '/upgrade' }],
+          items: [{ text: 'Upgrade to v3', link: '/upgrade' }],
         },
       ],
 

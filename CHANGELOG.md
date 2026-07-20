@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-20
+
+### Changed
+
+- Replace OpenAI-compatible HTTP embeddings with local FastEmbed `BAAI/bge-small-en-v1.5` embeddings stored in sqlite-vec.
+- Make local hybrid section retrieval the default and retain `--no-embed` as the dependency-free BM25 escape hatch.
+- Keep the Paperclip worker lexical-only while preserving byte-for-byte parity with Python `--no-embed`; its documentation now distinguishes that surface from the default Python hybrid path.
+- Declare pinned FastEmbed and sqlite-vec dependencies through PEP 723 for isolated `uv run --script` execution.
+- Add `setup_wiki.py` as the mandatory init/upgrade runtime gate: it installs pinned FastEmbed 0.8.0, sqlite-vec 0.1.9, and PyYAML 6.0.3, caches the local model, builds the parse cache, synchronizes every wiki section, and emits a machine-readable readiness report.
+- Give graph lint and extraction their own pinned PyYAML PEP 723 metadata so every dependency-bearing agent tool runs reproducibly through `uv run --script`.
+- Bump the Paperclip companion to v0.5.1 for its updated v3 local-retrieval agent setup guidance.
+- Replace provider consent, credential, endpoint, and cache-marker setup with local model-download and index-build guidance.
+- Add an idempotent v3 upgrade marker; existing Markdown needs no migration and legacy `embeddings.jsonl` caches are ignored.
+- Make initialization and upgrade fail closed when `uv` or runtime setup is unavailable instead of reporting a partially ready wiki.
+
+### Fixed
+
+- Persist content-hashed section vectors in `wiki/.wiki-cache/embeddings.sqlite`, re-embedding only changed sections and removing deleted sections.
+- Rebuild derived vectors automatically when the model, dimension, or vector schema changes.
+- Apply the cosine metric consistently to filtered and unfiltered vector queries, and reject low-similarity semantic candidates before RRF to avoid false-positive answers on out-of-domain questions.
+- Fall back to valid lexical JSON on missing dependencies, model failures, or sqlite-vec load failures without exposing exception details.
+- Cover index reuse, incremental updates, deletions, filter-scoped vector search, dimension rebuilds, and lexical fallback with focused regressions.
+
+
 ## [2.0.7] - 2026-07-20
 
 ### Fixed
@@ -147,7 +171,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v2.0.7...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.0.0
 [2.0.7]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.7
 [2.0.6]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.6
 [2.0.5]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.5

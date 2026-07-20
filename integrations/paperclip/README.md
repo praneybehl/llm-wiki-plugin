@@ -138,7 +138,7 @@ Both halves see the same files on disk. No double-bookkeeping, no event coordina
 4. If the work produces durable knowledge, the agent writes back via `/wiki:ingest` semantics — surgical `str_replace` updates to existing pages plus new pages for new entities/concepts.
 5. The plugin sees the same files on the next slot mount because both sides share the filesystem.
 
-The plugin **adds** an alternate path: agents that don't run the skill directly (HTTP/webhook adapters) can call the `wiki.query` tool the plugin registers via `agent.tools.register`. The tool returns ranked BM25 results identical to what the skill produces — same algorithm, same constants, fixture-snapshot tested.
+The plugin **adds** an alternate path: agents that don't run the skill directly (HTTP/webhook adapters) can call the `wiki.query` tool the plugin registers via `agent.tools.register`. The tool returns section-level BM25 results identical to the Python CLI's `--no-embed` mode—same algorithm, same constants, fixture-snapshot tested. Default local hybrid retrieval remains available through the skill's Python CLI.
 
 ## Multi-Company
 
@@ -155,7 +155,7 @@ Most issues fall into one of three buckets:
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Sidebar / dashboard says *"Wiki path not configured"* | No wiki bootstrapped, or `wiki_path` config points at the wrong directory | Run `/wiki:init` from any agent, or set `wiki_path` correctly via `/settings/plugins/io.praneybehl.llm-wiki` |
-| Search results from the plugin differ from agent heartbeat output | They shouldn't — both use BM25 with identical constants | File an issue with the corpus and queries; both implementations are parity-tested against `wiki_search.py` |
+| Search results from the plugin differ from Python `--no-embed` output | They shouldn't—both lexical paths use BM25 with identical constants | File an issue with the corpus and queries; both implementations are parity-tested against `wiki_search.py --no-embed` |
 
 Full troubleshooting + FAQ live in [`plugin/README.md`](./plugin/README.md#troubleshooting).
 

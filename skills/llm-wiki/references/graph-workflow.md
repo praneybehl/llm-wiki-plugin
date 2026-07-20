@@ -69,10 +69,10 @@ When in doubt, write the wikilink and skip the typed edge. The lint surfaces mis
 
 ```bash
 # Validate the typed metadata first; lint is conservative, never edits.
-python scripts/wiki_graph_lint.py wiki/
+uv run --script scripts/wiki_graph_lint.py wiki/
 
 # Compile to nodes.jsonl, edges.jsonl, graph.sqlite, graph.graphml.
-python scripts/wiki_graph_extract.py wiki/
+uv run --script scripts/wiki_graph_extract.py wiki/
 
 # Navigate.
 python scripts/wiki_graph_query.py wiki/ neighbors --node product:konvy

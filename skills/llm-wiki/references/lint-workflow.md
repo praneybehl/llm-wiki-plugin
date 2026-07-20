@@ -15,10 +15,10 @@ python scripts/wiki_lint.py wiki/
 If the wiki has the optional graph layer (`wiki/graph/ontology.yaml` exists), also run:
 
 ```bash
-python scripts/wiki_graph_lint.py wiki/
+uv run --script scripts/wiki_graph_lint.py wiki/
 ```
 
-This catches typed-edge problems independently of the structural lint: unknown predicates, missing evidence, broken object references, alias collisions, invalid `confidence`/`status` values, broken `contradicts`/`supersedes` references. Triage findings the same way as structural lint — propose fixes, don't apply them silently. After approved fixes, run `wiki_graph_extract.py` to refresh the compiled artifacts.
+This catches typed-edge problems independently of the structural lint: unknown predicates, missing evidence, broken object references, alias collisions, invalid `confidence`/`status` values, broken `contradicts`/`supersedes` references. Triage findings the same way as structural lint — propose fixes, don't apply them silently. After approved fixes, run `uv run --script scripts/wiki_graph_extract.py wiki/` to refresh the compiled artifacts.
 
 This produces a report covering:
 

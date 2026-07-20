@@ -71,10 +71,10 @@ Add a **typed edge** when a specific source explicitly states the relationship, 
 
 ```bash
 # Validate typed metadata first; lint never edits.
-python skills/llm-wiki/scripts/wiki_graph_lint.py wiki/
+uv run --script skills/llm-wiki/scripts/wiki_graph_lint.py wiki/
 
 # Compile to nodes.jsonl, edges.jsonl, graph.sqlite, graph.graphml.
-python skills/llm-wiki/scripts/wiki_graph_extract.py wiki/
+uv run --script skills/llm-wiki/scripts/wiki_graph_extract.py wiki/
 
 # Navigate.
 python skills/llm-wiki/scripts/wiki_graph_query.py wiki/ neighbors --node product:konvy
@@ -96,5 +96,5 @@ python skills/llm-wiki/scripts/wiki_graph_query.py wiki/ facts    --about produc
 | `graph.graphml` | Generated | Gitignored by default |
 
 ::: info
-The graph scripts (`wiki_graph_extract.py`, `wiki_graph_lint.py`, `wiki_graph_query.py`) require PyYAML: `pip install pyyaml`. The four core scripts (init, search, lint, stats) remain stdlib-only.
+Graph lint and extraction carry pinned PyYAML 6.0.3 metadata and run with `uv run --script`; no manual `pip install` is needed. Graph query uses only Python's standard library.
 :::

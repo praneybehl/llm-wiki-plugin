@@ -2,6 +2,6 @@
 
 ## Retrieval
 
-- Embedding mode: `openai`.
+- Semantic backend: local FastEmbed + sqlite-vec (`BAAI/bge-small-en-v1.5`, 384 dimensions).
 
-This fixture opts into hybrid retrieval when the evaluation environment provides an embedding backend. Without provider configuration, evaluation remains lexical.
+The fixture uses hybrid retrieval when local semantic dependencies are available and otherwise exercises lexical fallback.

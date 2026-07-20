@@ -6,6 +6,8 @@ Plain init creates the directory layout and drops in templates for SCHEMA.md,
 index.md, log.md, the page template, and the optional graph layer
 (graph/ontology.yaml, graph/README.md, graph/.gitignore). It is idempotent:
 re-running won't clobber existing files.
+Both modes then install and verify the pinned local runtime, model cache,
+parse cache, and vectors for every current wiki section through `uv`.
 
 `--upgrade` mode is for wikis bootstrapped under an older plugin version. It
 does the same idempotent file creation, then inspects the existing SCHEMA.md
@@ -23,6 +25,8 @@ Examples:
 """
 
 import argparse
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from datetime import date
@@ -60,7 +64,13 @@ SCHEMA_SECTION_MARKERS = [
         "marker": "## Retrieval",
         "version": "2.0.0",
         "anchor": "## Retrieval",
-        "label": "Retrieval (section search, cache, optional embeddings)",
+        "label": "Retrieval (section search and cache)",
+    },
+    {
+        "marker": "- Semantic backend: local FastEmbed + sqlite-vec",
+        "version": "3.0.0",
+        "anchor": "- Semantic backend: local FastEmbed + sqlite-vec",
+        "label": "Local semantic retrieval (FastEmbed + sqlite-vec)",
     },
 ]
 
@@ -99,10 +109,9 @@ def print_schema_upgrade_guidance(schema_path: Path, gaps: list[dict]) -> None:
     print(f"Upgrade required: {schema_path}")
     print("=" * 64)
     print(
-        "Your SCHEMA.md predates one or more sections introduced by newer\n"
-        "plugin versions. The graph layer itself is opt-in, but to make Claude\n"
-        "aware of it, merge the sections below by hand. SCHEMA.md is co-evolved\n"
-        "with you — this script never overwrites it."
+        "Your SCHEMA.md predates one or more sections or policy markers\n"
+        "introduced by newer plugin versions. Merge the items below by hand.\n"
+        "SCHEMA.md is co-evolved with you — this script never overwrites it."
     )
     print()
     print("Missing sections:")
@@ -115,6 +124,33 @@ def print_schema_upgrade_guidance(schema_path: Path, gaps: list[dict]) -> None:
         "sections in. Or run /wiki:upgrade and Claude will propose the edits\n"
         "interactively (one section at a time, never silent)."
     )
+
+
+def install_runtime(wiki: Path) -> None:
+    """Install pinned dependencies, cache the model, and synchronize the wiki index."""
+    uv = shutil.which("uv")
+    if not uv:
+        print(
+            "Error: uv is required to install the pinned LLM Wiki runtime. "
+            "Install it from https://docs.astral.sh/uv/getting-started/installation/ "
+            "and rerun this command.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    setup_script = Path(__file__).resolve().with_name("setup_wiki.py")
+    print()
+    print("Installing and verifying the local retrieval runtime...", flush=True)
+    try:
+        subprocess.run(
+            [uv, "run", "--script", str(setup_script), "--wiki", str(wiki), "--cache"],
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        print(
+            f"Error: local retrieval setup failed with exit code {exc.returncode}.",
+            file=sys.stderr,
+        )
+        raise SystemExit(exc.returncode) from exc
 
 
 def init_wiki(project_root: Path, wiki_dir: str, raw_dir: str, upgrade: bool = False) -> None:
@@ -182,6 +218,8 @@ def init_wiki(project_root: Path, wiki_dir: str, raw_dir: str, upgrade: bool = F
         print("Already existed (skipped):")
         for path in skipped:
             print(f"  = {path}")
+
+    install_runtime(wiki)
 
     if upgrade:
         gaps = detect_schema_gaps(wiki / "SCHEMA.md")

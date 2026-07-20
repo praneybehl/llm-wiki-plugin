@@ -13,6 +13,8 @@ Install the skill for your coding agent, then run the four-step loop: initialize
 
 There are two install paths. Claude Code gets the full plugin (skill + `/wiki:*` slash commands + marketplace manifest). Every other supported agent installs the same [agentskills.io](https://agentskills.io)-format skill through the [`skills` CLI](https://github.com/vercel-labs/skills). See the [agent support matrix](/agents) for the full picture.
 
+Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) first. It is the only prerequisite and creates isolated, pinned environments for the bundled tools.
+
 ### Claude Code — full plugin {#a-claude}
 
 The native path: skill, slash commands, and manifest ship together.
@@ -106,9 +108,9 @@ The commands below use Claude Code's `/wiki:*` slash syntax. In other agents, ph
    /wiki:init
    ```
 
-   > **Expected** — Bootstraps `wiki/` and `raw/` with a `SCHEMA.md`, `index.md`, `log.md`, a page template, the optional graph layer under `wiki/graph/`, and the regenerable `wiki/.wiki-cache/`. The agent then walks you through the schema and offers to wire the wiki into your agent-memory file. Nothing is written to a memory file without your approval.
+   > **Expected** — Bootstraps the wiki structure, then installs FastEmbed 0.8.0, sqlite-vec 0.1.9, and PyYAML 6.0.3; downloads the local `BAAI/bge-small-en-v1.5` model if absent; builds the parse cache; and embeds every current section. Setup is complete only when the runtime JSON reports `"status": "ready"`. The agent then walks through the schema and offers agent-memory integration; nothing is written there without approval.
 
-   > **Already have a wiki** from an earlier version? Run [`/wiki:upgrade`](/upgrade) instead — it adds the new files idempotently and walks you through any SCHEMA.md merges.
+   > **Already have a wiki** from an earlier version? Run [`/wiki:upgrade`](/upgrade) instead. It performs the same mandatory runtime setup and incremental full-corpus synchronization while leaving existing pages untouched.
 
 2. **Add your first source.** Drop anything textual into `raw/` — a PDF, a markdown clipping, a transcript — then:
 

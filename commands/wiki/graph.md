@@ -9,8 +9,8 @@ Arguments: $ARGUMENTS
 
 1. Confirm `wiki/graph/ontology.yaml` exists. If not, the wiki is pre-graph — offer to seed `wiki/graph/` (copy the templates from `skills/llm-wiki/assets/`) before doing anything else. Do not fabricate ontology entries.
 2. Dispatch on the first argument:
-   - `extract` → `python skills/llm-wiki/scripts/wiki_graph_extract.py wiki/`
-   - `lint` → `python skills/llm-wiki/scripts/wiki_graph_lint.py wiki/`
+   - `extract` → `uv run --script skills/llm-wiki/scripts/wiki_graph_extract.py wiki/`
+   - `lint` → `uv run --script skills/llm-wiki/scripts/wiki_graph_lint.py wiki/`
    - `neighbors --node <id>` → `python skills/llm-wiki/scripts/wiki_graph_query.py wiki/ neighbors --node <id>`
    - `edges --subject <id> [--predicate <p>]` → `python skills/llm-wiki/scripts/wiki_graph_query.py wiki/ edges --subject <id> [--predicate <p>]`
    - `path --from <id> --to <id> [--max-depth N]` → `python skills/llm-wiki/scripts/wiki_graph_query.py wiki/ path --from <id> --to <id>`

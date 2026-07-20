@@ -1,60 +1,71 @@
 # Retrieval Setup Interview
 
-Use this workflow during `/wiki:init`, `/wiki:upgrade`, or the first retrieval that needs search when `SCHEMA.md` does not record a retrieval choice. Setup is a conversation, not an automatic API call.
+Use this grouped interview before `/wiki:init` and `/wiki:upgrade`. Both commands then install and verify the complete local runtime; there is no lazy or partial setup path.
 
 ## Inspect before asking
 
-Check only whether these variables are present. Never print their values:
+Check:
 
-- `OPENAI_API_KEY`
-- `LLM_WIKI_EMBED_URL`
-- `LLM_WIKI_EMBED_KEY`
-- `LLM_WIKI_EMBED_MODEL`
+- whether `uv` is available (required prerequisite);
+- whether `FASTEMBED_CACHE_PATH` is set (report only the path, never modify it silently);
+- whether `wiki/.wiki-cache/search-index.json` exists;
+- whether `wiki/.wiki-cache/embeddings.sqlite` exists and contains `semantic_sections` rows.
 
-Also inspect `wiki/.wiki-cache/` for `search-index.json` and `embeddings.jsonl`. Report each state precisely:
+Report state precisely:
 
-- **Not configured:** no embedding endpoint or key is available.
-- **Configured, not API-validated:** environment variables are present, but no successful embedding request was observed.
-- **API-validated:** a real embedding request succeeded.
-- **Wiki embedded:** `embeddings.jsonl` exists and a hybrid query successfully used its vectors.
+- **Prerequisite ready:** `uv` and Python 3.10+ are available.
+- **Semantic dependencies ready:** the pinned runtime loads FastEmbed, sqlite-vec, and PyYAML.
+- **Model cached:** the local `BAAI/bge-small-en-v1.5` model has been downloaded.
+- **Wiki synchronized:** `setup_wiki.py` emitted `"status": "ready"` and its section count equals the vector count.
 
-A present key is not proof that it is valid, funded, or authorized for embeddings. Never call a configuration "usable" until a real request succeeds. Never call a wiki "embedded" merely because a key exists.
+A database file alone is not proof that the corpus is synchronized. Initialization and upgrade always run the setup script, which performs the incremental sync before reporting readiness.
 
-## Ask the setup questions together
+## Ask once, as a group
 
-Present these choices in one grouped interaction so the user can decide without a long question-by-question exchange:
+1. **Paths:** confirm the wiki directory (default `wiki/`) and raw-source directory (default `raw/`).
+2. **Model cache:** use `~/.cache/llm-wiki/fastembed/`, or set `FASTEMBED_CACHE_PATH` to another local directory?
+3. **Graph layer:** configure typed graph metadata now, keep the generated graph available but unused, or defer?
+4. **Agent integration:** which agent-memory file should point to the wiki, or skip?
 
-1. **Wiki layout** (init only): default `wiki/` plus sibling `raw/`, or custom paths. If `raw/` is nested inside the wiki, confirm that it remains immutable and excluded from retrieval.
-2. **Retrieval mode:**
-   - **Local lexical BM25 (recommended default):** no API key, no usage fees, exact-word retrieval.
-   - **OpenAI hybrid:** fixed `https://api.openai.com/v1/embeddings` destination with `OPENAI_API_KEY`; default model `text-embedding-3-small`. This mode ignores `LLM_WIKI_EMBED_URL` and `LLM_WIKI_EMBED_KEY`. The first build sends every canonical section, later changes send new or changed sections, and every hybrid query sends the query text. All of these requests may be billable.
-   - **Custom OpenAI-compatible hybrid:** requires `LLM_WIKI_EMBED_URL` and `LLM_WIKI_EMBED_MODEL`; `LLM_WIKI_EMBED_KEY` is optional for keyless local endpoints. This mode never falls back to the OpenAI endpoint or `OPENAI_API_KEY`. The same section-text and per-query transmission applies; pricing and retention depend on that provider.
-   - **Defer:** stay lexical and ask again only when the user requests semantic retrieval or changes setup.
-3. **First embedding build:** if hybrid is selected, ask whether to build the embedding cache now or only when semantic search is first needed. State that the first build sends canonical wiki section text to the selected provider and may incur charges. Also state that hybrid remains an online service: every hybrid query sends its query text, and each new or changed section is sent when its cached vector is missing.
-4. **Graph layer:** configure typed graph metadata now, keep the generated graph available but unused, or defer.
-5. **Agent integration:** which agent memory file should point to the wiki, or skip.
+Explain these facts before setup:
 
-Never request an API key in chat. Tell the user which environment variable to set through their shell or secret manager, then verify presence without displaying the value.
+- Initialization and every upgrade install pinned FastEmbed, sqlite-vec, and PyYAML through `uv`.
+- Setup downloads the pinned model once, builds the parse cache, and embeds every current section; it embeds only new or changed sections on later runs and removes deleted sections.
+- Wiki sections and queries stay on the machine; no API key, remote endpoint, request fee, or provider retention policy applies.
+- Per-wiki vectors are derived data in `wiki/.wiki-cache/embeddings.sqlite` and can be deleted safely.
+- Direct `python wiki_search.py "<query>" --no-embed` remains available for later dependency-free BM25 searches, but it does not replace mandatory initialization or upgrade setup.
 
-## Persist the decision
+## Record non-secret state
 
-With approval, record non-secret setup state in `SCHEMA.md` under `## Retrieval`:
+The current `SCHEMA.md` retrieval block should say:
 
 ```markdown
-- Embedding mode: lexical | openai | custom | deferred
-- Embedding model: text-embedding-3-small | <custom model> | none
-- Embedding provider: OpenAI | <custom provider> | none
-- Embedding setup verified: YYYY-MM-DD | not yet API-validated
+- Semantic backend: local FastEmbed + sqlite-vec (`BAAI/bge-small-en-v1.5`, 384 dimensions). No wiki or query text leaves the machine.
+- First semantic use downloads model artifacts to `~/.cache/llm-wiki/fastembed/`; set `FASTEMBED_CACHE_PATH` to override the model cache.
+- Semantic setup verified: YYYY-MM-DD | not yet built
 ```
 
-Do not store keys or authorization headers. `wiki_search.py` reads this persisted mode and enables embeddings only for `openai` or `custom`; a key in the environment is not authorization by itself. Honor `lexical` and `deferred` without repeatedly prompting during normal queries.
+Do not store absolute paths unless the user explicitly wants a machine-specific schema. Do not add legacy `Embedding mode`, provider, endpoint, or API-validation fields.
 
-## Validate hybrid setup
+## Validate mandatory setup
 
-A real validation is billable and sends text to the provider, so get explicit approval before running it. A new provider identity has no approval marker and therefore stays lexical until the approved run includes `--approve-embedding-build`; after that, the marker permits automatic embedding of only new or changed sections. If `embeddings.jsonl` contains rows whose `cache_version` is not `3` (including v2 rows that may expose a raw endpoint), stay lexical, explain that a safe provider-fingerprinted cache requires a full rebuild, and ask for approval before deleting the cache. Then:
+Initialization and upgrade call this automatically:
 
-1. Run one representative `wiki_search.py` query with `--cache --approve-embedding-build --json` and without `--no-embed`.
-2. Confirm the JSON response reports `"mode": "hybrid"`.
-3. Confirm `wiki/.wiki-cache/embeddings.jsonl` exists and is non-empty.
-4. Run the same query again to confirm cached vectors are reused.
-5. If the provider rejects the request, report the HTTP status or safe failure class and the BM25 fallback; never echo endpoint credentials or provider response bodies. Keep the setup state as configured but not API-validated.
+```bash
+uv run --script skills/llm-wiki/scripts/setup_wiki.py --wiki wiki --cache
+```
+
+Require all of the following before reporting readiness:
+
+1. JSON reports `"status": "ready"`.
+2. Dependencies list the pinned FastEmbed, sqlite-vec, and PyYAML packages.
+3. Model is `BAAI/bge-small-en-v1.5` with dimension `384`.
+4. `wiki/.wiki-cache/search-index.json` and `embeddings.sqlite` exist.
+5. `sections` equals the `semantic_sections` and `semantic_vectors` row counts.
+6. A second setup run reports the same counts and does not print an embedding batch.
+
+If setup fails, report the exact failed command and safe exception. Check `uv`, model-download access, local disk space, and sqlite extension loading. Do not describe initialization or upgrade as complete.
+
+## Upgrade from v2 provider caches
+
+`wiki/.wiki-cache/embeddings.jsonl` is obsolete, ignored, and may contain historical provider metadata. It is fully derived, so offer to delete it; deletion requires the user's approval because it is an existing file. No content migration or remote re-send is needed. Mandatory v3 setup builds `embeddings.sqlite` locally.

@@ -5,7 +5,7 @@ wiki. **Markdown is canonical.** Everything here can be deleted and rebuilt
 without losing knowledge:
 
 ```bash
-python scripts/wiki_graph_extract.py wiki/ --out wiki/graph
+uv run --script scripts/wiki_graph_extract.py wiki/ --out wiki/graph
 ```
 
 ## Files
@@ -21,8 +21,8 @@ python scripts/wiki_graph_extract.py wiki/ --out wiki/graph
 ## Workflow
 
 1. Author or edit a wiki page. Add typed `graph.relationships` only when an explicit source supports them.
-2. Run `python scripts/wiki_graph_lint.py wiki/` — catches unknown predicates, broken object references, missing evidence, alias collisions.
-3. Run `python scripts/wiki_graph_extract.py wiki/ --out wiki/graph` — regenerates the artifacts above.
+2. Run `uv run --script scripts/wiki_graph_lint.py wiki/` — catches unknown predicates, broken object references, missing evidence, alias collisions.
+3. Run `uv run --script scripts/wiki_graph_extract.py wiki/ --out wiki/graph` — regenerates the artifacts above.
 4. Query with `python scripts/wiki_graph_query.py wiki/ neighbors --node product:konvy` (or `edges`, `path`, `facts`).
 
 ## Anti-patterns

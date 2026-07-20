@@ -86,12 +86,12 @@ When the wiki passes ~150 pages or `index.md` exceeds 300 lines, shard into `wik
 
 ## Retrieval
 
-- Search is section-level by default: `python skills/llm-wiki/scripts/wiki_search.py "query" --json`.
-- `wiki/.wiki-cache/` holds regenerable retrieval artifacts (parse cache, embedding vectors). Safe to delete at any time; never edit by hand; gitignored.
-- Optional semantic retrieval is provider-bound. `Embedding mode: openai` uses only `https://api.openai.com/v1/embeddings`, `OPENAI_API_KEY`, and `LLM_WIKI_EMBED_MODEL` (default `text-embedding-3-small`). `Embedding mode: custom` requires `LLM_WIKI_EMBED_URL` plus `LLM_WIKI_EMBED_MODEL`, optionally uses `LLM_WIKI_EMBED_KEY`, and never falls back to OpenAI. `--no-embed` always forces lexical search.
-- Embedding mode: `undecided` (`lexical` | `openai` | `custom` | `deferred`). The search script treats `undecided`, `lexical`, and `deferred` as local-only even if an API key is present. Setup must ask before changing this or making the first billable request.
-- Hybrid data use: every hybrid query sends its query text; an initial or switched-provider build sends canonical sections only when an approved run includes `--approve-embedding-build`. Its provider fingerprint marker then permits later same-provider searches to send only new or changed sections.
-- Embedding setup verified: `not yet API-validated`. Change this only after a real hybrid query succeeds and `wiki/.wiki-cache/embeddings.jsonl` exists.
+- Search is section-level hybrid by default: `uv run --script skills/llm-wiki/scripts/wiki_search.py "query" --json`.
+- Semantic backend: local FastEmbed + sqlite-vec (`BAAI/bge-small-en-v1.5`, 384 dimensions). No wiki or query text leaves the machine.
+- First semantic use downloads model artifacts to `~/.cache/llm-wiki/fastembed/`; set `FASTEMBED_CACHE_PATH` to override the model cache.
+- `wiki/.wiki-cache/` holds regenerable retrieval artifacts: `search-index.json` (parse cache) and `embeddings.sqlite` (section metadata + sqlite-vec vectors). Safe to delete; never edit by hand; gitignored.
+- The vector index is content-hashed: only new or changed sections are re-embedded, deleted sections are removed, and model/schema changes rebuild it automatically.
+- Dependency-free lexical path: `python skills/llm-wiki/scripts/wiki_search.py "query" --no-embed` (direct Python bypasses PEP 723 dependency resolution). A missing or failed local backend also falls back to lexical search without failing the command.
 
 ## Graph layer
 

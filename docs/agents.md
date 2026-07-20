@@ -7,7 +7,7 @@ description: Which coding agents support the llm-wiki skill, how to install for 
 
 # Agents
 
-The `llm-wiki` skill uses the standard [agentskills.io](https://agentskills.io) format, so it runs in every agent below. Bundled-script execution (BM25 search, lint, stats) is verified across all listed agents as of 2026-07-20.
+The `llm-wiki` skill uses the standard [agentskills.io](https://agentskills.io) format, so it runs in every agent below. All eight bundled tools are available through the installed skill: init/runtime setup, hybrid or lexical search, structural lint, stats, graph lint, graph extraction, and graph query. Dependency-bearing scripts use pinned PEP 723 environments through `uv run --script`.
 
 ## Support matrix
 
@@ -25,6 +25,8 @@ The `llm-wiki` skill uses the standard [agentskills.io](https://agentskills.io) 
 OpenCode also reads `.claude/skills/` and `~/.claude/skills/`, so a Claude Code install works there without a second install.
 
 ## Install snippets
+Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) first. Every agent invokes the same pinned local runtime; no agent-specific Python environment is required.
+
 
 **Claude Code** gets the full plugin (skill + slash commands + manifest):
 

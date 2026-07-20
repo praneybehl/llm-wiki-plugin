@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "pyyaml==6.0.3",
+# ]
+# ///
 """
 wiki_graph_lint.py — Validate the typed graph metadata in a wiki.
 
@@ -6,7 +12,7 @@ Reads every page's `graph:` frontmatter, cross-checks against the ontology
 (`wiki/graph/ontology.yaml`), and reports problems. Conservative by design:
 reports only, never edits.
 
-Requires PyYAML (`pip install pyyaml`).
+Carries a pinned PyYAML dependency; run with `uv run --script`.
 
 Checks:
 - Unique `graph.node_id` values across pages.
@@ -27,7 +33,7 @@ Checks:
   outbound typed edges) except for `source` nodes (allowed source-only).
 
 Usage:
-    python wiki_graph_lint.py [<wiki-dir>] [--json]
+    uv run --script wiki_graph_lint.py [<wiki-dir>] [--json]
 """
 
 import argparse
@@ -41,8 +47,8 @@ try:
     import yaml
 except ImportError:
     print(
-        "wiki_graph_lint.py requires PyYAML.\n"
-        "Install with:  pip install pyyaml",
+        "wiki_graph_lint.py requires PyYAML. "
+        "Run it with `uv run --script wiki_graph_lint.py ...`.",
         file=sys.stderr,
     )
     sys.exit(2)

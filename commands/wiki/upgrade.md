@@ -8,7 +8,7 @@ Upgrade the wiki in this project to the current plugin version. Use the `llm-wik
 Arguments (if any): $ARGUMENTS
 
 1. Confirm the wiki exists. If `wiki/` (or whatever the user calls it) is missing, suggest `/wiki:init` instead — there's nothing to upgrade.
-2. Run `python skills/llm-wiki/scripts/init_wiki.py . --upgrade` (with `--wiki-dir` / `--raw-dir` if I'm using non-default names). This is idempotent: it adds missing files (`wiki/graph/ontology.yaml`, `wiki/graph/README.md`, `wiki/graph/.gitignore`, `wiki/.wiki-cache/.gitignore`) without touching anything that already exists.
+2. Run `python skills/llm-wiki/scripts/init_wiki.py . --upgrade` (with `--wiki-dir` / `--raw-dir` if I'm using non-default names). This is idempotent: it adds missing files without replacing existing content, then installs and verifies the pinned FastEmbed, sqlite-vec, and PyYAML runtime, downloads the local model if absent, refreshes the parse cache, and embeds every new or changed section. Do not report the upgrade complete unless its runtime JSON says `"status": "ready"`.
 3. Read the script's "Upgrade required: <SCHEMA.md>" output. For each missing SCHEMA.md section it lists:
    - Open `skills/llm-wiki/assets/SCHEMA.md.template` and locate the section with the matching heading.
    - Show me the section content and propose appending it to my SCHEMA.md via `str_replace`. Wait for my approval per section. Never modify SCHEMA.md silently — it is co-evolved with me.
@@ -16,17 +16,16 @@ Arguments (if any): $ARGUMENTS
 4. After all sections are merged or skipped, mention that:
    - The graph layer is opt-in. Existing pages without `graph:` frontmatter remain valid; nothing breaks.
    - To start using it on a page, add typed `graph.relationships[]` only when an explicit source supports them — see `skills/llm-wiki/references/graph-workflow.md`.
-   - The graph scripts require PyYAML (`pip install pyyaml`); the original four scripts remain stdlib-only.
+   - Graph lint and extraction carry pinned PyYAML metadata and run through `uv run --script`; no manual `pip install` is needed.
 
-   **v2.0.0 notes** (mention these too):
-   - Existing pages need no changes — no page or frontmatter format changed. The entire upgrade is: pull v2.0.0, run `/wiki:upgrade` (or `python skills/llm-wiki/scripts/init_wiki.py . --upgrade`), and approve the one SCHEMA.md `## Retrieval` section merge. There is **no content migration**.
-   - The new `## Retrieval` SCHEMA section is walked exactly like the graph sections above — shown to you and appended only on approval, never silently.
-   - `wiki/.wiki-cache/` holds regenerable retrieval artifacts (parse cache, embedding vectors). It's gitignored and safe to delete at any time.
-   - Embeddings are opt-in and provider-bound. `Embedding mode: openai` uses only the fixed OpenAI endpoint plus `OPENAI_API_KEY`; `Embedding mode: custom` requires `LLM_WIKI_EMBED_URL` and `LLM_WIKI_EMBED_MODEL`, optionally uses `LLM_WIKI_EMBED_KEY`, and never falls back to OpenAI. `undecided`, `lexical`, and `deferred` remain local-only; `--no-embed` always forces lexical.
-   - Open `skills/llm-wiki/references/retrieval-setup.md`, inspect environment-variable and cache presence without displaying secrets, and ask me to choose local lexical BM25, OpenAI hybrid, custom OpenAI-compatible hybrid, or defer. Also ask whether a first embedding build should run now or later.
-   - A present API key is only "configured, not API-validated". `wiki/.wiki-cache/embeddings.jsonl` plus an observed hybrid query is required before saying the wiki is embedded.
-   - Before hybrid approval, explain all ongoing provider use: the first build sends every canonical section, later searches send new or changed sections whose vectors are missing, and every hybrid query sends its query text. These requests may be billable. A new or switched provider stays lexical until an approved run includes `--approve-embedding-build`; its persisted marker then permits later same-provider incremental updates. A legacy cache requires approval before deletion and rebuild. Record only non-secret setup state in `SCHEMA.md`.
-   - Search output is now section-level and shows section headings (a `§` line). Pass `--granularity page` to restore the old whole-page ranking.
+   **v3.0.0 notes** (mention these too):
+   - Existing pages and frontmatter need no migration. The old provider-backed `embeddings.jsonl` cache is ignored; it is safe to delete because all vectors are derived.
+   - The default section search is now local hybrid retrieval: FastEmbed `BAAI/bge-small-en-v1.5` + sqlite-vec, fused with BM25 through RRF. No API keys, remote endpoints, provider consent, or per-query charges remain.
+   - `wiki/.wiki-cache/embeddings.sqlite` stores section locators, content hashes, and vectors. New or changed sections are embedded incrementally; deleted sections are removed; schema/model changes rebuild automatically.
+   - Initial setup and every upgrade run `setup_wiki.py` automatically through `uv`, installing the complete pinned runtime and synchronizing all vectors. Model artifacts live under `~/.cache/llm-wiki/fastembed/`.
+   - Direct `python skills/llm-wiki/scripts/wiki_search.py "<query>" --no-embed` forces dependency-free lexical BM25. Missing packages, model initialization errors, and sqlite-vec load failures also fall back to lexical mode without breaking query output.
+   - Search remains section-level and shows section headings (a `§` line). Pass `--granularity page` to restore whole-page lexical ranking.
+   - Merge the `[3.0.0] Local semantic retrieval` marker from the current template into an existing `## Retrieval` section after showing it for approval.
 5. If my project's agent-memory file (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) was set up by an older `/wiki:init` and does not mention the graph layer, ask me whether to add a one-line pointer like:
 
    > Relational queries can also consult `wiki/graph/graph.sqlite` via `wiki_graph_query.py` from the `llm-wiki` skill.

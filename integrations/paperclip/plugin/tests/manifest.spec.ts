@@ -49,7 +49,7 @@ describe("manifest — identity", () => {
   });
 
   it("matches the published package version", () => {
-    expect(manifest.version).toBe("0.5.0");
+    expect(manifest.version).toBe("0.5.1");
   });
 
   it("displayName, description, author respect validator length caps", () => {

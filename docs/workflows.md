@@ -61,13 +61,14 @@ flowchart TD
 ```
 
 1. **The index is read first.** Always start at `wiki/index.md` (or the relevant shard). One line per page with a tight summary is usually enough to spot candidates.
-2. **Candidate pages are identified.** A short, selective list — reading 30 pages to answer one question is a sign of brute force, which doesn't scale. If the index summaries don't disambiguate, the agent falls back to BM25 search:
+2. **Candidate pages are identified.** A short, selective list—reading 30 pages to answer one question is brute force. If index summaries do not disambiguate, the agent runs local hybrid search:
 
    ```bash
-   python skills/llm-wiki/scripts/wiki_search.py "your query terms" --top 10 --json
+   uv run --script skills/llm-wiki/scripts/wiki_search.py \
+     "your query terms" --top 10 --json
    ```
 
-   Add `--type concept`, `--tag <tag>`, or `--since YYYY-MM-DD` to narrow. Full detail on the [Search & retrieval](/search) page.
+   FastEmbed semantic ranking and BM25 are fused locally. Add `--type concept`, `--tag <tag>`, or `--since YYYY-MM-DD` to narrow. For dependency-free lexical retrieval, run `python skills/llm-wiki/scripts/wiki_search.py "your query terms" --no-embed` instead of the `uv run --script` form. Full detail: [Search & retrieval](/search).
 3. **Relational questions consult the graph** ("what's connected to X", "who proposed Y", "trace the path A → B") when `graph.sqlite` exists — used to pick which pages to read, never as the sole evidence.
 4. **Candidate pages are read** in full, following the most promising `[[wikilinks]]` without recursively chasing every one.
 5. **Backlinks are found when useful** — for "where is X mentioned" the inbound links are often more interesting than the page itself:

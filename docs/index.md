@@ -14,7 +14,7 @@ AI agents are good at the task in front of them, but a new session starts with l
 
 Add a source once. The agent turns it into linked Markdown pages. Later, it can find the right section, answer with citations, and save useful learning back into the wiki.
 
-Everything stays in readable Markdown. You do not need a vector database or an embedding service to get started.
+Everything canonical stays in readable Markdown. Local semantic search uses a disposable SQLite vector index—never a hosted vector database or embedding service.
 
 ## Why this exists
 
@@ -30,8 +30,8 @@ Use it when knowledge should outlive one conversation: long-running research, cu
 
 *Add sources once, retrieve cited evidence later, and save useful learning back so the next session starts with more than the last one did.*
 
-::: tip New in v2.0.0
-Search is now more precise, repeat searches are faster, and meaning-based search is optional. See [Search & retrieval](/search) and [Upgrade to v2](/upgrade).
+::: tip New in v3.0.0
+Meaning-based search is now local and default through FastEmbed + sqlite-vec, while direct `python wiki_search.py "<query>" --no-embed` keeps dependency-free BM25. See [Search & retrieval](/search) and [Upgrade to v3](/upgrade).
 :::
 
 ## How it works
@@ -77,11 +77,11 @@ Not a Claude Code user? The same skill runs in Codex, Cursor, Pi, OMP, and more 
 - **[Getting started](/getting-started)** — Install for your agent, then walk through init, ingest, query, and lint.
 - **[Commands](/commands)** — Every `/wiki:*` slash command with usage and examples.
 - **[Workflows](/workflows)** — Step-by-step ingest, query, and lint walkthroughs for end users.
-- **[Search & retrieval](/search)** — Section-level BM25, JSON evidence, the cache, and optional embeddings.
+- **[Search & retrieval](/search)** — Local hybrid retrieval, section-level BM25, JSON evidence, and incremental caches.
 - **[Graph layer](/graph)** — The optional compiled graph for typed, provenance-backed relationships.
 - **[Integrations](/integrations)** — The Paperclip plugin that surfaces the wiki inside a team UI.
 - **[Agents](/agents)** — Which coding agents are supported and how to install for each.
-- **[Upgrade to v2](/upgrade)** — Idempotent upgrade for existing wikis — no content migration.
+- **[Upgrade to v3](/upgrade)** — Move provider-backed setups to local vectors with no content migration.
 
 ## Frequently asked questions
 
@@ -93,9 +93,9 @@ LLM Wiki is a shared knowledge base for AI agents. It turns your sources into li
 
 RAG usually searches raw document chunks each time you ask a question. LLM Wiki organizes each source into useful pages first. Later questions search that growing body of knowledge, including its links, corrections, and source history.
 
-### Does LLM Wiki require embeddings or a vector database?
+### Does LLM Wiki require a hosted embedding service or vector database?
 
-No. Local search works without either one. You can add embeddings later if you want meaning-based search alongside exact-word search. Markdown remains the source of truth.
+No. Default semantic search runs locally with FastEmbed and sqlite-vec, and Markdown remains canonical. If you want no model or optional packages at all, run the search script directly with Python and `--no-embed` for pure-Python BM25.
 
 ### Which coding agents support LLM Wiki?
 
@@ -107,4 +107,4 @@ Install the plugin or skill for your agent, run `/wiki:init`, ingest a source wi
 
 ---
 
-LLM Wiki plugin, MIT licensed. [Source on GitHub](https://github.com/praneybehl/llm-wiki-plugin). Based on [Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), with v2 retrieval informed by Cerebras's [How We Built Our Knowledge Base](https://www.cerebras.ai/blog/how-we-built-our-knowledge-base).
+LLM Wiki plugin, MIT licensed. [Source on GitHub](https://github.com/praneybehl/llm-wiki-plugin). Based on [Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), with section retrieval informed by Cerebras's [How We Built Our Knowledge Base](https://www.cerebras.ai/blog/how-we-built-our-knowledge-base) and the local FastEmbed + sqlite-vec architecture validated against [Basic Memory](https://github.com/basicmachines-co/basic-memory).

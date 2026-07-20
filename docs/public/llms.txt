@@ -2,25 +2,25 @@
 
 > LLM Wiki is an open-source skill and plugin for building an agent-maintained, continuously compiled knowledge base from project sources. It implements Andrej Karpathy's LLM Wiki pattern with canonical Markdown pages, section-level retrieval, optional typed graphs, and support for multiple coding agents.
 
-The canonical project is https://github.com/praneybehl/llm-wiki-plugin. The documentation below is public, pre-rendered as static HTML, and maintained with the v2.0.0 release.
+The canonical project is https://github.com/praneybehl/llm-wiki-plugin. The documentation below is public, pre-rendered as static HTML, and maintained with the v3.0.0 release.
 
 ## Start here
 
 - [Overview](https://praneybehl.github.io/llm-wiki-plugin/): What LLM Wiki is, how it differs from query-time RAG, and the three-step quick start.
-- [Getting started](https://praneybehl.github.io/llm-wiki-plugin/getting-started.html): Install for Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, OMP, or Hermes; then initialize, ingest, query, and lint.
+- [Getting started](https://praneybehl.github.io/llm-wiki-plugin/getting-started.html): Install `uv` and the skill/plugin for Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, OMP, or Hermes; initialization then installs the complete pinned runtime, local model, and indexes.
 - [Commands](https://praneybehl.github.io/llm-wiki-plugin/commands.html): Reference for `/wiki:init`, `/wiki:ingest`, `/wiki:query`, `/wiki:lint`, `/wiki:stats`, `/wiki:graph`, and `/wiki:upgrade`.
 - [Workflows](https://praneybehl.github.io/llm-wiki-plugin/workflows.html): Step-by-step ingest, query, and maintenance behavior.
 
 ## Retrieval and structure
 
-- [Search and retrieval](https://praneybehl.github.io/llm-wiki-plugin/search.html): Section-level BM25, structured JSON evidence, incremental caches, optional embeddings, and reciprocal rank fusion.
+- [Search and retrieval](https://praneybehl.github.io/llm-wiki-plugin/search.html): Mandatory init/upgrade setup for local FastEmbed + sqlite-vec semantic search fused with section-level BM25, structured JSON evidence, and incrementally synchronized caches.
 - [Graph layer](https://praneybehl.github.io/llm-wiki-plugin/graph.html): Optional typed, provenance-backed relationships compiled from canonical Markdown.
 
 ## Ecosystem
 
 - [Integrations](https://praneybehl.github.io/llm-wiki-plugin/integrations.html): The read-only Paperclip integration and ownership boundaries.
 - [Supported agents](https://praneybehl.github.io/llm-wiki-plugin/agents.html): Verified agent support, installation methods, and memory-file conventions.
-- [Upgrade to v2](https://praneybehl.github.io/llm-wiki-plugin/upgrade.html): Idempotent upgrade instructions with no page-content migration.
+- [Upgrade to v3](https://praneybehl.github.io/llm-wiki-plugin/upgrade.html): Replace provider embeddings with local vectors without migrating page content.
 
 ## Source and licensing
 

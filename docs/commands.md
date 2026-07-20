@@ -27,7 +27,7 @@ Bootstrap a new LLM Wiki in the current project. Optional `--wiki-dir` / `--raw-
 /wiki:init
 ```
 
-The command confirms where the wiki should live (default `wiki/` and `raw/` at the project root), runs the bootstrap script, walks you through the generated `SCHEMA.md` so you can customize page types and tag taxonomy, notes the seeded graph layer under `wiki/graph/`, and proposes an agent-memory integration. It stops after setup — it does not ingest anything.
+The command confirms paths, bootstraps the wiki, then installs and verifies pinned FastEmbed, sqlite-vec, and PyYAML dependencies through `uv`, caches the local embedding model, builds the parse cache, and embeds every current section. It walks through `SCHEMA.md` and proposes agent-memory integration only after runtime JSON reports `"status": "ready"`. It does not ingest a source.
 
 ## `/wiki:ingest <source>` {#ingest}
 
@@ -47,13 +47,14 @@ Answer a question against the wiki with citations.
 /wiki:query How does attention scale with sequence length?
 ```
 
-The agent reads the index (or the relevant shard), identifies and reads candidate pages, follows `[[wikilinks]]` selectively, and synthesizes an answer with citations. If the index doesn't surface good candidates it falls back to BM25 search:
+The agent reads the index (or relevant shard), follows selected `[[wikilinks]]`, and synthesizes an answer with citations. If index summaries are insufficient it runs local hybrid search:
 
 ```bash
-python skills/llm-wiki/scripts/wiki_search.py "<query terms>" --top 10 --cache --no-embed --json
+uv run --script skills/llm-wiki/scripts/wiki_search.py \
+  "<query terms>" --top 10 --cache --json
 ```
 
-Use `--granularity page` for whole-page ranking. Hybrid retrieval requires an approved `Embedding mode: openai | custom` in `SCHEMA.md` plus provider configuration; a key alone does not activate it. Hybrid sends each query and uncached new or changed sections to the provider. See [Search & retrieval](/search). For relational questions the command consults `graph.sqlite` when available. Substantive answers can be filed back into `wiki/synthesis/`.
+FastEmbed + sqlite-vec semantic ranking is fused with BM25; no API key or outbound wiki/query text is involved. For dependency-free lexical search, bypass PEP 723 resolution with `python skills/llm-wiki/scripts/wiki_search.py "<query>" --no-embed`; use `--granularity page` for whole-page ranking. See [Search & retrieval](/search). Relational questions can also consult `graph.sqlite`; substantive answers can be filed back into `wiki/synthesis/`.
 
 ## `/wiki:lint` {#lint}
 
@@ -91,10 +92,10 @@ Compile, lint, or query the wiki's typed graph layer. The graph is optional and 
 
 ## `/wiki:upgrade` {#upgrade}
 
-Upgrade an existing wiki to the current plugin version. Idempotent file operations plus a walked `SCHEMA.md` merge.
+Upgrade an existing wiki with idempotent file operations, mandatory runtime installation/index synchronization, and a walked `SCHEMA.md` merge.
 
 ```bash
 /wiki:upgrade
 ```
 
-Runs `init_wiki.py . --upgrade`, which adds any missing files (graph layer, `wiki/.wiki-cache/.gitignore`) without touching what already exists, then walks you through appending any missing `SCHEMA.md` sections one at a time. No page or frontmatter format changes — existing pages remain valid. See [Upgrade to v2](/upgrade).
+Runs `init_wiki.py . --upgrade`, which leaves existing content untouched, installs and verifies the complete pinned local runtime, synchronizes the parse/vector indexes, then walks through missing `SCHEMA.md` sections one at a time. Existing pages remain valid. See [Upgrade to v3](/upgrade).

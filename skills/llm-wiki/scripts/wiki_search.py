@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "fastembed==0.8.0",
+#   "sqlite-vec==0.1.9",
+# ]
+# ///
 """
-wiki_search.py — Section-level BM25 and optional hybrid search over wiki pages.
+wiki_search.py — Section-level BM25 and local hybrid search over wiki pages.
 
-Fallback for when index-first navigation doesn't surface the right pages.
-Pure-Python implementation (no dependencies beyond stdlib) so it runs anywhere.
+FastEmbed and sqlite-vec provide the default semantic path. BM25 remains
+available without dependencies through --no-embed and as a safe fallback.
 
 Usage:
     python wiki_search.py "query terms" [options]
@@ -21,8 +28,6 @@ Options:
     --per-page N            Maximum section results per page (default: 2)
     --json                  Emit structured evidence rows
     --no-embed              Force lexical-only BM25
-    --approve-embedding-build
-                            Approve an initial/full provider-specific vector build
 
 Examples:
     python wiki_search.py "diffusion training stability" --top 5
@@ -32,35 +37,26 @@ Examples:
 """
 
 import argparse
-import json
 import hashlib
+import json
 import math
-import re
 import os
+import re
+import sqlite3
 import sys
 from collections import Counter, defaultdict
 from datetime import date, datetime
 from pathlib import Path
-from urllib import error as urllib_error
-from urllib import request as urllib_request
 
 
 WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
-EMBEDDING_MODE_RE = re.compile(
-    r"^\s*-\s*Embedding mode:\s*`?(lexical|openai|custom|deferred|undecided)`?",
-    re.IGNORECASE | re.MULTILINE,
-)
-EMBEDDING_CACHE_VERSION = 3
-
-
-class LegacyEmbeddingCacheError(RuntimeError):
-    pass
-
-class EmbeddingBuildApprovalError(RuntimeError):
-    pass
+LOCAL_EMBED_MODEL = "BAAI/bge-small-en-v1.5"
+VECTOR_INDEX_SCHEMA = "2"
+VECTOR_INDEX_NAME = "embeddings.sqlite"
+MAX_COSINE_DISTANCE = 0.35
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
@@ -96,14 +92,6 @@ def tokenize(text: str) -> list[str]:
     return TOKEN_RE.findall(text.lower())
 
 
-def embedding_mode_from_schema(wiki_root: Path) -> str:
-    """Return the user-approved embedding mode, defaulting safely to undecided."""
-    try:
-        schema = (wiki_root / "SCHEMA.md").read_text(encoding="utf-8")
-    except OSError:
-        return "undecided"
-    match = EMBEDDING_MODE_RE.search(schema)
-    return match.group(1).lower() if match else "undecided"
 
 
 def slug_from_path(path: Path, wiki_root: Path) -> str:
@@ -362,193 +350,224 @@ def passes_filters(page: dict, args) -> bool:
     return True
 
 
-def embed_config(mode: str) -> dict | None:
-    if mode == "openai":
-        key = os.environ.get("OPENAI_API_KEY")
-        if not key:
-            return None
-        return {
-            "provider": "openai",
-            "url": "https://api.openai.com/v1/embeddings",
-            "key": key,
-            "model": os.environ.get("LLM_WIKI_EMBED_MODEL") or "text-embedding-3-small",
-        }
-    if mode == "custom":
-        url = os.environ.get("LLM_WIKI_EMBED_URL")
-        model = os.environ.get("LLM_WIKI_EMBED_MODEL")
-        if not url or not model:
-            return None
-        return {
-            "provider": "custom",
-            "url": url,
-            "key": os.environ.get("LLM_WIKI_EMBED_KEY"),
-            "model": model,
-        }
-    return None
-
-
-def embed_texts(texts: list[str], cfg: dict) -> list[list[float]]:
-    def post_batch(batch: list[str], can_retry: bool = True) -> list[list[float]]:
-        payload = json.dumps({"model": cfg["model"], "input": batch}).encode("utf-8")
-        headers = {"Content-Type": "application/json"}
-        if cfg.get("key"):
-            headers["Authorization"] = f"Bearer {cfg['key']}"
-        request = urllib_request.Request(cfg["url"], data=payload, headers=headers, method="POST")
-        try:
-            with urllib_request.urlopen(request, timeout=30) as response:
-                decoded = json.loads(response.read().decode("utf-8"))
-        except urllib_error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            if can_retry and 400 <= exc.code < 500 and "input" in detail.lower() and len(batch) > 1:
-                midpoint = max(1, len(batch) // 2)
-                return post_batch(batch[:midpoint], False) + post_batch(batch[midpoint:], False)
-            raise RuntimeError(f"HTTP {exc.code}: {detail[:200]}") from exc
-        data = decoded.get("data")
-        if not isinstance(data, list):
-            raise ValueError("embedding response has no data list")
-        ordered = sorted(data, key=lambda item: item.get("index", -1))
-        vectors = [item.get("embedding") for item in ordered]
-        if len(vectors) != len(batch) or any(not isinstance(vector, list) for vector in vectors):
-            raise ValueError(f"embedding response returned {len(vectors)} vectors for {len(batch)} inputs")
-        return [[float(value) for value in vector] for vector in vectors]
-
-    vectors = []
-    for offset in range(0, len(texts), 64):
-        vectors.extend(post_batch(texts[offset:offset + 64]))
-    return vectors
-
-
 def embedding_failure_label(exc: Exception) -> str:
-    current: BaseException | None = exc
-    while current is not None:
-        if isinstance(current, urllib_error.HTTPError):
-            return f"HTTP {current.code}"
-        current = current.__cause__
+    """Return a safe local-backend error label without leaking paths or payloads."""
     return type(exc).__name__
 
 
-def cosine_similarity(left: list[float], right: list[float]) -> float:
-    if len(left) != len(right):
-        raise ValueError(f"embedding dimension mismatch: {len(left)} != {len(right)}")
-    left_norm = math.sqrt(sum(value * value for value in left))
-    right_norm = math.sqrt(sum(value * value for value in right))
-    if not left_norm or not right_norm:
-        return 0.0
-    return sum(a * b for a, b in zip(left, right)) / (left_norm * right_norm)
+def section_locator(section: dict) -> str:
+    page = section["page"]
+    return f"{page['rel_path']}\x1f{section['section_index']}"
 
 
-def embedding_provider_identity(cfg: dict) -> str:
-    return "\n".join((
-        cfg["provider"],
-        cfg["url"].rstrip("/"),
-        cfg["model"],
-    ))
+def section_content_hash(section: dict) -> str:
+    text = f"{LOCAL_EMBED_MODEL}\n{section['searchable_text']}"
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def embedding_provider_fingerprint(cfg: dict) -> str:
-    identity = embedding_provider_identity(cfg)
-    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
-
-
-def load_embedding_cache(
-    path: Path,
-    cfg: dict,
-) -> tuple[dict[str, list[float]], bool, bool]:
-    vectors = {}
-    has_legacy_rows = False
-    provider_approved = False
-    fingerprint = embedding_provider_fingerprint(cfg)
+def load_local_embedding_backend():
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except FileNotFoundError:
-        return vectors, False, False
-    for line in lines:
-        try:
-            row = json.loads(line)
-            if row.get("cache_version") != EMBEDDING_CACHE_VERSION:
-                if (
-                    row.get("cache_version") is not None
-                    or (
-                        isinstance(row.get("key"), str)
-                        and isinstance(row.get("vec"), list)
-                    )
-                ):
-                    has_legacy_rows = True
-                continue
-            if row.get("kind") == "provider_marker":
-                if row.get("provider_fingerprint") == fingerprint:
-                    provider_approved = True
-                continue
-            if isinstance(row.get("key"), str) and isinstance(row.get("vec"), list):
-                vectors[row["key"]] = [float(value) for value in row["vec"]]
-        except (json.JSONDecodeError, TypeError, ValueError):
-            continue
-    return vectors, has_legacy_rows, provider_approved
+        import sqlite_vec
+        from fastembed import TextEmbedding
+    except ImportError as exc:
+        raise RuntimeError(
+            "local semantic dependencies are missing; use `uv run --script` "
+            "or install fastembed and sqlite-vec"
+        ) from exc
+
+    cache_dir = Path(
+        os.environ.get(
+            "FASTEMBED_CACHE_PATH",
+            Path.home() / ".cache" / "llm-wiki" / "fastembed",
+        )
+    )
+    model = TextEmbedding(model_name=LOCAL_EMBED_MODEL, cache_dir=str(cache_dir))
+    dimension = TextEmbedding.get_embedding_size(LOCAL_EMBED_MODEL)
+    return model, sqlite_vec, dimension
 
 
-def section_embedding_key(cfg: dict, text: str) -> str:
-    fingerprint = embedding_provider_fingerprint(cfg)
-    return hashlib.sha256(f"{fingerprint}\n{text}".encode("utf-8")).hexdigest()
+def open_vector_index(wiki_root: Path, sqlite_vec, dimension: int) -> sqlite3.Connection:
+    path = wiki_root / ".wiki-cache" / VECTOR_INDEX_NAME
+    path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(path, timeout=30)
+    try:
+        connection.enable_load_extension(True)
+        sqlite_vec.load(connection)
+        connection.enable_load_extension(False)
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS semantic_meta "
+            "(key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        expected = {
+            "schema": VECTOR_INDEX_SCHEMA,
+            "model": LOCAL_EMBED_MODEL,
+            "dimension": str(dimension),
+        }
+        current = dict(connection.execute("SELECT key, value FROM semantic_meta"))
+        if current != expected:
+            with connection:
+                connection.execute("DROP TABLE IF EXISTS semantic_vectors")
+                connection.execute("DROP TABLE IF EXISTS semantic_sections")
+                connection.execute("DELETE FROM semantic_meta")
+                connection.executemany(
+                    "INSERT INTO semantic_meta(key, value) VALUES (?, ?)",
+                    expected.items(),
+                )
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS semantic_sections ("
+            "id INTEGER PRIMARY KEY, "
+            "locator TEXT NOT NULL UNIQUE, "
+            "content_hash TEXT NOT NULL)"
+        )
+        connection.execute(
+            f"CREATE VIRTUAL TABLE IF NOT EXISTS semantic_vectors "
+            f"USING vec0(embedding float[{dimension}] distance_metric=cosine)"
+        )
+        return connection
+    except Exception:
+        connection.close()
+        raise
 
 
-def section_vectors(
+def embed_passages(model, texts: list[str]) -> list[list[float]]:
+    return [
+        [float(value) for value in vector]
+        for vector in model.passage_embed(texts, batch_size=64)
+    ]
+
+
+def embed_query(model, text: str) -> list[float]:
+    vector = next(model.query_embed(text))
+    return [float(value) for value in vector]
+
+
+def sync_vector_index(
+    connection: sqlite3.Connection,
+    sqlite_vec,
+    model,
     sections: list[dict],
+) -> dict[str, int]:
+    existing = {
+        locator: (row_id, content_hash)
+        for row_id, locator, content_hash in connection.execute(
+            "SELECT id, locator, content_hash FROM semantic_sections"
+        )
+    }
+    vector_ids = {
+        row_id for row_id, in connection.execute("SELECT rowid FROM semantic_vectors")
+    }
+    current = {
+        section_locator(section): (section_content_hash(section), section)
+        for section in sections
+    }
+    stale = set(existing) - set(current)
+    changed = [
+        (locator, content_hash, section)
+        for locator, (content_hash, section) in current.items()
+        if locator not in existing
+        or existing[locator][1] != content_hash
+        or existing[locator][0] not in vector_ids
+    ]
+    vectors = (
+        embed_passages(model, [section["searchable_text"] for _, _, section in changed])
+        if changed
+        else []
+    )
+    if len(vectors) != len(changed):
+        raise ValueError(
+            f"local embedding model returned {len(vectors)} vectors for {len(changed)} sections"
+        )
+    if changed:
+        print(
+            f"embedding {len(changed)} new or changed sections via {LOCAL_EMBED_MODEL}...",
+            file=sys.stderr,
+        )
+
+    with connection:
+        for locator in stale:
+            row_id = existing[locator][0]
+            connection.execute("DELETE FROM semantic_vectors WHERE rowid = ?", (row_id,))
+            connection.execute("DELETE FROM semantic_sections WHERE id = ?", (row_id,))
+        for (locator, content_hash, _section), vector in zip(changed, vectors):
+            row = existing.get(locator)
+            if row:
+                row_id = row[0]
+                connection.execute(
+                    "UPDATE semantic_sections SET content_hash = ? WHERE id = ?",
+                    (content_hash, row_id),
+                )
+                connection.execute("DELETE FROM semantic_vectors WHERE rowid = ?", (row_id,))
+            else:
+                cursor = connection.execute(
+                    "INSERT INTO semantic_sections(locator, content_hash) VALUES (?, ?)",
+                    (locator, content_hash),
+                )
+                row_id = cursor.lastrowid
+            connection.execute(
+                "INSERT INTO semantic_vectors(rowid, embedding) VALUES (?, ?)",
+                (row_id, sqlite_vec.serialize_float32(vector)),
+            )
+    return {
+        locator: row_id
+        for row_id, locator in connection.execute(
+            "SELECT id, locator FROM semantic_sections"
+        )
+    }
+
+
+def local_semantic_order(
+    query: str,
+    all_sections: list[dict],
+    allowed_locators: set[str],
     wiki_root: Path,
-    cfg: dict,
-    approve_build: bool = False,
-) -> list[list[float]]:
-    path = wiki_root / ".wiki-cache" / "embeddings.jsonl"
-    cached, legacy_only, provider_approved = load_embedding_cache(path, cfg)
-    if legacy_only:
-        raise LegacyEmbeddingCacheError(
-            "legacy embedding cache detected; approve a full rebuild, then remove "
-            f"{path} and rerun with --approve-embedding-build"
-        )
-    keys = [section_embedding_key(cfg, section["searchable_text"]) for section in sections]
-    missing = {}
-    for key, section in zip(keys, sections):
-        if key not in cached and key not in missing:
-            missing[key] = section["searchable_text"]
-    if missing and not provider_approved and not approve_build:
-        raise EmbeddingBuildApprovalError(
-            "provider's initial embedding build requires explicit approval; rerun "
-            "with --approve-embedding-build only after the user approves sending "
-            "all missing canonical sections"
-        )
-    if missing:
-        print(f"embedding {len(missing)} new sections via {cfg['model']}...", file=sys.stderr)
-        missing_keys = list(missing)
-        new_vectors = embed_texts(list(missing.values()), cfg)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as handle:
-            for key, vector in zip(missing_keys, new_vectors):
-                cached[key] = vector
-                handle.write(json.dumps({
-                    "cache_version": EMBEDDING_CACHE_VERSION,
-                    "provider": cfg["provider"],
-                    "key": key,
-                    "model": cfg["model"],
-                    "vec": vector,
-                }) + "\n")
-            if approve_build and not provider_approved:
-                handle.write(json.dumps({
-                    "cache_version": EMBEDDING_CACHE_VERSION,
-                    "kind": "provider_marker",
-                    "provider": cfg["provider"],
-                    "model": cfg["model"],
-                    "provider_fingerprint": embedding_provider_fingerprint(cfg),
-                }) + "\n")
-    elif approve_build and not provider_approved:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps({
-                "cache_version": EMBEDDING_CACHE_VERSION,
-                "kind": "provider_marker",
-                "provider": cfg["provider"],
-                "model": cfg["model"],
-                "provider_fingerprint": embedding_provider_fingerprint(cfg),
-            }) + "\n")
-    return [cached[key] for key in keys]
+) -> list[str]:
+    model, sqlite_vec, dimension = load_local_embedding_backend()
+    connection = open_vector_index(wiki_root, sqlite_vec, dimension)
+    try:
+        locator_ids = sync_vector_index(connection, sqlite_vec, model, all_sections)
+        allowed_ids = [
+            locator_ids[locator]
+            for locator in allowed_locators
+            if locator in locator_ids
+        ]
+        if not allowed_ids:
+            return []
+        query_blob = sqlite_vec.serialize_float32(embed_query(model, query))
+        limit = min(50, len(allowed_ids))
+        if len(allowed_ids) == len(locator_ids):
+            ranked_ids = [
+                row_id
+                for row_id, distance in connection.execute(
+                    "SELECT rowid, distance FROM semantic_vectors "
+                    "WHERE embedding MATCH ? AND k = ? ORDER BY distance",
+                    (query_blob, limit),
+                )
+                if distance <= MAX_COSINE_DISTANCE
+            ]
+        else:
+            connection.execute(
+                "CREATE TEMP TABLE allowed_sections(id INTEGER PRIMARY KEY)"
+            )
+            connection.executemany(
+                "INSERT INTO allowed_sections(id) VALUES (?)",
+                ((row_id,) for row_id in allowed_ids),
+            )
+            ranked_ids = [
+                row_id
+                for row_id, distance in connection.execute(
+                    "SELECT vectors.rowid, "
+                    "vec_distance_cosine(vectors.embedding, ?) AS distance "
+                    "FROM semantic_vectors AS vectors "
+                    "JOIN allowed_sections AS allowed ON allowed.id = vectors.rowid "
+                    "ORDER BY distance LIMIT ?",
+                    (query_blob, limit),
+                )
+                if distance <= MAX_COSINE_DISTANCE
+            ]
+        by_id = {row_id: locator for locator, row_id in locator_ids.items()}
+        return [by_id[row_id] for row_id in ranked_ids]
+    finally:
+        connection.close()
 
 
 def collapse_snippet(text: str) -> str:
@@ -604,8 +623,8 @@ def emit_json(args, results: list[dict], mode: str = "lexical") -> None:
     }, ensure_ascii=False))
 
 
-def emit_empty_json(args) -> None:
-    print(json.dumps({"query": args.query, "results": []}, ensure_ascii=False))
+def emit_empty_json(args, mode: str = "lexical") -> None:
+    emit_json(args, [], mode)
 
 
 def cmd_search(args, pages: list[dict]) -> None:
@@ -651,31 +670,25 @@ def cmd_search(args, pages: list[dict]) -> None:
     bm25_ranked = [item for item in bm25_ranked if item[0] > 0]
     ranked = [(score, section_index, ["bm25"]) for score, section_index in bm25_ranked]
     mode = "lexical"
-    schema_mode = embedding_mode_from_schema(args.wiki)
-    hybrid_selected = schema_mode in {"openai", "custom"}
-    cfg = None if args.no_embed or not hybrid_selected else embed_config(schema_mode)
-    if hybrid_selected and not args.no_embed and not cfg:
-        print(
-            f"warning: embedding mode {schema_mode!r} is selected but its provider is not configured; "
-            "falling back to lexical",
-            file=sys.stderr,
-        )
-    if cfg:
+    if not args.no_embed:
         try:
-            vectors = section_vectors(
-                sections,
+            all_sections = collect_sections(pages)
+            section_indices = {
+                section_locator(section): index
+                for index, section in enumerate(sections)
+            }
+            semantic_order = local_semantic_order(
+                args.query,
+                all_sections,
+                set(section_indices),
                 args.wiki,
-                cfg,
-                approve_build=args.approve_embedding_build,
             )
-            query_vector = embed_texts([args.query], cfg)[0]
-            embedding_ranked = [
-                (cosine_similarity(query_vector, vector), index)
-                for index, vector in enumerate(vectors)
+            embedding_top = [
+                (0.0, section_indices[locator])
+                for locator in semantic_order
+                if locator in section_indices
             ]
-            embedding_ranked.sort(key=lambda item: -item[0])
             lexical_top = bm25_ranked[:50]
-            embedding_top = embedding_ranked[:50]
             candidate_order = [index for _, index in lexical_top]
             seen_candidates = set(candidate_order)
             for _, index in embedding_top:
@@ -697,13 +710,13 @@ def cmd_search(args, pages: list[dict]) -> None:
                 ranked.append((score, index, retrievers))
             ranked.sort(key=lambda item: -item[0])
             mode = "hybrid"
-        except EmbeddingBuildApprovalError as exc:
-            print(f"warning: {exc}; falling back to lexical", file=sys.stderr)
-        except LegacyEmbeddingCacheError as exc:
-            print(f"warning: {exc}; falling back to lexical", file=sys.stderr)
         except Exception as exc:
             label = embedding_failure_label(exc)
-            print(f"warning: embedding backend failed ({label}); falling back to lexical", file=sys.stderr)
+            print(
+                f"warning: local semantic search unavailable ({label}); "
+                "falling back to lexical",
+                file=sys.stderr,
+            )
 
     page_counts = Counter()
     top_sections = []
@@ -718,7 +731,7 @@ def cmd_search(args, pages: list[dict]) -> None:
             break
     if not top_sections:
         if args.json:
-            emit_empty_json(args)
+            emit_empty_json(args, mode)
         else:
             print("No matches.", file=sys.stderr)
         return
@@ -798,11 +811,6 @@ def main():
                         help="Maximum section results per page (default: 2).")
     parser.add_argument("--json", action="store_true", help="Emit structured JSON search results.")
     parser.add_argument("--no-embed", action="store_true", help="Force lexical-only search.")
-    parser.add_argument(
-        "--approve-embedding-build",
-        action="store_true",
-        help="Approve an initial/full provider-specific vector build.",
-    )
     args = parser.parse_args()
     cache_path = None
     if args.cache:

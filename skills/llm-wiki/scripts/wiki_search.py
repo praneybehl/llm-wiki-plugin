@@ -51,12 +51,25 @@ from pathlib import Path
 
 WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
-TOKEN_RE = re.compile(r"[a-z0-9]+")
+# Accented Latin letters are kept so non-English words survive tokenization:
+# with [a-z0-9]+ the Italian "attività" is truncated to "attivit" and "perché"
+# to "perch", so a correctly spelled query cannot match its own page. ASCII
+# queries are unaffected.
+TOKEN_RE = re.compile(r"[a-z0-9à-öø-ÿ]+")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
-LOCAL_EMBED_MODEL = "BAAI/bge-small-en-v1.5"
+# Overridable so a wiki written in another language can use a multilingual
+# model (e.g. sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2,
+# also 384 dimensions). Vectors are keyed by model name, so switching models
+# re-embeds the corpus on the next setup run. Default unchanged.
+LOCAL_EMBED_MODEL = os.environ.get("LLM_WIKI_EMBED_MODEL", "BAAI/bge-small-en-v1.5")
 VECTOR_INDEX_SCHEMA = "2"
 VECTOR_INDEX_NAME = "embeddings.sqlite"
-MAX_COSINE_DISTANCE = 0.35
+# Cosine-distance cutoff for semantic candidates. This value is model-specific:
+# bge-small-en returns tightly clustered distances, while multilingual models
+# return 0.45-0.75 for genuinely good matches. Leaving it at 0.35 with such a
+# model discards every semantic candidate and silently degrades hybrid search
+# to plain BM25, so it must be overridable alongside the model. Default unchanged.
+MAX_COSINE_DISTANCE = float(os.environ.get("LLM_WIKI_MAX_COSINE_DISTANCE", "0.35"))
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:

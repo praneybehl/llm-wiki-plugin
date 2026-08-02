@@ -86,6 +86,29 @@ The single biggest failure mode of the LLM Wiki pattern is the wiki itself becom
 
 For the full scaling playbook including thresholds and migration steps, read `references/scaling-playbook.md`.
 
+## Wikis not written in English
+
+The defaults are tuned for English. For a wiki in another language, set both of these together:
+
+```bash
+export LLM_WIKI_EMBED_MODEL="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+export LLM_WIKI_MAX_COSINE_DISTANCE="0.75"
+```
+
+The second variable is not optional. `MAX_COSINE_DISTANCE` is model-specific: `bge-small-en`
+returns tightly clustered distances, while multilingual models return 0.45-0.75 for genuinely good
+matches. Leaving the cutoff at the English default discards every semantic candidate, and hybrid
+search silently degrades to plain BM25 — the ranking still looks plausible, so the failure is easy
+to miss. When switching models, measure real distances on a few known-good queries and set the
+cutoff above them.
+
+`paraphrase-multilingual-MiniLM-L12-v2` is also 384-dimensional, so the vector schema is unchanged;
+vectors are keyed by model name, so the corpus re-embeds on the next `setup_wiki.py` run.
+
+Page authors in accented languages should write real accents (`attività`), not ASCII
+approximations (`attivita'`): the lexical tokenizer keeps accented letters, so the apostrophe form
+would not match a correctly spelled query.
+
 ## Initializing a new wiki
 
 If the project does not contain a `wiki/` directory (or whatever the user calls theirs), run the bootstrap script:

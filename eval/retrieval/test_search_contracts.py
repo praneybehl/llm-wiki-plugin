@@ -58,5 +58,24 @@ class SplitSectionsContractTest(unittest.TestCase):
         self.assertIn("### Tilde", sections[1]["text"])
 
 
+class TokenizeContractTest(unittest.TestCase):
+    def test_keeps_accented_latin_letters_whole(self):
+        self.assertEqual(
+            WIKI_SEARCH.tokenize("Attività e società: perché più caro?"),
+            ["attività", "e", "società", "perché", "più", "caro"],
+        )
+
+    def test_ascii_tokenization_is_unchanged(self):
+        self.assertEqual(
+            WIKI_SEARCH.tokenize("Scaling laws for LLM-based agents (2026)"),
+            ["scaling", "laws", "for", "llm", "based", "agents", "2026"],
+        )
+
+    def test_query_and_document_tokens_agree_on_accents(self):
+        document = WIKI_SEARCH.tokenize("La stagionalità dei consumi è marcata")
+        self.assertIn("stagionalità", document)
+        self.assertEqual(WIKI_SEARCH.tokenize("stagionalità"), ["stagionalità"])
+
+
 if __name__ == "__main__":
     unittest.main()

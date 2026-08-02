@@ -41,6 +41,7 @@ The current `SCHEMA.md` retrieval block should say:
 
 ```markdown
 - Semantic backend: local FastEmbed + sqlite-vec (`BAAI/bge-small-en-v1.5`, 384 dimensions). No wiki or query text leaves the machine.
+- Non-English wikis: set `LLM_WIKI_EMBED_MODEL` to a multilingual model and `LLM_WIKI_MAX_COSINE_DISTANCE` to a cutoff tuned for it (0.75 for `paraphrase-multilingual-MiniLM-L12-v2`). Setting the model alone leaves the English cutoff in place, which discards every semantic candidate and degrades search to BM25.
 - First semantic use downloads model artifacts to `~/.cache/llm-wiki/fastembed/`; set `FASTEMBED_CACHE_PATH` to override the model cache.
 - Semantic setup verified: YYYY-MM-DD | not yet built
 ```

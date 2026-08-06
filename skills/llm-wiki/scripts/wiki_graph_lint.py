@@ -43,6 +43,12 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+import wiki_markdown
+from wiki_markdown import configure_utf8_streams, extract_wikilinks
+
+
+configure_utf8_streams()
+
 try:
     import yaml
 except ImportError:
@@ -61,10 +67,9 @@ import wiki_graph_extract as _extract  # noqa: E402
 
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
-WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
-SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw"}
+SKIP_TOP_LEVEL_DIRS = wiki_markdown.SKIP_TOP_LEVEL_DIRS
 
 ALLOWED_CONFIDENCE = {"high", "medium", "low"}
 ALLOWED_STATUS = {"current", "historical", "proposed", "disputed", "superseded"}
@@ -105,7 +110,7 @@ def collect_pages(wiki_root: Path) -> list[dict]:
             "slug": md_path.stem,
             "meta": meta,
             "body": body,
-            "links": [m.group(1).strip() for m in WIKILINK_RE.finditer(body)],
+            "links": extract_wikilinks(body),
         })
     return pages
 

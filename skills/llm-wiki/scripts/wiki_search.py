@@ -48,8 +48,12 @@ from collections import Counter, defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
+from wiki_markdown import (SKIP_TOP_LEVEL_DIRS, configure_utf8_streams,
+                           extract_wikilinks)
 
-WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
+configure_utf8_streams()
+
+
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
@@ -96,10 +100,6 @@ def tokenize(text: str) -> list[str]:
 
 def slug_from_path(path: Path, wiki_root: Path) -> str:
     return path.stem
-
-
-def extract_wikilinks(body: str) -> list[str]:
-    return [m.group(1).strip() for m in WIKILINK_RE.finditer(body)]
 
 
 def cache_page_body(sections: list[dict]) -> str:
@@ -174,7 +174,7 @@ def collect_pages(wiki_root: Path, cache_path: Path | None = None) -> list[dict]
         rel = md_path.relative_to(wiki_root)
         if rel.parts[0] in {"SCHEMA.md", "index.md", "log.md"} or rel.name.startswith("."):
             continue
-        if rel.parts[0] in {"indexes", "graph", "raw", ".wiki-cache"}:
+        if rel.parts[0] in SKIP_TOP_LEVEL_DIRS:
             continue
         rel_path = str(rel)
         try:

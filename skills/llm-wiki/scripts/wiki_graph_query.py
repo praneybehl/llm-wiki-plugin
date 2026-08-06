@@ -33,6 +33,10 @@ import sys
 from collections import deque
 from pathlib import Path
 
+from wiki_markdown import configure_utf8_streams
+
+configure_utf8_streams()
+
 
 EVIDENCE_SNIPPET_LEN = 140
 

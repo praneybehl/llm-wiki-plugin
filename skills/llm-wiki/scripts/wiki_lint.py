@@ -33,14 +33,18 @@ from collections import Counter, defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
+import wiki_markdown
+from wiki_markdown import configure_utf8_streams, extract_wikilinks
 
-WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
+configure_utf8_streams()
+
+
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 CAPITALIZED_PHRASE_RE = re.compile(r"\b([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+){0,3})\b")
 
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
-SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw"}
+SKIP_TOP_LEVEL_DIRS = wiki_markdown.SKIP_TOP_LEVEL_DIRS
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str, bool]:
@@ -93,7 +97,7 @@ def collect_pages(wiki_root: Path) -> list[dict]:
             continue
         meta, body, malformed = parse_frontmatter(text)
         line_count = text.count("\n") + 1
-        links = [m.group(1).strip() for m in WIKILINK_RE.finditer(body)]
+        links = extract_wikilinks(body)
         pages.append({
             "path": str(md_path),
             "rel_path": str(rel),

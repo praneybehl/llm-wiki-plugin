@@ -31,6 +31,10 @@ import sys
 from pathlib import Path
 from datetime import date
 
+from wiki_markdown import configure_utf8_streams
+
+configure_utf8_streams()
+
 
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = SKILL_ROOT / "assets"

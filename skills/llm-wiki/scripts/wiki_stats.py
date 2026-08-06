@@ -17,13 +17,17 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+import wiki_markdown
+from wiki_markdown import configure_utf8_streams, extract_wikilinks
 
-WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
+configure_utf8_streams()
+
+
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "log.md", "README.md"}
-SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw"}
+SKIP_TOP_LEVEL_DIRS = wiki_markdown.SKIP_TOP_LEVEL_DIRS
 
 
 def parse_type(text: str) -> str | None:
@@ -81,7 +85,7 @@ def main():
         total_words += word_count
         # Strip frontmatter before counting wikilinks; frontmatter uses bare slugs.
         body = FRONTMATTER_RE.sub("", text, count=1) if text.startswith("---") else text
-        links = WIKILINK_RE.findall(body)
+        links = extract_wikilinks(body)
         total_links += len(links)
         for link in links:
             target = link.split("|")[0].strip()

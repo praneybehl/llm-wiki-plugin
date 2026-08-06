@@ -40,6 +40,12 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from pathlib import Path
 
+import wiki_markdown
+from wiki_markdown import configure_utf8_streams, extract_wikilinks
+
+
+configure_utf8_streams()
+
 try:
     import yaml
 except ImportError:
@@ -51,11 +57,10 @@ except ImportError:
     sys.exit(2)
 
 
-WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
-SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw"}
+SKIP_TOP_LEVEL_DIRS = wiki_markdown.SKIP_TOP_LEVEL_DIRS
 
 DEFAULT_FORMATS = ["jsonl", "sqlite", "graphml"]
 
@@ -94,7 +99,7 @@ def collect_pages(wiki_root: Path) -> list[dict]:
         except (UnicodeDecodeError, OSError):
             continue
         meta, body = parse_frontmatter(text)
-        links = [m.group(1).strip() for m in WIKILINK_RE.finditer(body)]
+        links = extract_wikilinks(body)
         pages.append({
             "path": str(md_path),
             "rel_path": str(rel).replace("\\", "/"),

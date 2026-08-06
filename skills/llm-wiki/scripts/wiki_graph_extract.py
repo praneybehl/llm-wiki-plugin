@@ -46,6 +46,9 @@ from wiki_markdown import configure_utf8_streams, extract_wikilinks
 
 configure_utf8_streams()
 
+# Node-id prefix for a cited document that is not itself a wiki page.
+EXTERNAL_DOC_PREFIX = "document:"
+
 try:
     import yaml
 except ImportError:
@@ -198,6 +201,52 @@ def build_nodes(pages: list[dict], ontology: dict) -> tuple[list[dict], dict, li
     return nodes, slug_to_id, aliases
 
 
+def build_document_nodes(pages: list[dict], slug_to_id: dict[str, str]) -> tuple[list[dict], dict]:
+    """Nodes for the external documents that pages cite in `sources:`.
+
+    `sources:` used to be resolved against wiki slugs alone, and every entry
+    that did not resolve was silently dropped. In a wiki whose pages cite
+    repo-relative paths or URLs, that meant the provenance layer was empty and
+    nothing said so: `sourced_from` and `summarizes_raw` both emitted zero
+    edges while lint and the extractor reported success.
+
+    Giving each cited document a node of its own makes provenance a first-class
+    part of the graph — "which pages derive from this doc" becomes a query
+    rather than a grep — and keeps every `sourced_from` edge pointing at
+    something that exists.
+
+    A path that does not exist on disk still gets a node: the graph stays
+    closed, and judging whether the citation is real is `wiki_graph_lint.py`'s
+    job, not the compiler's.
+    """
+    cited: set[str] = set()
+    for p in pages:
+        for entry in p["meta"].get("sources") or []:
+            entry = str(entry).strip()
+            if entry and entry not in slug_to_id:
+                cited.add(entry)
+
+    nodes, ids = [], {}
+    for entry in sorted(cited):
+        node_id = f"{EXTERNAL_DOC_PREFIX}{entry}"
+        ids[entry] = node_id
+        nodes.append({
+            "id": node_id,
+            "slug": entry,
+            "title": entry.rsplit("/", 1)[-1] or entry,
+            "page_type": "",
+            "node_type": "document",
+            "kind": "",
+            "tags": [],
+            "aliases": [],
+            "path": entry,
+            "created": "",
+            "updated": "",
+            "canonical": False,
+        })
+    return nodes, ids
+
+
 def edge_id(subject: str, predicate: str, obj: str, source: str | None, evidence: str | None) -> str:
     # Truncated to 96 bits — collision risk is negligible at any plausible
     # wiki scale and shorter ids keep the JSONL/sqlite/graphml outputs readable.
@@ -224,9 +273,11 @@ def make_edge(*, subject, predicate, obj, source, evidence, confidence, status,
     }
 
 
-def build_edges(pages: list[dict], slug_to_id: dict[str, str]) -> list[dict]:
+def build_edges(pages: list[dict], slug_to_id: dict[str, str],
+                document_ids: dict[str, str] | None = None) -> list[dict]:
     edges: list[dict] = []
     seen_ids: set[str] = set()
+    document_ids = document_ids or {}
 
     def push(edge: dict) -> None:
         if edge["id"] in seen_ids:
@@ -290,23 +341,38 @@ def build_edges(pages: list[dict], slug_to_id: dict[str, str]) -> list[dict]:
                 page=p["rel_path"],
             ))
 
-        # 3. sourced_from edges from frontmatter `sources:` (skip on source pages themselves).
-        if meta.get("type") != "source":
-            for src_slug in meta.get("sources") or []:
-                src_id = slug_to_id.get(str(src_slug))
-                if not src_id:
+        # 3. sourced_from edges from frontmatter `sources:`.
+        for entry in meta.get("sources") or []:
+            entry = str(entry).strip()
+            if not entry:
+                continue
+            target = slug_to_id.get(entry)
+            if target is not None:
+                # On a source page, `sources:` naming another wiki page is not
+                # provenance — the raw file is, and rule 4 below covers it.
+                # The guard is deliberately narrowed to this wiki-slug case: a
+                # source page's citation of an external document IS its
+                # provenance, and skipping source pages wholesale discarded it.
+                if meta.get("type") == "source":
                     continue
-                push(make_edge(
-                    subject=subject_id,
-                    predicate="sourced_from",
-                    obj=src_id,
-                    source=str(src_slug),
-                    evidence=None,
-                    confidence="high",
-                    status="current",
-                    extraction_method="frontmatter_sources",
-                    page=p["rel_path"],
-                ))
+            else:
+                # An external document. Source pages keep this edge: the doc a
+                # source page summarizes is precisely its provenance, and it is
+                # the most load-bearing provenance edge in the graph.
+                target = document_ids.get(entry)
+            if not target or target == subject_id:
+                continue
+            push(make_edge(
+                subject=subject_id,
+                predicate="sourced_from",
+                obj=target,
+                source=entry,
+                evidence=None,
+                confidence="high",
+                status="current",
+                extraction_method="frontmatter_sources",
+                page=p["rel_path"],
+            ))
 
         # 4. summarizes_raw edges from source pages' raw: field.
         if meta.get("type") == "source":
@@ -525,7 +591,9 @@ def main():
 
     pages = collect_pages(args.wiki)
     nodes, slug_to_id, aliases = build_nodes(pages, ontology)
-    edges = build_edges(pages, slug_to_id)
+    document_nodes, document_ids = build_document_nodes(pages, slug_to_id)
+    nodes = nodes + document_nodes
+    edges = build_edges(pages, slug_to_id, document_ids)
 
     if "jsonl" in formats:
         write_jsonl(out_dir, nodes, edges)

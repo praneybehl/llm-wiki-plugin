@@ -48,6 +48,12 @@ node_types:
     explicit_only: true
   raw:
     explicit_only: true
+  # A document outside the wiki that pages cite in `sources:` — a repo-relative
+  # path, a URL, or any other identifier that is not a wiki slug. Minted by the
+  # extractor, never declared by a page, so it has no `maps_from`. Node id is
+  # `document:<the entry as written>`.
+  document:
+    external_only: true
 
 predicates:
   # --- Implicit predicates emitted by the extractor. ---
@@ -60,10 +66,15 @@ predicates:
       navigation, not as evidence of a typed relationship.
   sourced_from:
     subject_types: ["*"]
-    object_types: [source]
+    object_types: [source, document]
     requires_evidence: false
     description: |
-      Derived from each non-source page's frontmatter `sources:` list.
+      Derived from a page's frontmatter `sources:` list. An entry that names a
+      wiki slug resolves to that page, and is skipped on source pages, whose
+      provenance is the raw file rather than another page. An entry that names
+      anything else resolves to a `document:` node and is kept on every page
+      type, including source pages, where it is the load-bearing provenance
+      edge.
   summarizes_raw:
     subject_types: [source]
     object_types: ["*"]

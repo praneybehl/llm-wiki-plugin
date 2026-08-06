@@ -153,8 +153,9 @@ def types_match(allowed: list[str] | None, actual: str | None) -> bool:
     return actual in allowed
 
 
-def lint(pages: list[dict], ontology: dict) -> dict:
+def lint(pages: list[dict], ontology: dict, repo_root: Path | None = None) -> dict:
     findings = {
+        "unresolved_sources": [],
         "duplicate_node_ids": [],
         "unknown_predicates": [],
         "broken_object_refs": [],
@@ -302,7 +303,30 @@ def lint(pages: list[dict], ontology: dict) -> dict:
     # Orphan typed nodes — pages that declared `graph:` frontmatter but end
     # up with no typed (non-implicit) edge touching them after extraction.
     # Source nodes are exempt (they participate via implicit edges).
-    extracted_edges = _extract.build_edges(pages, {n["slug"]: n["id"] for n in node_by_id.values()})
+    slug_to_id = {n["slug"]: n["id"] for n in node_by_id.values()}
+
+    # Every `sources:` entry must name something real — a wiki page slug or a
+    # file in the repo. This exists because the failure it catches is silent by
+    # construction: an entry that resolves to neither still compiles into a
+    # document node and a `sourced_from` edge, so the graph looks populated
+    # while the provenance points at nothing. Skipped when the repo root is
+    # unknown, since then "file on disk" cannot be decided.
+    if repo_root is not None:
+        for p in pages:
+            for index, entry in enumerate(p["meta"].get("sources") or []):
+                entry = str(entry).strip()
+                if not entry or entry in slug_to_id:
+                    continue
+                if (repo_root / entry).exists():
+                    continue
+                findings["unresolved_sources"].append({
+                    "page": p["rel_path"],
+                    "index": index,
+                    "source": entry,
+                })
+
+    _document_nodes, document_ids = _extract.build_document_nodes(pages, slug_to_id)
+    extracted_edges = _extract.build_edges(pages, slug_to_id, document_ids)
     typed_node_refs: set[str] = set()
     for e in extracted_edges:
         if e["predicate"] in IMPLICIT_PREDICATES:
@@ -343,6 +367,8 @@ def render_text(findings: dict) -> str:
     out.append("")
 
     sections = [
+        ("unresolved_sources", "sources: entry is neither a wiki slug nor a file in the repo",
+         lambda f: f"  - {f['page']}#sources[{f['index']}]  {f['source']!r}"),
         ("duplicate_node_ids", "Duplicate node ids",
          lambda f: f"  - {f['node_id']}: {', '.join(f['paths'])}"),
         ("unknown_predicates", "Unknown predicates (not in ontology)",
@@ -417,7 +443,7 @@ def main():
         sys.exit(2)
 
     pages = collect_pages(args.wiki)
-    findings = lint(pages, ontology)
+    findings = lint(pages, ontology, repo_root=args.wiki.resolve().parent)
 
     if args.json:
         print(json.dumps(findings, indent=2, default=str))

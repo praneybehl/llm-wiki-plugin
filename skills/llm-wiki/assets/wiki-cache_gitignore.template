@@ -1,2 +1,13 @@
+# Regenerable retrieval artifacts.
+#
+# embeddings.sqlite IS tracked: it is expensive to build (a full-corpus embed
+# pass costs ~25 min and ~2 GB RSS) and cheap to carry (5 MB packed, and git
+# deltas an incremental re-embed down to ~0 KB). Committing it means a fresh
+# clone queries immediately instead of rebuilding. Re-sync it after every
+# ingest — see wiki/SCHEMA.md "Retrieval".
+#
+# search-index.json is NOT tracked: it is a pure parse cache, rebuilds in
+# seconds, and churns on every page edit.
 *
 !.gitignore
+!embeddings.sqlite

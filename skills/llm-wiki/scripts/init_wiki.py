@@ -42,6 +42,15 @@ TEMPLATES = SKILL_ROOT / "assets"
 
 SUBDIRS = ["sources", "entities", "concepts", "synthesis", "graph"]
 
+# Mirrors wiki_search.VECTOR_INDEX_NAME. Duplicated rather than imported so this
+# bootstrap script stays runnable before any dependency exists.
+VECTOR_INDEX_NAME = "embeddings.sqlite"
+INDEX_UNIGNORE_RULE = f"!{VECTOR_INDEX_NAME}"
+# The exact rule set older versions generated, before the vector index became a
+# tracked artifact. Only this shape is migrated automatically.
+LEGACY_WIKI_CACHE_IGNORE = ["*", "!.gitignore"]
+
+
 # Markers used by --upgrade to detect SCHEMA.md sections introduced in
 # specific plugin versions. Each entry: (heading_marker, version_label,
 # template_anchor, blurb).
@@ -92,6 +101,84 @@ def copy_template(src: Path, dst: Path, substitutions: dict | None = None) -> bo
     return True
 
 
+def migrate_wiki_cache_gitignore(path: Path) -> str:
+    """Teach an older `.wiki-cache/.gitignore` that the vector index is tracked.
+
+    Older versions generated `*` + `!.gitignore`, which was right when everything
+    under `.wiki-cache/` was disposable. Now the vector index is a tracked
+    artifact, and that rule set silently hides it: the upgrade builds the index,
+    then git refuses to add it without `-f`. `copy_template()` cannot fix this —
+    it returns untouched when the destination exists, which is the correct
+    behaviour for a file the user may have edited.
+
+    So the migration is surgical: only the known generated shape is rewritten,
+    and only by appending. Anything the user has customized is reported instead
+    of being edited under them.
+
+    Returns "absent", "current", "migrated", "custom", or "unreadable: <reason>".
+    """
+    if not path.exists():
+        return "absent"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        return f"unreadable: {exc}"
+    rules = [line.strip() for line in text.splitlines()
+             if line.strip() and not line.strip().startswith("#")]
+    if INDEX_UNIGNORE_RULE in rules:
+        return "current"
+    if rules != LEGACY_WIKI_CACHE_IGNORE:
+        return "custom"
+    separator = "" if text.endswith("\n") else "\n"
+    try:
+        path.write_text(
+            f"{text}{separator}\n"
+            "# The vector index is tracked: it is expensive to build and cheap to\n"
+            "# carry, so a fresh clone queries immediately. Added by --upgrade.\n"
+            f"{INDEX_UNIGNORE_RULE}\n",
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        return f"unreadable: {exc}"
+    return "migrated"
+
+
+def index_ignore_rule(project_root: Path, index_path: Path) -> str | None:
+    """Return the gitignore rule hiding the vector index, or None if it is trackable.
+
+    Asking git is the only honest check: the rule can live in the wiki's own
+    `.gitignore`, the repository root's, or a global excludes file, and only git
+    knows which one wins.
+
+    Two calls, deliberately. `-q` alone carries the verdict: 0 = ignored,
+    1 = not ignored, 128 = not a git repository. `-v` cannot be used for the
+    verdict, because it also reports a path that matched a *negated* pattern and
+    still exits 0 — so `!embeddings.sqlite`, the rule that makes the index
+    trackable, would be read as the rule hiding it. `-v` is only asked for the
+    rule text once `-q` has already said the index is ignored.
+    """
+    git = shutil.which("git")
+    if not git:
+        return None
+
+    def check(*flags: str) -> subprocess.CompletedProcess | None:
+        try:
+            return subprocess.run(
+                [git, "check-ignore", *flags, "--", str(index_path)],
+                cwd=project_root, capture_output=True, text=True,
+            )
+        except OSError:
+            return None
+
+    verdict = check("-q")
+    if verdict is None or verdict.returncode != 0:
+        return None
+    detail = check("-v")
+    if detail is not None and detail.stdout.strip():
+        return detail.stdout.strip().splitlines()[0]
+    return f"(an ignore rule matches {index_path})"
+
+
 def detect_schema_gaps(schema_path: Path) -> list[dict]:
     """Return the SCHEMA_SECTION_MARKERS entries missing from the user's SCHEMA.md."""
     if not schema_path.exists():
@@ -127,6 +214,46 @@ def print_schema_upgrade_guidance(schema_path: Path, gaps: list[dict]) -> None:
         "Diff your SCHEMA.md against the template and copy the missing\n"
         "sections in. Or run /wiki:upgrade and Claude will propose the edits\n"
         "interactively (one section at a time, never silent)."
+    )
+
+
+def report_ignored_index(index_path: Path, rule: str, ignore_status: str,
+                         cache_ignore: Path) -> None:
+    """Explain that the built index cannot be committed, and how to unblock it."""
+    stream = sys.stderr
+    print(file=stream)
+    print("=" * 64, file=stream)
+    print("Blocked: the vector index is git-ignored", file=stream)
+    print("=" * 64, file=stream)
+    print(
+        f"{index_path} is expensive to build and is meant to be committed with\n"
+        f"the pages it indexes, but git will not add it:\n"
+        f"  {rule}\n",
+        file=stream,
+    )
+    if ignore_status == "custom":
+        print(
+            f"{cache_ignore} has been customized, so it was left untouched.\n"
+            f"Add this line to it by hand:\n"
+            f"  {INDEX_UNIGNORE_RULE}",
+            file=stream,
+        )
+    elif ignore_status.startswith("unreadable"):
+        print(f"{cache_ignore} could not be updated ({ignore_status}).", file=stream)
+    else:
+        print(
+            "The rule is not in the wiki's own .wiki-cache/.gitignore — check the\n"
+            "repository root .gitignore and your global excludes file. The line\n"
+            "shown above names the file and rule responsible.\n"
+            "If that rule excludes a whole directory, the '!embeddings.sqlite'\n"
+            "negation cannot rescue it: git never descends into an excluded\n"
+            "directory, so the parent rule has to be narrowed instead.",
+            file=stream,
+        )
+    print(
+        "\nSetup is not complete. Fix the rule and rerun; nothing else here\n"
+        "is affected, and no work is lost.",
+        file=stream,
     )
 
 
@@ -213,6 +340,11 @@ def init_wiki(project_root: Path, wiki_dir: str, raw_dir: str, upgrade: bool = F
         else:
             skipped.append(str(dst.relative_to(project_root)))
 
+    cache_ignore = wiki / ".wiki-cache" / ".gitignore"
+    ignore_status = migrate_wiki_cache_gitignore(cache_ignore)
+    if ignore_status == "migrated":
+        created.append(f"{cache_ignore.relative_to(project_root)} (migrated: {INDEX_UNIGNORE_RULE})")
+
     # Report
     if created:
         print("Created:")
@@ -222,6 +354,15 @@ def init_wiki(project_root: Path, wiki_dir: str, raw_dir: str, upgrade: bool = F
         print("Already existed (skipped):")
         for path in skipped:
             print(f"  = {path}")
+
+    # Before the runtime install, not after: building the index first and only
+    # then reporting that it cannot be committed would waste a ~25-minute embed
+    # pass to deliver the news.
+    index_path = wiki / ".wiki-cache" / VECTOR_INDEX_NAME
+    blocking_rule = index_ignore_rule(project_root, index_path)
+    if blocking_rule:
+        report_ignored_index(index_path, blocking_rule, ignore_status, cache_ignore)
+        raise SystemExit(1)
 
     install_runtime(wiki)
 

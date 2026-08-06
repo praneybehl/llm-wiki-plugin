@@ -44,6 +44,7 @@ import os
 import re
 import sqlite3
 import sys
+import tempfile
 from collections import Counter, defaultdict
 from datetime import date, datetime
 from pathlib import Path
@@ -174,14 +175,40 @@ def load_parse_cache(cache_path: Path) -> dict:
 
 
 def write_parse_cache(cache_path: Path, files: dict) -> None:
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(str(cache_path) + ".tmp")
-    temporary.write_text(
-        json.dumps({"schema": PARSE_CACHE_SCHEMA, "files": files},
-                   ensure_ascii=False, sort_keys=True),
-        encoding="utf-8",
-    )
-    os.replace(temporary, cache_path)
+    """Persist the parse cache, tolerating concurrent writers.
+
+    Two agents (or a search and a benchmark) routinely share one wiki. A fixed
+    `<cache>.tmp` name made them collide: one process writes the scratch file
+    while another renames it, which on Windows raises PermissionError from
+    either the write or the rename — measured at 4-8 failures per 12 concurrent
+    queries. Each writer now gets its own scratch file in the destination
+    directory, so the only remaining contention is the atomic rename.
+
+    Persisting is also best-effort by nature: the cache only saves reparsing
+    work, and the results are already computed by the time it is written. A
+    losing racer therefore warns and returns rather than failing a query that
+    otherwise succeeded.
+    """
+    payload = json.dumps({"schema": PARSE_CACHE_SCHEMA, "files": files},
+                         ensure_ascii=False, sort_keys=True)
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        handle, temporary = tempfile.mkstemp(
+            dir=cache_path.parent, prefix=cache_path.name + ".", suffix=".tmp"
+        )
+    except OSError as exc:
+        print(f"cache: not written ({exc})", file=sys.stderr)
+        return
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as stream:
+            stream.write(payload)
+        os.replace(temporary, cache_path)
+    except OSError as exc:
+        print(f"cache: not written ({exc})", file=sys.stderr)
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
 
 
 def collect_pages(wiki_root: Path, cache_path: Path | None = None) -> list[dict]:

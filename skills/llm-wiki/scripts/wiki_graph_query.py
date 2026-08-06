@@ -33,6 +33,7 @@ import sys
 from collections import deque
 from pathlib import Path
 
+import wiki_graph_store
 from wiki_markdown import configure_utf8_streams
 
 configure_utf8_streams()
@@ -41,9 +42,47 @@ configure_utf8_streams()
 EVIDENCE_SNIPPET_LEN = 140
 
 
-def open_db(path: Path) -> sqlite3.Connection:
+def rebuild_reason(db_path: Path, graph_dir: Path) -> str | None:
+    """Why the database needs rebuilding from the exports, or None if it does not."""
+    nodes_path, edges_path = wiki_graph_store.export_paths(graph_dir)
+    if not (nodes_path.exists() and edges_path.exists()):
+        return None                       # nothing to rebuild from; caller reports it
+    if not db_path.exists():
+        return "missing"
+    db_mtime = db_path.stat().st_mtime
+    if max(nodes_path.stat().st_mtime, edges_path.stat().st_mtime) > db_mtime:
+        return "older than the exports"
+    return None
+
+
+def open_db(path: Path, graph_dir: Path) -> sqlite3.Connection:
+    """Open the graph, compiling it from the committed exports when needed.
+
+    `graph.sqlite` is derived and gitignored, so a fresh clone has the exports
+    but no database. Before this, every query here failed and the agent simply
+    skipped the graph step — the wiki still answered, just without typed
+    neighbours, and nothing said a whole retrieval stage had gone missing.
+    Silent degradation is worse than the two seconds a rebuild costs.
+
+    Only the JSONL exports are read, never the markdown: this script is
+    stdlib-only by design and must not acquire PyYAML or `uv`. Whether those
+    exports still match the pages is `wiki_graph_check.py`'s question.
+    """
+    reason = rebuild_reason(path, graph_dir)
+    if reason:
+        print(f"graph.sqlite {reason}; rebuilding from {graph_dir}/nodes.jsonl + edges.jsonl",
+              file=sys.stderr)
+        try:
+            nodes, aliases, edges = wiki_graph_store.read_exports(graph_dir)
+            wiki_graph_store.write_sqlite(path, nodes, aliases, edges)
+        except (OSError, ValueError, sqlite3.Error) as exc:
+            print(f"Rebuild failed: {exc}", file=sys.stderr)
+            print("Run wiki_graph_extract.py to regenerate the graph.", file=sys.stderr)
+            sys.exit(1)
+        print(f"  {len(nodes)} nodes, {len(edges)} edges", file=sys.stderr)
     if not path.exists():
-        print(f"graph.sqlite not found at {path}.", file=sys.stderr)
+        print(f"graph.sqlite not found at {path}, and no exports to rebuild it from.",
+              file=sys.stderr)
         print("Run wiki_graph_extract.py first.", file=sys.stderr)
         sys.exit(1)
     conn = sqlite3.connect(path)
@@ -240,8 +279,9 @@ def main():
     if not args.wiki.exists():
         print(f"Wiki directory not found: {args.wiki}", file=sys.stderr)
         sys.exit(1)
-    db_path = args.db or (args.wiki / "graph" / "graph.sqlite")
-    conn = open_db(db_path)
+    graph_dir = args.wiki / "graph"
+    db_path = args.db or (graph_dir / "graph.sqlite")
+    conn = open_db(db_path, graph_dir)
     try:
         if args.command == "neighbors":
             result = cmd_neighbors(conn, args)

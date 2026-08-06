@@ -34,7 +34,6 @@ import argparse
 import hashlib
 import json
 import re
-import sqlite3
 import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
@@ -42,6 +41,10 @@ from pathlib import Path
 
 import wiki_markdown
 from wiki_markdown import configure_utf8_streams, extract_wikilinks
+# The SQLite shape is shared with wiki_graph_query.py, which rebuilds the
+# database from the committed exports and cannot import this module (PyYAML).
+from wiki_graph_store import normalize_for_json as _normalize_for_json
+from wiki_graph_store import write_sqlite as _write_sqlite
 
 
 configure_utf8_streams()
@@ -398,16 +401,6 @@ def build_edges(pages: list[dict], slug_to_id: dict[str, str],
 # ---------------------------------------------------------------------------
 
 
-def _normalize_for_json(value):
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    if isinstance(value, list):
-        return [_normalize_for_json(v) for v in value]
-    if isinstance(value, dict):
-        return {k: _normalize_for_json(v) for k, v in value.items()}
-    return value
-
-
 def write_jsonl(out_dir: Path, nodes: list[dict], edges: list[dict]) -> None:
     nodes_sorted = sorted(nodes, key=lambda n: n["id"])
     edges_sorted = sorted(edges, key=lambda e: e["id"])
@@ -419,93 +412,6 @@ def write_jsonl(out_dir: Path, nodes: list[dict], edges: list[dict]) -> None:
         for e in edges_sorted:
             f.write(json.dumps(_normalize_for_json(e), sort_keys=True, ensure_ascii=False))
             f.write("\n")
-
-
-def write_sqlite(out_dir: Path, nodes: list[dict], aliases: list[dict], edges: list[dict]) -> None:
-    db_path = out_dir / "graph.sqlite"
-    if db_path.exists():
-        db_path.unlink()
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.executescript("""
-            CREATE TABLE nodes (
-              id TEXT PRIMARY KEY,
-              slug TEXT NOT NULL UNIQUE,
-              title TEXT NOT NULL,
-              page_type TEXT NOT NULL,
-              node_type TEXT NOT NULL,
-              kind TEXT,
-              path TEXT NOT NULL,
-              created TEXT,
-              updated TEXT,
-              metadata_json TEXT NOT NULL
-            );
-            CREATE TABLE aliases (
-              alias TEXT NOT NULL,
-              node_id TEXT NOT NULL,
-              PRIMARY KEY (alias, node_id),
-              FOREIGN KEY (node_id) REFERENCES nodes(id)
-            );
-            CREATE TABLE edges (
-              id TEXT PRIMARY KEY,
-              subject TEXT NOT NULL,
-              predicate TEXT NOT NULL,
-              object TEXT NOT NULL,
-              source TEXT,
-              evidence TEXT,
-              confidence TEXT,
-              status TEXT,
-              extraction_method TEXT NOT NULL,
-              page TEXT NOT NULL,
-              metadata_json TEXT NOT NULL
-            );
-            CREATE INDEX idx_edges_subject ON edges(subject);
-            CREATE INDEX idx_edges_object ON edges(object);
-            CREATE INDEX idx_edges_predicate ON edges(predicate);
-            CREATE INDEX idx_edges_source ON edges(source);
-        """)
-
-        for n in sorted(nodes, key=lambda n: n["id"]):
-            metadata_json = json.dumps(_normalize_for_json({
-                "tags": n.get("tags", []),
-                "aliases": n.get("aliases", []),
-                "canonical": n.get("canonical", False),
-            }), sort_keys=True, ensure_ascii=False)
-            conn.execute(
-                "INSERT INTO nodes (id, slug, title, page_type, node_type, kind, path, created, updated, metadata_json) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    n["id"], n["slug"], n["title"], n["page_type"], n["node_type"],
-                    n.get("kind") or None, n["path"],
-                    str(n.get("created") or "") or None,
-                    str(n.get("updated") or "") or None,
-                    metadata_json,
-                ),
-            )
-
-        for a in sorted(aliases, key=lambda a: (a["alias"], a["node_id"])):
-            conn.execute(
-                "INSERT OR IGNORE INTO aliases (alias, node_id) VALUES (?, ?)",
-                (a["alias"], a["node_id"]),
-            )
-
-        for e in sorted(edges, key=lambda e: e["id"]):
-            metadata_json = json.dumps(_normalize_for_json(e.get("extras") or {}),
-                                       sort_keys=True, ensure_ascii=False)
-            conn.execute(
-                "INSERT INTO edges (id, subject, predicate, object, source, evidence, "
-                "confidence, status, extraction_method, page, metadata_json) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    e["id"], e["subject"], e["predicate"], e["object"],
-                    e.get("source") or None, e.get("evidence") or None,
-                    e.get("confidence") or None, e.get("status") or None,
-                    e["extraction_method"], e["page"], metadata_json,
-                ),
-            )
-        conn.commit()
-    finally:
-        conn.close()
 
 
 def write_graphml(out_dir: Path, nodes: list[dict], edges: list[dict]) -> None:
@@ -598,7 +504,7 @@ def main():
     if "jsonl" in formats:
         write_jsonl(out_dir, nodes, edges)
     if "sqlite" in formats:
-        write_sqlite(out_dir, nodes, aliases, edges)
+        _write_sqlite(out_dir / "graph.sqlite", nodes, aliases, edges)
     if "graphml" in formats:
         write_graphml(out_dir, nodes, edges)
 

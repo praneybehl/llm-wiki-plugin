@@ -273,9 +273,13 @@ def lint(pages: list[dict], ontology: dict) -> dict:
                 if not rel.get("source"):
                     findings["missing_source_field"].append({**here})
 
-            # source field must reference an existing source page slug
+            # source field must reference an existing source page slug, or the
+            # subject page's own slug. SCHEMA documents the field as a
+            # "source/derived page slug": a derived page may cite itself as the
+            # provenance of an edge it declares, and rejecting that made every
+            # such edge a lint failure with no correct way to write it.
             src = rel.get("source")
-            if src and str(src) not in source_slugs:
+            if src and str(src) not in source_slugs and str(src) != p["slug"]:
                 findings["broken_source_refs"].append({**here, "source": src})
 
             confidence = rel.get("confidence")
@@ -419,6 +423,12 @@ def main():
         print(json.dumps(findings, indent=2, default=str))
     else:
         print(render_text(findings))
+
+    # Same reason as wiki_lint.py: a gate needs an exit code, not a report to
+    # re-parse. A broken typed edge is a defect in the graph, not a suggestion.
+    if any(value for key, value in findings.items()
+           if key != "summary" and isinstance(value, list)):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

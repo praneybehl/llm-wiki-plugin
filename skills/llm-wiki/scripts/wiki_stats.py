@@ -69,7 +69,7 @@ def main():
             continue
 
         if rel.name == "index.md" and len(rel.parts) == 1:
-            index_lines = text.count("\n") + 1
+            index_lines = len(text.splitlines())
             continue
         if rel.parts[0] in SKIP_TOP_LEVEL_FILES:
             continue
@@ -79,7 +79,7 @@ def main():
             continue
 
         total_pages += 1
-        line_count = text.count("\n") + 1
+        line_count = len(text.splitlines())
         word_count = len(text.split())
         total_lines += line_count
         total_words += word_count

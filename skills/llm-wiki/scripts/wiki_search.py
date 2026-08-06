@@ -49,7 +49,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from wiki_markdown import (SKIP_TOP_LEVEL_DIRS, configure_utf8_streams,
-                           extract_wikilinks)
+                           extract_wikilinks, strip_block_code)
 
 configure_utf8_streams()
 
@@ -62,9 +62,19 @@ TOKEN_RE = re.compile(r"[a-z0-9]+")
 # serving entries built by the previous parser: `--cache` and a cold run
 # disagree, and the vector index syncs against stale locators and text.
 # Schema history: 1 = the original format. 2 = POSIX cache keys and
-# newline-normalized content hashes.
-PARSE_CACHE_SCHEMA = 2
-HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
+# newline-normalized content hashes. 3 = CommonMark-aware code masking,
+# three-space ATX indent allowance, literal trailing hashes kept in heading
+# text, empty ATX headings recognized, sections carrying nothing dropped.
+PARSE_CACHE_SCHEMA = 3
+# CommonMark ATX heading: up to three leading spaces, one to six hashes, then
+# either end of line (an empty heading) or a space/tab before the content.
+HEADING_RE = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
+# The optional closing sequence is only a closing sequence when whitespace
+# precedes it, or when it is the whole content. Stripping any trailing hash run
+# instead renames `## C#` to `C` and `## F##` to `F`, silently corrupting the
+# heading path, the searchable text, the JSON evidence and the embedded vector
+# for every heading that legitimately ends in a hash.
+CLOSING_HASHES_RE = re.compile(r"(?:^|[ \t]+)#+[ \t]*$")
 LOCAL_EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 VECTOR_INDEX_SCHEMA = "2"
 VECTOR_INDEX_NAME = "embeddings.sqlite"
@@ -250,41 +260,64 @@ def collect_pages(wiki_root: Path, cache_path: Path | None = None) -> list[dict]
 
 
 def split_sections(title: str, body: str) -> list[dict]:
-    """Split a page body into sections at ATX headings outside code fences."""
+    """Split a page body into sections at ATX headings outside code blocks.
+
+    Heading detection runs against `strip_block_code`, the same CommonMark state
+    machine the wikilink extractor uses, rather than a local fence toggle. A
+    naive toggle gets four documented cases wrong — `~~~` "closing" a backtick
+    fence, three backticks "closing" a fence of four, a closing fence with
+    trailing text, and indented code — and each mistake invents a heading inside
+    a code block, which then becomes a BM25 unit, a section locator and an
+    embedded vector. Sections keep the original lines; only the heading test
+    looks at the masked copy.
+    """
     del title  # Kept in the API for parity with the TypeScript implementation.
     sections = []
     heading_stack: list[tuple[int, str]] = []
     current_path: list[str] = []
     current_level = 0
+    current_name = ""
     current_lines: list[str] = []
-    in_fence = False
 
     def append_section() -> None:
+        text = "\n".join(current_lines)
+        # Drop a section that neither names itself nor holds text: the empty
+        # preamble of a page that opens with a heading, and the empty ATX
+        # heading with nothing under it. Either carries no evidence, yet both
+        # are scored, embedded, and consume a --per-page slot a real passage
+        # needs. An inherited path does not count as a name — only the
+        # section's own heading does.
+        if not current_name and not text.strip():
+            return
         sections.append({
             "heading_path": current_path.copy(),
             "level": current_level,
-            "text": "\n".join(current_lines),
+            "text": text,
             "section_index": len(sections),
         })
 
-    for line in body.splitlines():
-        stripped = line.strip()
-        if stripped.startswith(("```", "~~~")):
-            in_fence = not in_fence
-            current_lines.append(line)
-            continue
-        heading = None if in_fence else HEADING_RE.match(line)
+    body_lines = body.splitlines()
+    # Code lines come back blanked, newline-for-newline, so they can never match
+    # the heading pattern.
+    masked_lines = strip_block_code(body).splitlines()
+    for index, line in enumerate(body_lines):
+        masked = masked_lines[index] if index < len(masked_lines) else ""
+        heading = HEADING_RE.match(masked)
         if not heading:
             current_lines.append(line)
             continue
 
         append_section()
         current_level = len(heading.group(1))
-        heading_text = heading.group(2).strip()
+        current_name = CLOSING_HASHES_RE.sub("", heading.group(2) or "").strip()
         while heading_stack and heading_stack[-1][0] >= current_level:
             heading_stack.pop()
-        heading_stack.append((current_level, heading_text))
-        current_path = [text for _, text in heading_stack]
+        # An empty ATX heading (`###` alone) is a real section boundary, so it
+        # takes its place on the stack and keeps nesting correct — but it
+        # contributes no name, so it is left out of the visible path rather than
+        # padding it with an empty string.
+        heading_stack.append((current_level, current_name))
+        current_path = [text for _, text in heading_stack if text]
         current_lines = []
 
     append_section()

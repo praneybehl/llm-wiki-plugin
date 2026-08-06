@@ -693,18 +693,49 @@ def json_result(
     }
 
 
-def emit_json(args, results: list[dict], mode: str = "lexical") -> None:
+def emit_json(args, results: list[dict], mode: str = "lexical", error: str | None = None) -> None:
+    """Emit the structured envelope.
+
+    `--json` is a contract: a caller that asked for structured output gets a
+    parseable envelope on every path, including the failure paths. Returning
+    nothing on stdout — as an untokenizable query used to — silently breaks
+    every scripted consumer.
+    """
     print(json.dumps({
         "query": args.query,
         "wiki": str(args.wiki),
         "granularity": args.granularity,
         "mode": mode,
         "results": results,
+        "error": error,
     }, ensure_ascii=False))
 
 
-def emit_empty_json(args, mode: str = "lexical") -> None:
-    emit_json(args, [], mode)
+def emit_empty_json(args, mode: str = "lexical", error: str | None = None) -> None:
+    emit_json(args, [], mode, error)
+
+
+def fail(args, message: str, code: int = 2) -> None:
+    """Report an unusable request: JSON envelope when asked, stderr otherwise."""
+    if getattr(args, "json", False):
+        emit_empty_json(args, error=message)
+    else:
+        print(message, file=sys.stderr)
+    raise SystemExit(code)
+
+
+def require_positive(args, flag: str, value: int | None) -> None:
+    """Reject non-positive counts before they turn into silent nonsense.
+
+    Raw `type=int` let every count flag through, and each one failed
+    differently: `--top 0` returned one section but zero pages, a negative
+    `--top-linked` became a negative list slice, and `--per-page 0` silently
+    dropped every result. Validating after parsing rather than in `type=`
+    keeps the `--json` contract — argparse's own error path writes usage text
+    to stderr, which no structured consumer can read.
+    """
+    if value is not None and value < 1:
+        fail(args, f"{flag} must be a positive integer, got {value}")
 
 
 def cmd_search(args, pages: list[dict]) -> None:
@@ -717,8 +748,11 @@ def cmd_search(args, pages: list[dict]) -> None:
         return
     query_tokens = tokenize(args.query)
     if not query_tokens:
-        print("Empty query.", file=sys.stderr)
-        return
+        # The tokenizer keeps [a-z0-9]+ only, so a query written entirely in a
+        # non-Latin script yields nothing to match. Say so instead of returning
+        # an empty result set that looks like "searched, found nothing".
+        fail(args, "Query has no searchable tokens: the lexical tokenizer keeps "
+                   "[a-z0-9]+ only, so non-Latin scripts must be normalized first.")
 
     if args.granularity == "page":
         idx = build_bm25(filtered)
@@ -892,17 +926,22 @@ def main():
     parser.add_argument("--json", action="store_true", help="Emit structured JSON search results.")
     parser.add_argument("--no-embed", action="store_true", help="Force lexical-only search.")
     args = parser.parse_args()
+    require_positive(args, "--top", args.top)
+    require_positive(args, "--top-linked", args.top_linked)
+    require_positive(args, "--per-page", args.per_page)
     cache_path = None
     if args.cache:
         cache_path = args.wiki / ".wiki-cache" / "search-index.json" if args.cache == "AUTO" else Path(args.cache)
 
     if not args.wiki.exists():
-        print(f"Wiki directory not found: {args.wiki}", file=sys.stderr)
-        sys.exit(1)
+        fail(args, f"Wiki directory not found: {args.wiki}", code=1)
 
     pages = collect_pages(args.wiki, cache_path)
     if not pages:
-        print(f"No wiki pages found under {args.wiki}", file=sys.stderr)
+        if args.json:
+            emit_empty_json(args, error=f"No wiki pages found under {args.wiki}")
+        else:
+            print(f"No wiki pages found under {args.wiki}", file=sys.stderr)
         sys.exit(0)
 
     if args.backlinks:
@@ -911,6 +950,8 @@ def main():
         cmd_top_linked(args, pages)
     elif args.query:
         cmd_search(args, pages)
+    elif args.json:
+        fail(args, "No query given. Pass a query, --backlinks <slug>, or --top-linked N.")
     else:
         parser.print_help()
         sys.exit(1)

@@ -76,6 +76,13 @@ HEADING_RE = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
 # heading path, the searchable text, the JSON evidence and the embedded vector
 # for every heading that legitimately ends in a hash.
 CLOSING_HASHES_RE = re.compile(r"(?:^|[ \t]+)#+[ \t]*$")
+# Reciprocal-rank fusion constant, and how many hits each channel
+# contributes. Named because --debug-ranking reports them: a diagnostic
+# that prints numbers the caller cannot tie back to the parameters that
+# produced them is a riddle.
+RRF_K = 60
+LEXICAL_CANDIDATE_LIMIT = 50
+SEMANTIC_CANDIDATE_LIMIT = 50
 LOCAL_EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 VECTOR_INDEX_SCHEMA = "2"
 VECTOR_INDEX_NAME = "embeddings.sqlite"
@@ -610,7 +617,13 @@ def local_semantic_order(
     all_sections: list[dict],
     allowed_locators: set[str],
     wiki_root: Path,
-) -> list[str]:
+) -> list[tuple[str, float]]:
+    """Return [(locator, cosine_distance)] best-first.
+
+    The distance rides along because it is the only place it exists: it is not
+    stored, not recomputable without the model, and `--debug-ranking` has to
+    show it to explain why a section did or did not clear the threshold.
+    """
     model, sqlite_vec, dimension = load_local_embedding_backend()
     connection = open_vector_index(wiki_root, sqlite_vec, dimension)
     try:
@@ -623,10 +636,10 @@ def local_semantic_order(
         if not allowed_ids:
             return []
         query_blob = sqlite_vec.serialize_float32(embed_query(model, query))
-        limit = min(50, len(allowed_ids))
+        limit = min(SEMANTIC_CANDIDATE_LIMIT, len(allowed_ids))
         if len(allowed_ids) == len(locator_ids):
             ranked_ids = [
-                row_id
+                (row_id, distance)
                 for row_id, distance in connection.execute(
                     "SELECT rowid, distance FROM semantic_vectors "
                     "WHERE embedding MATCH ? AND k = ? ORDER BY distance",
@@ -643,7 +656,7 @@ def local_semantic_order(
                 ((row_id,) for row_id in allowed_ids),
             )
             ranked_ids = [
-                row_id
+                (row_id, distance)
                 for row_id, distance in connection.execute(
                     "SELECT vectors.rowid, "
                     "vec_distance_cosine(vectors.embedding, ?) AS distance "
@@ -655,7 +668,7 @@ def local_semantic_order(
                 if distance <= MAX_COSINE_DISTANCE
             ]
         by_id = {row_id: locator for locator, row_id in locator_ids.items()}
-        return [by_id[row_id] for row_id in ranked_ids]
+        return [(by_id[row_id], float(distance)) for row_id, distance in ranked_ids]
     finally:
         connection.close()
 
@@ -825,6 +838,70 @@ def suppressed_source_pages(matched_pages: list[dict]) -> set[str]:
     return suppressed
 
 
+def emit_ranking_debug(args, sections, ranked, mode, bm25_scores, bm25_ranks,
+                       embedding_ranks, cosine_distances, suppressed) -> None:
+    """Emit every fused candidate with the per-channel numbers behind it.
+
+    `--json` reports the final, rounded, already-limited result set — right for
+    a consumer, useless for anyone asking why a section ranked where it did.
+    The raw BM25 score, the two channel ranks and the cosine distance exist
+    nowhere else, and the candidates dropped by --per-page or provenance dedup
+    never appear in that envelope at all. This one shows the full fused order
+    and annotates each candidate with the limit that would have removed it.
+    """
+    page_counts = Counter()
+    kept = 0
+    candidates = []
+    for score, section_index, retrievers in ranked:
+        section = sections[section_index]
+        page = section["page"]
+        rel_path = page["rel_path"]
+        # Mirrors the real selection loop exactly, in the same order.
+        if rel_path in suppressed:
+            dropped = "dedup_provenance"
+        elif page_counts[rel_path] >= args.per_page:
+            dropped = "per_page"
+        elif kept >= args.top:
+            dropped = "top"
+        else:
+            page_counts[rel_path] += 1
+            kept += 1
+            dropped = None
+        candidates.append({
+            "locator": section_locator(section),
+            "rel_path": rel_path,
+            "section_index": section["section_index"],
+            "heading_path": section["heading_path"],
+            "type": page["meta"].get("type"),
+            "fused_score": score,
+            "retrievers": retrievers,
+            "bm25_score": bm25_scores.get(section_index),
+            "bm25_rank": bm25_ranks.get(section_index),
+            "vector_rank": embedding_ranks.get(section_index),
+            "cosine_distance": cosine_distances.get(section_index),
+            "dropped_by": dropped,
+        })
+    print(json.dumps({
+        "query": args.query,
+        "wiki": str(args.wiki),
+        "mode": mode,
+        # In lexical mode nothing is fused, so the score is the BM25 score.
+        "fused_score_is": "rrf" if mode == "hybrid" else "bm25",
+        "rrf_k": RRF_K,
+        "lexical_candidate_limit": LEXICAL_CANDIDATE_LIMIT,
+        "max_cosine_distance": MAX_COSINE_DISTANCE,
+        "corpus_sections": len(sections),
+        "bm25_hits": len(bm25_scores),
+        "vector_hits": len(embedding_ranks),
+        "limits": {
+            "top": args.top,
+            "per_page": args.per_page,
+            "dedup_provenance": bool(args.dedup_provenance),
+        },
+        "candidates": candidates,
+    }, ensure_ascii=False, indent=2))
+
+
 def cmd_search(args, pages: list[dict]) -> None:
     filtered = [page for page in pages if passes_filters(page, args)]
     if not filtered:
@@ -874,6 +951,11 @@ def cmd_search(args, pages: list[dict]) -> None:
     bm25_ranked = [item for item in bm25_ranked if item[0] > 0]
     ranked = [(score, section_index, ["bm25"]) for score, section_index in bm25_ranked]
     mode = "lexical"
+    # Kept for --debug-ranking: the fused score alone cannot explain itself.
+    bm25_scores = {index: score for score, index in bm25_ranked}
+    bm25_ranks = {index: rank for rank, (_score, index) in enumerate(bm25_ranked, 1)}
+    embedding_ranks: dict[int, int] = {}
+    cosine_distances: dict[int, float] = {}
     if not args.no_embed:
         try:
             all_sections = collect_sections(pages)
@@ -888,11 +970,12 @@ def cmd_search(args, pages: list[dict]) -> None:
                 args.wiki,
             )
             embedding_top = [
-                (0.0, section_indices[locator])
-                for locator in semantic_order
+                (distance, section_indices[locator])
+                for locator, distance in semantic_order
                 if locator in section_indices
             ]
-            lexical_top = bm25_ranked[:50]
+            cosine_distances = {index: distance for distance, index in embedding_top}
+            lexical_top = bm25_ranked[:LEXICAL_CANDIDATE_LIMIT]
             candidate_order = [index for _, index in lexical_top]
             seen_candidates = set(candidate_order)
             for _, index in embedding_top:
@@ -906,10 +989,10 @@ def cmd_search(args, pages: list[dict]) -> None:
                 score = 0.0
                 retrievers = []
                 if index in lexical_ranks:
-                    score += 1.0 / (60 + lexical_ranks[index])
+                    score += 1.0 / (RRF_K + lexical_ranks[index])
                     retrievers.append("bm25")
                 if index in embedding_ranks:
-                    score += 1.0 / (60 + embedding_ranks[index])
+                    score += 1.0 / (RRF_K + embedding_ranks[index])
                     retrievers.append("embedding")
                 ranked.append((score, index, retrievers))
             ranked.sort(key=lambda item: -item[0])
@@ -921,6 +1004,10 @@ def cmd_search(args, pages: list[dict]) -> None:
                 "falling back to lexical",
                 file=sys.stderr,
             )
+            # A half-built semantic view would make --debug-ranking report a
+            # channel that did not actually contribute to `ranked`.
+            embedding_ranks = {}
+            cosine_distances = {}
 
     suppressed = set()
     if args.dedup_provenance:
@@ -934,6 +1021,11 @@ def cmd_search(args, pages: list[dict]) -> None:
                 -item[0],
                 0 if sections[item[1]]["page"]["meta"].get("type") == args.prefer_type else 1,
             ))
+
+    if args.debug_ranking:
+        emit_ranking_debug(args, sections, ranked, mode, bm25_scores, bm25_ranks,
+                           embedding_ranks, cosine_distances, suppressed)
+        return
 
     page_counts = Counter()
     top_sections = []
@@ -1033,11 +1125,17 @@ def main():
     parser.add_argument("--per-page", type=int, default=2,
                         help="Maximum section results per page (default: 2).")
     parser.add_argument("--json", action="store_true", help="Emit structured JSON search results.")
+    parser.add_argument("--debug-ranking", action="store_true",
+                        help="Emit every fused candidate with per-channel scores, ranks and "
+                             "cosine distance, before --top/--per-page/--dedup-provenance.")
     parser.add_argument("--no-embed", action="store_true", help="Force lexical-only search.")
     args = parser.parse_args()
     require_positive(args, "--top", args.top)
     require_positive(args, "--top-linked", args.top_linked)
     require_positive(args, "--per-page", args.per_page)
+    if args.debug_ranking and args.granularity != "section":
+        fail(args, "--debug-ranking explains section-level channel fusion; "
+                   "it has nothing to report at --granularity page.")
     cache_path = None
     if args.cache:
         cache_path = args.wiki / ".wiki-cache" / "search-index.json" if args.cache == "AUTO" else Path(args.cache)

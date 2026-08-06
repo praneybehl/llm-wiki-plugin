@@ -56,6 +56,14 @@ configure_utf8_streams()
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 TOKEN_RE = re.compile(r"[a-z0-9]+")
+# Bump whenever the cached representation of a page changes -- how a page is
+# keyed, how it is hashed, or the fields stored per section. The cache keys
+# entries by file hash alone, so without a bump an unchanged page keeps
+# serving entries built by the previous parser: `--cache` and a cold run
+# disagree, and the vector index syncs against stale locators and text.
+# Schema history: 1 = the original format. 2 = POSIX cache keys and
+# newline-normalized content hashes.
+PARSE_CACHE_SCHEMA = 2
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 LOCAL_EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 VECTOR_INDEX_SCHEMA = "2"
@@ -121,8 +129,8 @@ def load_parse_cache(cache_path: Path) -> dict:
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         print(f"cache: rebuilding ({exc})", file=sys.stderr)
         return {}
-    if not isinstance(payload, dict) or payload.get("schema") != 1:
-        print("cache: rebuilding (unsupported schema)", file=sys.stderr)
+    if not isinstance(payload, dict) or payload.get("schema") != PARSE_CACHE_SCHEMA:
+        print(f"cache: rebuilding (schema is not {PARSE_CACHE_SCHEMA})", file=sys.stderr)
         return {}
     files = payload.get("files")
     if not isinstance(files, dict):
@@ -159,7 +167,8 @@ def write_parse_cache(cache_path: Path, files: dict) -> None:
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(str(cache_path) + ".tmp")
     temporary.write_text(
-        json.dumps({"schema": 1, "files": files}, ensure_ascii=False, sort_keys=True),
+        json.dumps({"schema": PARSE_CACHE_SCHEMA, "files": files},
+                   ensure_ascii=False, sort_keys=True),
         encoding="utf-8",
     )
     os.replace(temporary, cache_path)
@@ -176,12 +185,27 @@ def collect_pages(wiki_root: Path, cache_path: Path | None = None) -> list[dict]
             continue
         if rel.parts[0] in SKIP_TOP_LEVEL_DIRS:
             continue
-        rel_path = str(rel)
+        # POSIX form, always: rel_path is the cache key, the JSON field and half
+        # of the vector-index locator. Using the native separator makes a built
+        # embeddings.sqlite unusable on any other OS -- every section looks new
+        # and triggers a full re-embed after a fresh clone.
+        rel_path = rel.as_posix()
         try:
             raw = md_path.read_bytes()
         except OSError:
             continue
-        digest = hashlib.sha256(raw).hexdigest()
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+        # Normalize line endings before hashing or parsing. Two reasons, both
+        # about identity: the cache reconstructs bodies by joining on "\n", so a
+        # CRLF file would read back differently than it was parsed; and the
+        # digest feeds the section content hash, so a CRLF checkout and an LF
+        # checkout of the same commit would disagree about every section and
+        # re-embed the whole corpus.
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
         cached = cached_files.get(rel_path)
         if cached and cached.get("sha256") == digest:
             meta = cached.get("meta", {})
@@ -189,10 +213,6 @@ def collect_pages(wiki_root: Path, cache_path: Path | None = None) -> list[dict]
             sections = cached.get("sections", [])
             body = cache_page_body(sections)
         else:
-            try:
-                text = raw.decode("utf-8")
-            except UnicodeDecodeError:
-                continue
             meta, body = parse_frontmatter(text)
             links = extract_wikilinks(body)
             title = meta.get("title") or slug_from_path(md_path, wiki_root)

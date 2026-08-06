@@ -131,22 +131,30 @@ def cache_page_body(sections: list[dict]) -> str:
     return "\n".join(chunks)
 
 
-def load_parse_cache(cache_path: Path) -> dict:
+def load_parse_cache(cache_path: Path) -> dict | None:
+    """Return the cached file map, or None when the cache is unusable.
+
+    None and `{}` are different answers, and conflating them broke `/wiki:init`:
+    a wiki with no ingested pages yet has a perfectly valid cache whose file map
+    is empty. A caller that treats emptiness as corruption rejects the one state
+    every new wiki starts in. Searching only needs "is there anything to reuse",
+    so it collapses both to `{}`; setup needs the distinction.
+    """
     try:
         payload = json.loads(cache_path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         print("cache: rebuilding (missing)", file=sys.stderr)
-        return {}
+        return None
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         print(f"cache: rebuilding ({exc})", file=sys.stderr)
-        return {}
+        return None
     if not isinstance(payload, dict) or payload.get("schema") != PARSE_CACHE_SCHEMA:
-        print(f"cache: rebuilding (schema is not {PARSE_CACHE_SCHEMA})", file=sys.stderr)
-        return {}
+        print("cache: rebuilding (schema is not {})".format(PARSE_CACHE_SCHEMA), file=sys.stderr)
+        return None
     files = payload.get("files")
     if not isinstance(files, dict):
         print("cache: rebuilding (invalid files)", file=sys.stderr)
-        return {}
+        return None
     for rel_path, entry in files.items():
         sections = entry.get("sections") if isinstance(entry, dict) else None
         valid_sections = (
@@ -170,7 +178,7 @@ def load_parse_cache(cache_path: Path) -> dict:
             and valid_sections
         ):
             print(f"cache: rebuilding (invalid entry: {rel_path})", file=sys.stderr)
-            return {}
+            return None
     return files
 
 
@@ -214,7 +222,9 @@ def write_parse_cache(cache_path: Path, files: dict) -> None:
 def collect_pages(wiki_root: Path, cache_path: Path | None = None) -> list[dict]:
     """Walk the wiki and return [{path, slug, meta, body, tokens, links}]."""
     pages = []
-    cached_files = load_parse_cache(cache_path) if cache_path else {}
+    # A search does not care why there is nothing to reuse -- missing, stale and
+    # corrupt all mean "parse from source".
+    cached_files = (load_parse_cache(cache_path) or {}) if cache_path else {}
     next_cache = {}
     for md_path in wiki_root.rglob("*.md"):
         rel = md_path.relative_to(wiki_root)

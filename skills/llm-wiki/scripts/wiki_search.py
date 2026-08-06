@@ -748,6 +748,83 @@ def require_positive(args, flag: str, value: int | None) -> None:
         fail(args, f"{flag} must be a positive integer, got {value}")
 
 
+def primary_provenance(page: dict) -> str:
+    """Return a stable key for source/concept variants derived from the same source."""
+    meta = page["meta"]
+    doc_path = meta.get("doc_path")
+    if isinstance(doc_path, str) and doc_path:
+        return doc_path.lower().replace("\\", "/")
+    sources = meta.get("sources", []) or []
+    if isinstance(sources, str):
+        sources = [sources]
+    if sources:
+        return str(sources[0]).lower().replace("\\", "/")
+    return f"page:{page['slug']}"
+
+
+def collapse_by_provenance(scored_pages: list[tuple[float, dict]], prefer_type: str | None) -> list[tuple[float, dict]]:
+    """Remove duplicate source pages without collapsing distinct derived pages.
+
+    Multiple concept/synthesis pages may legitimately derive from the same primary
+    source, so each remains searchable. A source page is retained only when its
+    provenance group has no derived page. When a source page is hidden, only
+    that removed source's score may be transferred to one derived
+    representative. ``prefer_type`` selects that representative when possible;
+    the other distinct derived pages retain their own scores.
+    """
+    groups = defaultdict(list)
+    for score, page in scored_pages:
+        groups[primary_provenance(page)].append((score, page))
+
+    collapsed: list[tuple[float, dict]] = []
+    for candidates in groups.values():
+        derived = [item for item in candidates if item[1]["meta"].get("type") != "source"]
+        if derived:
+            representative = max(derived, key=lambda item: (
+                bool(prefer_type and item[1]["meta"].get("type") == prefer_type),
+                item[0],
+                item[1]["slug"],
+            ))
+            source_scores = [
+                score for score, page in candidates
+                if page["meta"].get("type") == "source"
+            ]
+            transferred_score = max(source_scores) if source_scores else None
+            for score, page in derived:
+                if page is representative[1] and transferred_score is not None:
+                    score = max(score, transferred_score)
+                collapsed.append((score, page))
+        else:
+            collapsed.append(max(candidates, key=lambda item: item[0]))
+    collapsed.sort(key=lambda item: (
+        -item[0],
+        0 if prefer_type and item[1]["meta"].get("type") == prefer_type else 1,
+        item[1]["slug"],
+    ))
+    return collapsed
+
+
+def suppressed_source_pages(matched_pages: list[dict]) -> set[str]:
+    """Return rel_paths of source pages hidden by a derived page of the same provenance.
+
+    Section granularity ranks sections, not pages, so the page-level score
+    transfer in ``collapse_by_provenance`` has no meaning here: the RRF score of
+    a section is not transferable to a different page's section. What carries
+    over is the rule itself — a `source` page is only worth showing when nothing
+    derived from that same primary source matched.
+    """
+    by_provenance = defaultdict(list)
+    for page in matched_pages:
+        by_provenance[primary_provenance(page)].append(page)
+    suppressed = set()
+    for group in by_provenance.values():
+        if any(page["meta"].get("type") != "source" for page in group):
+            suppressed.update(
+                page["rel_path"] for page in group if page["meta"].get("type") == "source"
+            )
+    return suppressed
+
+
 def cmd_search(args, pages: list[dict]) -> None:
     filtered = [page for page in pages if passes_filters(page, args)]
     if not filtered:
@@ -766,9 +843,12 @@ def cmd_search(args, pages: list[dict]) -> None:
 
     if args.granularity == "page":
         idx = build_bm25(filtered)
-        scored = [(bm25_score(query_tokens, i, idx), i) for i in range(len(filtered))]
+        scored = [(bm25_score(query_tokens, i, idx), filtered[i]) for i in range(len(filtered))]
+        scored = [(score, page) for score, page in scored if score > 0]
         scored.sort(key=lambda item: -item[0])
-        top = [(score, filtered[i]) for score, i in scored[:args.top] if score > 0]
+        if args.dedup_provenance:
+            scored = collapse_by_provenance(scored, args.prefer_type)
+        top = scored[:args.top]
         if not top:
             if args.json:
                 emit_empty_json(args)
@@ -842,11 +922,26 @@ def cmd_search(args, pages: list[dict]) -> None:
                 file=sys.stderr,
             )
 
+    suppressed = set()
+    if args.dedup_provenance:
+        matched = {}
+        for _score, section_index, _retrievers in ranked:
+            page = sections[section_index]["page"]
+            matched.setdefault(page["rel_path"], page)
+        suppressed = suppressed_source_pages(list(matched.values()))
+        if args.prefer_type:
+            ranked.sort(key=lambda item: (
+                -item[0],
+                0 if sections[item[1]]["page"]["meta"].get("type") == args.prefer_type else 1,
+            ))
+
     page_counts = Counter()
     top_sections = []
     for score, section_index, retrievers in ranked:
         section = sections[section_index]
         rel_path = section["page"]["rel_path"]
+        if rel_path in suppressed:
+            continue
         if page_counts[rel_path] >= args.per_page:
             continue
         page_counts[rel_path] += 1
@@ -923,6 +1018,10 @@ def main():
     parser.add_argument("--wiki", type=Path, default=Path("wiki"), help="Wiki directory (default: ./wiki).")
     parser.add_argument("--top", type=int, default=10, help="Top N results (default: 10).")
     parser.add_argument("--type", help="Filter by frontmatter type.")
+    parser.add_argument("--dedup-provenance", action="store_true",
+                        help="Hide duplicate source pages without collapsing derived concepts.")
+    parser.add_argument("--prefer-type",
+                        help="Prefer this page type as the representative of a provenance group.")
     parser.add_argument("--tag", action="append", default=[], help="Filter by tag (repeatable).")
     parser.add_argument("--since", help="Only pages updated on or after YYYY-MM-DD.")
     parser.add_argument("--backlinks", help="Find pages linking to this slug.")

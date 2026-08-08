@@ -165,6 +165,45 @@ def write_parse_cache(cache_path: Path, files: dict) -> None:
     os.replace(temporary, cache_path)
 
 
+def clean_link_target(link: str) -> str:
+    """Strip a wikilink down to its path, dropping alias, anchor, and .md."""
+    target = link.split("|", 1)[0]      # drop a display alias, if any
+    target = target.split("#", 1)[0]    # drop a heading anchor
+    target = target.replace("\\", "/").strip().strip("/")
+    if target.lower().endswith(".md"):
+        target = target[:-3]
+    return target.strip()
+
+
+def build_link_index(pages: list[dict]) -> tuple[dict, set]:
+    """Return (path -> slug, {slug}) for resolving wikilinks."""
+    by_path = {}
+    for p in pages:
+        rel = p["rel_path"].replace("\\", "/")
+        if rel.lower().endswith(".md"):
+            rel = rel[:-3]
+        by_path[rel] = p["slug"]
+    return by_path, {p["slug"] for p in pages}
+
+
+def resolve_link(link: str, by_path: dict, by_slug) -> "str | None":
+    """Resolve a wikilink to the page slug it names, or None.
+
+    Bare ([[kalman-filter]]) and path-qualified ([[entities/kalman-filter]])
+    forms both name a page whose identity is its filename stem, so comparing
+    raw link text makes --backlinks miss every path-qualified reference and
+    splits --top-linked counts across the two forms. A directory prefix is a
+    CONSTRAINT, not decoration: a qualified link resolves only if that exact
+    path exists, so [[raw/foo]] cannot masquerade as sources/foo.
+    """
+    target = clean_link_target(link)
+    if not target:
+        return None
+    if "/" in target:
+        return by_path.get(target)
+    return target if target in by_slug else None
+
+
 def collect_pages(wiki_root: Path, cache_path: Path | None = None) -> list[dict]:
     """Walk the wiki and return [{path, slug, meta, body, tokens, links}]."""
     pages = []
@@ -761,10 +800,13 @@ def cmd_search(args, pages: list[dict]) -> None:
 
 
 def cmd_backlinks(args, pages: list[dict]) -> None:
-    target = args.backlinks
+    by_path, by_slug = build_link_index(pages)
+    target = resolve_link(args.backlinks, by_path, by_slug) \
+        or clean_link_target(args.backlinks)
     inbound = []
     for page in pages:
-        if target in page["links"]:
+        if any(resolve_link(link, by_path, by_slug) == target
+               for link in page["links"]):
             inbound.append(page)
     if not inbound:
         print(f"No pages link to [[{target}]].", file=sys.stderr)
@@ -776,10 +818,13 @@ def cmd_backlinks(args, pages: list[dict]) -> None:
 
 
 def cmd_top_linked(args, pages: list[dict]) -> None:
+    by_path, by_slug = build_link_index(pages)
     inbound_count = Counter()
     for page in pages:
         for link in page["links"]:
-            inbound_count[link] += 1
+            resolved = resolve_link(link, by_path, by_slug)
+            if resolved:
+                inbound_count[resolved] += 1
     top = inbound_count.most_common(args.top_linked)
     if not top:
         print("No links found in the wiki.", file=sys.stderr)

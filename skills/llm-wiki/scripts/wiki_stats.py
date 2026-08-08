@@ -22,6 +22,29 @@ WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 
+def link_stem(link: str) -> str:
+    """Reduce a wikilink to the page stem it names, for popularity counting.
+
+    Bare ([[kalman-filter]]), path-qualified ([[entities/kalman-filter]]),
+    anchored, and .md-suffixed forms all name the same page. Counting raw link
+    text splits one page's inbound total across those forms and understates
+    hubs.
+
+    NOTE: unlike wiki_lint / wiki_search, this does NOT verify that the target
+    resolves — a link to an out-of-tree path such as [[raw/foo]] is counted
+    under the stem "foo". That is acceptable here because these are popularity
+    counts, not a correctness gate; do not reuse this function to decide
+    whether a link is broken.
+    """
+    target = link.split("|", 1)[0]      # drop a display alias, if any
+    target = target.split("#", 1)[0]    # drop a heading anchor
+    target = target.replace("\\", "/").strip().strip("/")
+    target = target.rsplit("/", 1)[-1]  # drop any directory prefix
+    if target.lower().endswith(".md"):
+        target = target[:-3]
+    return target.strip()
+
+
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "log.md", "README.md"}
 SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw"}
 
@@ -84,8 +107,7 @@ def main():
         links = WIKILINK_RE.findall(body)
         total_links += len(links)
         for link in links:
-            target = link.split("|")[0].strip()
-            most_linked_in[target] += 1
+            most_linked_in[link_stem(link)] += 1
         page_type = parse_type(text) or "(none)"
         pages_by_type[page_type] += 1
         if len(rel.parts) > 1:

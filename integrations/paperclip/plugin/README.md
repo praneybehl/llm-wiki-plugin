@@ -6,7 +6,7 @@ This is the **human-side** companion to the [`llm-wiki` skill](https://github.co
 
 ## Status
 
-**Pre-release (npm v0.5.1).** The Paperclip plugin runtime and SDK are themselves described by their maintainers as *"still early"* — pin the SDK version exactly (calver, e.g. `2026.428.0`) rather than a range. Expect breaking changes between SDK releases and re-validate against the live SDK source on each upgrade.
+**Pre-release (npm v0.5.2).** The Paperclip plugin runtime and SDK are themselves described by their maintainers as *"still early"* — pin the SDK version exactly (calver, e.g. `2026.428.0`) rather than a range. Expect breaking changes between SDK releases and re-validate against the live SDK source on each upgrade.
 
 ## Contents
 

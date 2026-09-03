@@ -1,6 +1,6 @@
 {
   "name": "paperclip-plugin-llm-wiki",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "type": "module",
   "description": "Surface the LLM Wiki inside Paperclip — search, browse, and read company knowledge in context.",
   "author": "Praney Behl",

@@ -30,7 +30,7 @@ export const WIKI_QUERY_DESCRIPTION =
 const manifest: PaperclipPluginManifestV1 = {
   id: "io.praneybehl.llm-wiki",
   apiVersion: 1,
-  version: "0.5.1",
+  version: "0.5.2",
   displayName: "LLM Wiki",
   description:
     "Surface the LLM Wiki inside Paperclip — search, browse, and read company knowledge in context.",

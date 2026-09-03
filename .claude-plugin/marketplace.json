@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "LLM Wiki v3: durable agent knowledge bases with default local semantic retrieval, BM25 fusion, structured evidence, incremental caching, and a compiled graph.",
-    "version": "3.0.0"
+    "version": "3.1.0"
   },
   "plugins": [
     {
       "name": "llm-wiki",
       "source": "./",
       "description": "Build and maintain an LLM-curated personal knowledge base with default local FastEmbed + sqlite-vec search, BM25 fusion, structured JSON evidence, incremental caching, and a compiled graph layer. Includes the llm-wiki skill and seven /wiki:* commands.",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "author": {
         "name": "Praney Behl"
       },

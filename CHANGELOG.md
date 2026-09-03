@@ -6,9 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-09-03
+
 ### Changed
 
 - Make personal global wikis a first-class setup alongside project wikis, and resolve every command against the configured wiki instead of assuming the current project's `wiki/` directory.
+- Publish the Paperclip companion as `paperclip-plugin-llm-wiki` v0.5.2.
 
 ## [3.0.0] - 2026-07-20
 
@@ -175,7 +178,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.1.0
 [3.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.0.0
 [2.0.7]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.7
 [2.0.6]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.6

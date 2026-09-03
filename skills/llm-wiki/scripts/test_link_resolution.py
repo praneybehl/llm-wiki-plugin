@@ -25,8 +25,11 @@ are conventionally named after the raw file they summarize, so stem-stripping
 turns a genuinely broken out-of-tree link into a false pass.
 """
 
+import contextlib
+import io
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -78,6 +81,13 @@ STEM_CASES = [
     ("raw/whatever", "whatever", "out-of-tree link still counted by stem"),
 ]
 
+KEY_CASES = [
+    ("entities/kalman-filter", "kalman-filter", "resolved path collapses to its slug"),
+    ("missing-page", "missing-page", "unresolved bare link remains reportable"),
+    ("raw/2024-01-15-field-notes", "raw/2024-01-15-field-notes",
+     "unresolved qualified link keeps its path constraint"),
+]
+
 
 def check(label, got, expected, why, failures):
     ok = got == expected
@@ -102,6 +112,31 @@ def main():
                   f"[[{link}]] — {why}", failures)
         print()
 
+    print("search: report keys preserve unresolved links")
+    for link, expected, why in KEY_CASES:
+        check("key", wiki_search.link_key(link, BY_PATH, BY_SLUG), expected,
+              f"[[{link}]] — {why}", failures)
+
+    pages = [
+        {"slug": "kalman-filter", "rel_path": "entities/kalman-filter.md",
+         "meta": {"title": "Kalman Filter"}, "links": []},
+        {"slug": "source", "rel_path": "concepts/source.md",
+         "meta": {"title": "Source"},
+         "links": ["entities/kalman-filter", "missing-page"]},
+    ]
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        wiki_search.cmd_top_linked(SimpleNamespace(top_linked=10), pages)
+    check("top", "missing-page  (missing-page)  [BROKEN LINK]" in output.getvalue(),
+          True, "--top-linked retains broken-link reports", failures)
+
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        wiki_search.cmd_backlinks(SimpleNamespace(backlinks="missing-page"), pages)
+    check("backlink", "Source  (concepts/source.md)" in output.getvalue(), True,
+          "--backlinks can inspect a missing target", failures)
+    print()
+
     # wiki_stats counts popularity and deliberately does NOT verify resolution,
     # so it reduces to the stem. Pin that documented difference so nobody
     # "fixes" it into a correctness check by accident.
@@ -110,7 +145,7 @@ def main():
         check("stats", wiki_stats.link_stem(link), expected,
               f"[[{link}]] — {why}", failures)
 
-    total = len(RESOLVE_CASES) * len(resolvers) + len(STEM_CASES)
+    total = len(RESOLVE_CASES) * len(resolvers) + len(KEY_CASES) + len(STEM_CASES) + 2
     print(f"\n{total - len(failures)}/{total} passed")
     if failures:
         print("\nFAILURES:")

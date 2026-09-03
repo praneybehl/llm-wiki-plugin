@@ -252,8 +252,8 @@ def build_edges(pages: list[dict], slug_to_id: dict[str, str]) -> list[dict]:
     edges: list[dict] = []
     seen_ids: set[str] = set()
 
-    # Index for resolving path-qualified wikilinks: wiki-relative path without
-    # the .md suffix, lowercased, -> slug.
+    # Index for resolving path-qualified wikilinks: case-sensitive
+    # wiki-relative path without the .md suffix -> slug.
     path_to_slug: dict[str, str] = {}
     for p in pages:
         rel = p["rel_path"].replace("\\", "/")

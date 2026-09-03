@@ -204,6 +204,11 @@ def resolve_link(link: str, by_path: dict, by_slug) -> "str | None":
     return target if target in by_slug else None
 
 
+def link_key(link: str, by_path: dict, by_slug) -> str:
+    """Canonical key for reports, preserving unresolved targets."""
+    return resolve_link(link, by_path, by_slug) or clean_link_target(link)
+
+
 def collect_pages(wiki_root: Path, cache_path: Path | None = None) -> list[dict]:
     """Walk the wiki and return [{path, slug, meta, body, tokens, links}]."""
     pages = []
@@ -801,11 +806,10 @@ def cmd_search(args, pages: list[dict]) -> None:
 
 def cmd_backlinks(args, pages: list[dict]) -> None:
     by_path, by_slug = build_link_index(pages)
-    target = resolve_link(args.backlinks, by_path, by_slug) \
-        or clean_link_target(args.backlinks)
+    target = link_key(args.backlinks, by_path, by_slug)
     inbound = []
     for page in pages:
-        if any(resolve_link(link, by_path, by_slug) == target
+        if any(link_key(link, by_path, by_slug) == target
                for link in page["links"]):
             inbound.append(page)
     if not inbound:
@@ -822,9 +826,9 @@ def cmd_top_linked(args, pages: list[dict]) -> None:
     inbound_count = Counter()
     for page in pages:
         for link in page["links"]:
-            resolved = resolve_link(link, by_path, by_slug)
-            if resolved:
-                inbound_count[resolved] += 1
+            target = link_key(link, by_path, by_slug)
+            if target:
+                inbound_count[target] += 1
     top = inbound_count.most_common(args.top_linked)
     if not top:
         print("No links found in the wiki.", file=sys.stderr)

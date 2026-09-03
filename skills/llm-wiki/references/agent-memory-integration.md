@@ -21,7 +21,7 @@ If the user runs multiple agents in the same project, prefer `AGENTS.md` as the 
 
 If the user is unsure which agent they use most, default to `AGENTS.md` — it works for the widest set of runtimes.
 
-## Project-wiki stanza
+## The canonical stanza
 
 Append this stanza to the project's chosen memory file. Keep it tight. Memory files live in the agent's context on every session, so every line has a cost.
 

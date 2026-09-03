@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Make personal global wikis a first-class setup alongside project wikis, and resolve every command against the configured wiki instead of assuming the current project's `wiki/` directory.
+
 ## [3.0.0] - 2026-07-20
 
 ### Changed

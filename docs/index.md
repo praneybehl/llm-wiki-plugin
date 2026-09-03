@@ -10,7 +10,7 @@ description: Turn documents and project notes into a shared wiki that AI agents 
 
 Turn PDFs, articles, transcripts, and notes into a shared wiki that your AI agents can search, cite, and keep up to date.
 
-AI agents are good at the task in front of them, but a new session starts with limited context. LLM Wiki gives them a shared memory that lives inside your project.
+AI agents are good at the task in front of them, but a new session starts with limited context. LLM Wiki gives them a shared memory that can live in one personal wiki across all projects or inside a specific project.
 
 Add a source once. The agent turns it into linked Markdown pages. Later, it can find the right section, answer with citations, and save useful learning back into the wiki.
 
@@ -52,16 +52,18 @@ flowchart LR
 
 ## Three steps to a working wiki
 
-1. **Initialize** the structure in your project.
+1. **Initialize** one personal wiki shared across projects.
 
    ```bash
-   /wiki:init
+   /wiki:init --global
    ```
+
+   Use `/wiki:init` without `--global` when the wiki should belong only to the current project.
 
 2. **Ingest** your first source — a PDF, an article, a transcript.
 
    ```bash
-   /wiki:ingest raw/your-source.pdf
+   /wiki:ingest ~/wiki/raw/your-source.pdf
    ```
 
 3. **Query** the accumulated knowledge, with citations.

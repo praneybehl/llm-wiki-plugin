@@ -6,7 +6,7 @@ description: |
 
 # LLM Wiki
 
-A skill for building and maintaining an LLM-curated knowledge base inside a project, following the pattern Andrej Karpathy described in his April 2026 gist. The wiki is a directory of markdown files that the LLM owns and maintains; the user curates sources and asks questions, and the LLM does the bookkeeping.
+A skill for building and maintaining an LLM-curated knowledge base at any user-chosen filesystem location, following the pattern Andrej Karpathy described in his April 2026 gist. One personal wiki can compound knowledge across projects, or a wiki can be isolated inside one project. The user curates sources and asks questions; the LLM does the bookkeeping.
 
 ## The pattern in one paragraph
 
@@ -16,7 +16,9 @@ Conventional RAG re-derives knowledge from raw chunks on every query; nothing ac
 
 The trigger surface is broad. Any time the user is accumulating textual material over time — research papers, articles, transcripts, meeting notes, book chapters, customer calls, code repos, journal entries — and would benefit from having that material organized rather than dumped into a chat each session, this skill applies. It is equally useful for one source ("ingest this paper") and for the steady-state operations against an existing wiki ("what does my wiki say about diffusion models", "lint the wiki", "what's missing").
 
-If the project does not yet have a wiki, run the bootstrap step first (see "Initializing a new wiki" below). Otherwise, locate the existing wiki and read its `SCHEMA.md` before doing anything else — the schema encodes the conventions for that specific wiki and may override defaults documented here.
+Resolve the wiki before doing anything else. Prefer, in order: a path named by the user, a path in the nearest project instructions, a path in global agent instructions, then `wiki/` in the current project. Read the resolved wiki's `SCHEMA.md`; it may override defaults documented here. Never silently combine two wikis. If no wiki exists, run the bootstrap step below.
+
+All relative `wiki/` and `raw/` paths in this skill refer to the resolved wiki and raw-source roots, not necessarily the current working directory.
 
 ## Architecture: three layers, three operations
 
@@ -42,9 +44,18 @@ python scripts/wiki_graph_query.py wiki/ neighbors --node product:konvy
 
 If `wiki/graph/ontology.yaml` does not exist, the wiki is pre-graph and you should treat the graph step as a no-op — don't fabricate it.
 
-## Default project layout
+## Storage scope and layout
 
-Unless the user's `SCHEMA.md` says otherwise, the wiki lives in the project at this layout:
+Wiki storage scope is independent of skill installation scope. Installing the skill globally only makes it available across projects; it does not create or select a global wiki.
+
+Use one of two layouts:
+
+- **Personal global wiki:** a stable root such as `~/wiki/`, with raw sources at `~/wiki/raw/`. Point the agent's global instructions to that user-level path. This lets work from any project be deliberately ingested into one compounding knowledge base.
+- **Project wiki:** `wiki/` and `raw/` live in the project and are referenced by that project's agent-memory file. Use this when knowledge needs repository-level isolation or versioning.
+
+A global wiki does not crawl or ingest projects automatically. Add project sources and durable findings when the user requests ingestion or their global instructions require those findings to be preserved.
+
+The project-local default is:
 
 ```
 <project-root>/
@@ -62,7 +73,7 @@ Unless the user's `SCHEMA.md` says otherwise, the wiki lives in the project at t
 └── ...
 ```
 
-This layout is a default, not a requirement. If the project already has a wiki under a different name (e.g. `kb/`, `notes/`, `vault/`), use that. If the user has placed sources outside `raw/`, follow their convention.
+This layout is a default, not a requirement. A global wiki can put `raw/` inside the wiki root, and either scope can use another name such as `kb/`, `notes/`, or `vault/`. Follow `SCHEMA.md`.
 
 ## The scalability discipline
 
@@ -88,17 +99,21 @@ For the full scaling playbook including thresholds and migration steps, read `re
 
 ## Initializing a new wiki
 
-If the project does not contain a `wiki/` directory (or whatever the user calls theirs), run the bootstrap script:
+Ask whether the user wants one global personal wiki or a project wiki. Then run the bootstrap script against the selected base directory:
 
 ```bash
+# Project wiki: <project-root>/wiki and <project-root>/raw
 python scripts/init_wiki.py <project-root> [--wiki-dir wiki] [--raw-dir raw]
+
+# Personal global wiki: ~/wiki with raw sources at ~/wiki/raw
+python scripts/init_wiki.py <home-directory> --wiki-dir wiki --raw-dir wiki/raw
 ```
 
 This creates the directory structure, drops in templates for `SCHEMA.md`, `index.md`, and `log.md`, then runs mandatory local runtime setup. Setup installs the pinned dependencies through `uv`, downloads `BAAI/bge-small-en-v1.5` when absent, builds the parse cache, and embeds every current section. Do not treat initialization or upgrade as complete unless setup emits `"status": "ready"`.
 
 Before running the bootstrap, use the grouped interview in `references/retrieval-setup.md` to confirm paths, model-cache location, graph usage, and agent-memory integration. Do not ask for API keys or provider consent: there is no remote embedding path. `--no-embed` remains the deterministic lexical escape hatch for later searches, not a way to skip mandatory setup.
 
-Then propose wiring the wiki into the project's agent-memory file so the running agent remembers the wiki in future sessions without being told. The target file depends on the agent: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / OpenCode / Pi / OpenClaw, `GEMINI.md` for Gemini CLI, with `AGENTS.md` as the safe default if the user runs multiple agents or is unsure. Full workflow, canonical stanza, and a three-line short variant are in `references/agent-memory-integration.md`. Never write to the memory file without the user's approval — show them the proposed stanza, ask whether to append to an existing file or create a new one, and honour a "skip" answer without pushing.
+Then propose wiring the wiki into agent memory so future sessions can find it: global instructions with a stable user-level path for a personal global wiki, or the project's memory file with a relative path for a project wiki. The filename depends on the agent: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / OpenCode / Pi / OpenClaw, and `GEMINI.md` for Gemini CLI. Full workflow and both stanza variants are in `references/agent-memory-integration.md`. Never write to a memory file without the user's approval.
 
 ## The ingest workflow (summary)
 
@@ -106,7 +121,7 @@ The full workflow is in `references/ingest-workflow.md`; what follows is the sha
 
 ## The query workflow (summary)
 
-Full version in `references/query-workflow.md`. To answer a query against the wiki: read `index.md` (or the relevant shard) first; identify candidate pages from one-line summaries; read those pages (and any backlinks they list that look relevant); synthesize the answer with `[[wikilink]]` citations to the pages you used; offer to file the synthesized answer back into `wiki/synthesis/` so future queries benefit. If the index doesn't surface good candidates, run `uv run --script <skill-root>/scripts/wiki_search.py "query terms" --wiki <project-root>/wiki` for ranked local hybrid retrieval; add `--no-embed` only for dependency-free lexical BM25. Keep the installed skill path and target wiki path explicit. If the wiki appears to lack coverage of the topic, say so plainly rather than confabulating — flag it as a candidate ingest target.
+Full version in `references/query-workflow.md`. To answer a query against the wiki: read `index.md` (or the relevant shard) first; identify candidate pages from one-line summaries; read those pages (and any backlinks they list that look relevant); synthesize the answer with `[[wikilink]]` citations to the pages you used; offer to file the synthesized answer back into `synthesis/` so future queries benefit. If the index doesn't surface good candidates, run `uv run --script <skill-root>/scripts/wiki_search.py "query terms" --wiki <absolute-wiki-root>` for ranked local hybrid retrieval; add `--no-embed` only for dependency-free lexical BM25. Keep the installed skill path and target wiki path explicit. If the wiki appears to lack coverage of the topic, say so plainly rather than confabulating — flag it as a candidate ingest target.
 
 ## The lint workflow (summary)
 
@@ -134,7 +149,7 @@ The reference files are the source of truth for the detailed procedures. Read th
 - `references/lint-workflow.md` — what to check, how to present findings, and the cadence
 - `references/page-conventions.md` — frontmatter schema, page naming, link syntax, page-type definitions, sizing rules
 - `references/scaling-playbook.md` — thresholds at which to shard the index, when to introduce the search script, signals that the wiki has outgrown its current conventions
-- `references/agent-memory-integration.md` — how to wire the wiki into the project's agent-memory file (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`), canonical stanza and short variant, and the bootstrap conversation script
+- `references/agent-memory-integration.md` — how to wire a global or project wiki into agent instructions, with stanza variants and the bootstrap conversation script
 - `references/retrieval-setup.md` — mandatory init/upgrade setup: paths, model cache, pinned local dependencies, full-corpus vector synchronization, readiness checks, and non-secret `SCHEMA.md` state
 - `references/graph-workflow.md` — the optional graph layer: ontology, frontmatter schema, when to add typed edges vs plain wikilinks, and the extract/lint/query flow
 

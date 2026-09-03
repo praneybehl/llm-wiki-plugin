@@ -59,7 +59,7 @@ ln -s "$(pwd)/llm-wiki-plugin/skills/llm-wiki" ~/.hermes/skills/llm-wiki
 
 ## Agent-memory file
 
-After a wiki is bootstrapped, add a short stanza to the project's agent-memory file so the agent remembers the wiki in future sessions without being re-told. The right file depends on the agent:
+After a wiki is bootstrapped, add a short stanza so the agent remembers its location. Put a stable user-level path such as `~/wiki/` in the agent's global instructions for one personal wiki across projects, or a relative path in the project's memory file for a project-only wiki. The filename depends on the agent:
 
 | Agent | Memory file |
 | --- | --- |
@@ -72,7 +72,7 @@ After a wiki is bootstrapped, add a short stanza to the project's agent-memory f
 | OpenClaw | `AGENTS.md` |
 | OMP (Oh My Pi) | `AGENTS.md` |
 
-Running multiple agents in one project? Prefer `AGENTS.md` as the canonical file and symlink `CLAUDE.md` to it. The skill never writes a memory file without your approval. The canonical stanza (and a three-line short variant) lives in `skills/llm-wiki/references/agent-memory-integration.md`.
+Running multiple agents? Prefer `AGENTS.md` as the canonical file where supported and symlink `CLAUDE.md` to it. The skill never writes a memory file without your approval. Global and project stanza variants live in `skills/llm-wiki/references/agent-memory-integration.md`.
 
 ::: info
 Slash commands are Claude Code–only. Everywhere else, invoke the skill by natural language: "add this paper to the wiki", "what does the wiki say about X", "lint the wiki". The wiki itself is agent-agnostic — ingest with one agent, query with another.

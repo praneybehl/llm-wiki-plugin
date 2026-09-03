@@ -1,6 +1,6 @@
 # Agent memory integration
 
-After a wiki is bootstrapped, add a short stanza to the project's agent-memory file so the AI agent knows about the wiki in future sessions without being re-told. Without this, the agent will often answer from training data instead of reading the wiki, and knowledge stops compounding.
+After a wiki is bootstrapped, add a short stanza so the AI agent knows its location in future sessions. Use global agent instructions with a stable user-level path for one personal wiki shared across projects, or a project memory file with relative paths for a project-only wiki. Without this pointer, the agent will often answer from training data instead of reading the wiki.
 
 ## Which file to use
 
@@ -23,7 +23,7 @@ If the user is unsure which agent they use most, default to `AGENTS.md` — it w
 
 ## The canonical stanza
 
-Append this stanza to the chosen memory file. Keep it tight. Memory files live in the agent's context on every session, so every line has a cost.
+Append this stanza to the project's chosen memory file. Keep it tight. Memory files live in the agent's context on every session, so every line has a cost.
 
 ```markdown
 ## LLM Wiki
@@ -41,13 +41,25 @@ Full conventions live in `wiki/SCHEMA.md`. Treat it as authoritative when it dis
 
 Adjust the path references if the user bootstrapped the wiki into a non-default directory (the schema file and the stanza should always agree with each other).
 
+## Personal-global-wiki stanza
+
+Put this variant in the agent's global instructions. Adjust `~/wiki/` if the wiki lives elsewhere.
+
+```markdown
+## LLM Wiki
+
+My canonical LLM-curated wiki is at `~/wiki/` and is independent of any project. Before answering from accumulated knowledge, read `~/wiki/index.md` first, then the relevant shard under `~/wiki/indexes/`. Full conventions live in `~/wiki/SCHEMA.md`.
+
+When work in any project produces durable facts, decisions, incidents, or post-mortems, preserve them in `~/wiki/` using the `llm-wiki` skill. Put captured source material under `~/wiki/raw/`. Do not ingest an entire project automatically; add only requested sources and durable findings.
+```
+
 ## The bootstrap conversation
 
 At init time, after the directory structure is in place and the schema walkthrough is done, propose the stanza. Don't silently append. The user owns their memory file.
 
 A good script:
 
-1. Ask the user which agent(s) they run in this project. If they say "Claude Code", target `CLAUDE.md`. If they say "Cursor" or "Codex" or "OpenCode" or "OMP" or "multiple", target `AGENTS.md`. If they say "Gemini CLI", target `GEMINI.md`. If they're unsure, target `AGENTS.md` and mention that Claude Code can still read it via a symlink.
+1. Ask whether the wiki is global across projects or belongs to the current project, then ask which agent(s) they run. For a global wiki, target that agent's global instructions and use a stable user-level path. For a project wiki, use `CLAUDE.md`, `AGENTS.md`, or `GEMINI.md` in the project as described above.
 2. Check whether that file already exists.
    - If **not**, offer to create it with just the LLM Wiki stanza as the content.
    - If **yes**, show the proposed stanza and ask whether to append it.
@@ -71,6 +83,6 @@ The stanza is a pointer, not a playbook. Most evolution of the wiki (new page ty
 
 If you edit the memory file on the user's behalf during a lint or scaling-migration operation, show them the diff and get consent. Silent rewrites of agent-memory files are the fastest way to break user trust.
 
-## Multiple projects, multiple wikis
+## Multiple projects
 
-Each wiki lives inside its own project. The memory-file stanza references `wiki/` as a relative path, so a user with ten projects gets ten independent wikis and ten independent stanzas. Do not write this stanza into a global memory file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, etc.) — it would apply to projects that have no wiki and create confusing agent behaviour.
+One global wiki is the simplest choice when knowledge should compound across projects. Its global instruction stanza must use a stable user-level path so every working directory resolves the same wiki. Project-specific wikis remain useful when their content should be isolated, committed with the repository, or governed separately. Never merge two wiki scopes silently; follow the closest explicit instruction or ask the user which wiki should receive the material.

@@ -6,7 +6,7 @@ Works with Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, and O
 
 ## What is LLM Wiki?
 
-AI agents are good at the task in front of them, but a new session starts with limited context. LLM Wiki gives them a shared memory that lives inside your project.
+AI agents are good at the task in front of them, but a new session starts with limited context. LLM Wiki gives them a shared memory that can live in one personal wiki across all projects or inside a specific project.
 
 When you add a source, the agent turns it into linked Markdown pages. Later, it can find the right section and answer with citations. Useful answers can be saved back into the wiki, so the knowledge grows instead of being rebuilt from scratch.
 
@@ -46,7 +46,7 @@ The native path: the skill, the seven `/wiki:*` slash commands, and the marketpl
 /plugin install llm-wiki@llm-wiki
 ```
 
-Once installed, the plugin works in any project — the wiki itself lives in the project's working directory, not in the plugin.
+Once installed, the plugin works in any project. Installation does not decide where your wiki lives.
 
 ### Other coding agents — skill only
 
@@ -88,9 +88,26 @@ A few things to know when using the skill outside Claude Code:
 - **All bundled tools are agent-accessible.** Every listed agent can invoke `setup_wiki.py`, hybrid/lexical search, lint, stats, graph lint/extract/query, and initialization through the installed skill. Dependency-bearing scripts carry pinned PEP 723 metadata and run with `uv run --script`; initialization and upgrade verify the full runtime before reporting readiness.
 - **The wiki itself is agent-agnostic.** It's just a directory of markdown files. You can ingest with one agent and query with another; nothing in `wiki/` ties it to a specific runtime.
 
+### Choose where the wiki lives
+
+Skill scope and wiki scope are separate choices. A global skill install makes the skill available in every project; it does not create or select a global wiki.
+
+- **One personal wiki across projects:** keep it at a stable user-level path such as `~/wiki/`, keep raw sources under `~/wiki/raw/`, and point your agent's global instructions there. Work from any project can then be deliberately ingested into the same wiki.
+- **One wiki for a project:** keep `wiki/` and `raw/` in the project and point the project's agent-memory file to them. Choose this when the knowledge should be isolated or versioned with that repository.
+
+A global wiki does not automatically crawl or ingest every project. The agent adds project facts, decisions, and source material when you ask it to ingest them or when your global instructions explicitly tell it to preserve durable findings.
+
 ## Quick start
 
-In a project where you want to keep a wiki:
+For one personal wiki shared across projects:
+
+```
+/wiki:init --global
+```
+
+This initializes `~/wiki/` with raw sources under `~/wiki/raw/` and proposes a matching stanza for your agent's global instructions.
+
+For a wiki isolated to the current project:
 
 ```
 /wiki:init
@@ -98,14 +115,14 @@ In a project where you want to keep a wiki:
 
 Already have a wiki from an earlier plugin version? Run `/wiki:upgrade` instead. Init and upgrade both install and verify the complete pinned local runtime, cache the embedding model, build the parse cache, and synchronize all current vectors. They add missing wiki files idempotently and never overwrite existing pages or `SCHEMA.md`.
 
-Initialization bootstraps `wiki/` and `raw/` with `SCHEMA.md`, `index.md`, `log.md`, and a page template, then emits a JSON runtime report. Setup is complete only when it reports `"status": "ready"`.
+Initialization bootstraps the selected wiki and raw-source roots with `SCHEMA.md`, `index.md`, `log.md`, and a page template, then emits a JSON runtime report. Setup is complete only when it reports `"status": "ready"`.
 
-As part of the same step, the skill will propose wiring the wiki into your project's agent-memory file so the agent remembers it in future sessions without being told. The target file depends on which agent you use: `CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / OpenCode / Pi / OpenClaw / OMP, `GEMINI.md` for Gemini CLI. If you run multiple agents in the same project, use `AGENTS.md` and symlink `CLAUDE.md` to it. The skill never writes to a memory file without your approval — see `skills/llm-wiki/references/agent-memory-integration.md` for the canonical stanza and a three-line short variant.
+As part of the same step, the skill proposes a location pointer so the agent remembers the wiki in future sessions: global instructions for a personal global wiki, or the project's agent-memory file for a project wiki. The skill never writes to a memory file without your approval; see `skills/llm-wiki/references/agent-memory-integration.md` for both variants.
 
-Drop your first source into `raw/` (a PDF, a markdown clipping from the Obsidian Web Clipper, a transcript, anything textual), then:
+Drop your first source into the configured raw root (for example `~/wiki/raw/` in the global layout), then:
 
 ```
-/wiki:ingest raw/your-source.pdf
+/wiki:ingest ~/wiki/raw/your-source.pdf
 ```
 
 Claude reads the source (chunk-reading if it's large), discusses the takeaways with you, writes a summary page, identifies which existing entity and concept pages it touches, surgically updates them with `str_replace`, creates new pages for new entities and concepts (each with at least one inbound link), updates the index, and appends to the log.
@@ -130,7 +147,7 @@ This catches orphan pages, broken wikilinks, oversized pages, missing frontmatte
 
 | Command | What it does |
 |---------|--------------|
-| `/wiki:init` | Bootstrap a new wiki structure in the current project (now includes `wiki/graph/`). |
+| `/wiki:init [--global]` | Bootstrap a personal global wiki or a wiki in the current project (both include the graph layer). |
 | `/wiki:ingest <source>` | Process a new source into the wiki; refreshes the graph layer when present. |
 | `/wiki:query <question>` | Answer a question from the wiki with citations; consults `graph.sqlite` for relational questions when available. |
 | `/wiki:lint` | Structural and semantic health check; also runs graph lint when `wiki/graph/ontology.yaml` exists. |

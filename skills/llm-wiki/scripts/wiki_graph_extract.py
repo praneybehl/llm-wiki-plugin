@@ -54,6 +54,35 @@ except ImportError:
 WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
+
+def clean_link_target(link: str) -> str:
+    """Strip a wikilink down to its path, dropping alias, anchor, and .md."""
+    target = link.split("|", 1)[0]      # drop a display alias, if any
+    target = target.split("#", 1)[0]    # drop a heading anchor
+    target = target.replace("\\", "/").strip().strip("/")
+    if target.lower().endswith(".md"):
+        target = target[:-3]
+    return target.strip()
+
+
+def resolve_link_slug(link: str, by_path: dict, by_slug) -> "str | None":
+    """Resolve a wikilink to the page slug it names, or None if unresolvable.
+
+    Node ids are keyed on the filename stem, so comparing raw link text drops
+    every path-qualified link ([[entities/kalman-filter]]) and its mentions edge
+    is simply never emitted. A directory prefix is treated as a CONSTRAINT: a
+    qualified link resolves only if that exact path exists, so [[raw/foo]]
+    cannot silently bind to sources/foo.md and fabricate an edge between two
+    different documents that happen to share a stem.
+    """
+    target = clean_link_target(link)
+    if not target:
+        return None
+    if "/" in target:
+        return by_path.get(target)
+    return target if target in by_slug else None
+
+
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
 SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw"}
 
@@ -223,6 +252,16 @@ def build_edges(pages: list[dict], slug_to_id: dict[str, str]) -> list[dict]:
     edges: list[dict] = []
     seen_ids: set[str] = set()
 
+    # Index for resolving path-qualified wikilinks: wiki-relative path without
+    # the .md suffix, lowercased, -> slug.
+    path_to_slug: dict[str, str] = {}
+    for p in pages:
+        rel = p["rel_path"].replace("\\", "/")
+        if rel.lower().endswith(".md"):
+            rel = rel[:-3]
+        path_to_slug[rel] = p["slug"]
+    known_slugs = set(slug_to_id.keys())
+
     def push(edge: dict) -> None:
         if edge["id"] in seen_ids:
             return
@@ -266,7 +305,7 @@ def build_edges(pages: list[dict], slug_to_id: dict[str, str]) -> list[dict]:
         # 2. Mentions edges from body wikilinks.
         seen_targets: set[str] = set()
         for link in p["links"]:
-            target_slug = link.split("#")[0].strip()
+            target_slug = resolve_link_slug(link, path_to_slug, known_slugs)
             if not target_slug or target_slug == slug:
                 continue
             target_id = slug_to_id.get(target_slug)

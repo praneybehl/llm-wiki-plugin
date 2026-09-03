@@ -39,6 +39,46 @@ FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 CAPITALIZED_PHRASE_RE = re.compile(r"\b([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+){0,3})\b")
 
 
+def clean_link_target(link: str) -> str:
+    """Strip a wikilink down to its path, dropping alias, anchor, and .md."""
+    target = link.split("|", 1)[0]      # drop a display alias, if any
+    target = target.split("#", 1)[0]    # drop a heading anchor
+    target = target.replace("\\", "/").strip().strip("/")
+    if target.lower().endswith(".md"):
+        target = target[:-3]
+    return target.strip()
+
+
+def resolve_link(link: str, by_path: dict, by_slug) -> "str | None":
+    """Resolve a wikilink to the slug of the page it names, or None if broken.
+
+    Wikilinks appear both bare ([[kalman-filter]]) and path-qualified
+    ([[entities/kalman-filter]]), optionally with a heading anchor or an
+    explicit .md. A page's identity is its filename stem, so comparing raw
+    link text misses every path-qualified form — reporting it broken and
+    contributing no inbound edge, which then also misreports well-referenced
+    pages as orphans.
+
+    A directory prefix is treated as a CONSTRAINT, not decoration: a qualified
+    link resolves only if that exact path exists. Falling back to a bare-stem
+    match would let [[raw/foo]] silently bind to sources/foo.md — a live
+    collision pattern wherever source pages are named after their raw files —
+    turning a genuinely broken out-of-tree link into a false pass. Unresolvable
+    is the safe answer; a wrong resolution is not.
+
+    Matching is case-SENSITIVE in both forms. Case-folding paths (but not bare
+    slugs) would be an asymmetry, and of the two ways to be wrong, a spurious
+    "broken link" report is visible and harmless while a spurious resolution is
+    silent.
+    """
+    target = clean_link_target(link)
+    if not target:
+        return None
+    if "/" in target:
+        return by_path.get(target)
+    return target if target in by_slug else None
+
+
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
 SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw"}
 
@@ -149,9 +189,21 @@ def lint(pages: list[dict], soft_cap: int, hard_cap: int, required_fm: list[str]
     # Inbound link map
     inbound = defaultdict(set)
     all_slugs = set(slug_to_pages.keys())
+    # Resolution indexes: by full wiki-relative path (sans .md) for
+    # path-qualified links, and by bare stem for unqualified ones.
+    by_slug = all_slugs
+    by_path = {}
+    for p in pages:
+        rel = p["rel_path"].replace("\\", "/")
+        if rel.lower().endswith(".md"):
+            rel = rel[:-3]
+        by_path[rel] = p["slug"]
+
     for p in pages:
         for link in p["links"]:
-            inbound[link].add(p["slug"])
+            resolved = resolve_link(link, by_path, by_slug)
+            if resolved:
+                inbound[resolved].add(p["slug"])
 
     # Orphans, broken links, oversize, frontmatter, staleness
     for p in pages:
@@ -161,7 +213,7 @@ def lint(pages: list[dict], soft_cap: int, hard_cap: int, required_fm: list[str]
 
         # Broken links
         for link in p["links"]:
-            if link not in all_slugs:
+            if resolve_link(link, by_path, by_slug) is None:
                 findings["broken_links"].append({
                     "from": p["slug"],
                     "from_path": p["rel_path"],

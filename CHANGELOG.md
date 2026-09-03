@@ -6,10 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-09-04
+
 ### Fixed
 
 - **Path-qualified wikilinks are now resolved instead of being reported broken.** `wiki_lint.py`, `wiki_graph_extract.py`, `wiki_search.py`, and `wiki_stats.py` each compared raw wikilink text against page slugs, where a slug is the bare filename stem — so `[[entities/kalman-filter]]`, a very common authoring form, matched nothing. The failures were silent and each misled differently: lint reported every such link as broken *and*, because inbound edges were keyed the same way, reported well-referenced pages as orphans; `wiki_graph_extract` emitted no `mentions` edge for them at all; `wiki_search --backlinks` missed them and `--top-linked` split one page's count across the bare and qualified forms; `wiki_stats` understated hubs. Measured on one 55-page wiki: 142 of 153 reported broken links were false, 15 of 16 orphans were false, and 126 of 308 mention edges were missing from the graph. Links are now normalized (display alias, heading anchor, `.md` suffix) before comparison. A directory prefix is treated as a **constraint**, not decoration — a qualified link resolves only if that exact path exists, with no fall back to a bare-stem match, because falling back would let `[[raw/foo]]` bind to `sources/foo.md`, a real collision wherever source pages are named after the raw file they summarize. `wiki_stats` is a documented exception: it counts popularity rather than adjudicating correctness, so it reduces to the stem and does not verify resolution.
-- Adds `skills/llm-wiki/scripts/test_link_resolution.py` — stdlib-only, no test framework, run directly. 43 cases across all four resolvers, including guard cases that fail if the path constraint is relaxed.
+- Preserve unresolved targets in `wiki_search --backlinks` and `--top-linked`, so broken-link reports remain available while valid path-qualified links collapse to their page slug.
+- Adds `skills/llm-wiki/scripts/test_link_resolution.py` — stdlib-only, no test framework, run directly. 48 cases across all four resolvers, including guard cases that fail if the path constraint is relaxed.
 
 ## [3.1.0] - 2026-09-03
 
@@ -183,7 +186,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v3.1.1...HEAD
+[3.1.1]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.1.1
 [3.1.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.1.0
 [3.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.0.0
 [2.0.7]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.7

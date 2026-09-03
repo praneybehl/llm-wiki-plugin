@@ -8,8 +8,8 @@ Check:
 
 - whether `uv` is available (required prerequisite);
 - whether `FASTEMBED_CACHE_PATH` is set (report only the path, never modify it silently);
-- whether `wiki/.wiki-cache/search-index.json` exists;
-- whether `wiki/.wiki-cache/embeddings.sqlite` exists and contains `semantic_sections` rows.
+- whether `<wiki-root>/.wiki-cache/search-index.json` exists;
+- whether `<wiki-root>/.wiki-cache/embeddings.sqlite` exists and contains `semantic_sections` rows.
 
 Report state precisely:
 
@@ -22,7 +22,7 @@ A database file alone is not proof that the corpus is synchronized. Initializati
 
 ## Ask once, as a group
 
-1. **Paths:** confirm the wiki directory (default `wiki/`) and raw-source directory (default `raw/`).
+1. **Storage scope and paths:** choose one personal global wiki (suggest `~/wiki/` with `~/wiki/raw/`) or a project wiki (default `wiki/` with `raw/`), then confirm both paths.
 2. **Model cache:** use `~/.cache/llm-wiki/fastembed/`, or set `FASTEMBED_CACHE_PATH` to another local directory?
 3. **Graph layer:** configure typed graph metadata now, keep the generated graph available but unused, or defer?
 4. **Agent integration:** which agent-memory file should point to the wiki, or skip?
@@ -32,7 +32,7 @@ Explain these facts before setup:
 - Initialization and every upgrade install pinned FastEmbed, sqlite-vec, and PyYAML through `uv`.
 - Setup downloads the pinned model once, builds the parse cache, and embeds every current section; it embeds only new or changed sections on later runs and removes deleted sections.
 - Wiki sections and queries stay on the machine; no API key, remote endpoint, request fee, or provider retention policy applies.
-- Per-wiki vectors are derived data in `wiki/.wiki-cache/embeddings.sqlite` and can be deleted safely.
+- Per-wiki vectors are derived data in `<wiki-root>/.wiki-cache/embeddings.sqlite` and can be deleted safely.
 - Direct `python wiki_search.py "<query>" --no-embed` remains available for later dependency-free BM25 searches, but it does not replace mandatory initialization or upgrade setup.
 
 ## Record non-secret state

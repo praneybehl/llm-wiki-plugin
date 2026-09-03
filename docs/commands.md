@@ -11,7 +11,7 @@ Seven `/wiki:*` slash commands ship with the Claude Code plugin. In other agents
 
 | Command | What it does |
 | --- | --- |
-| [`/wiki:init`](#init) | Bootstrap a new wiki structure in the current project. |
+| [`/wiki:init [--global]`](#init) | Bootstrap a personal global wiki or a wiki in the current project. |
 | [`/wiki:ingest <source>`](#ingest) | Process a new source into the wiki; refreshes the graph layer when present. |
 | [`/wiki:query <question>`](#query) | Answer a question from the wiki with citations. |
 | [`/wiki:lint`](#lint) | Structural and semantic health check. |
@@ -21,13 +21,14 @@ Seven `/wiki:*` slash commands ship with the Claude Code plugin. In other agents
 
 ## `/wiki:init` {#init}
 
-Bootstrap a new LLM Wiki in the current project. Optional `--wiki-dir` / `--raw-dir` arguments override the default directory names.
+Bootstrap a new LLM Wiki. Use `--global` for `~/wiki/` with raw sources under `~/wiki/raw/`; omit it for `wiki/` and `raw/` in the current project. Optional `--wiki-dir` / `--raw-dir` arguments override those defaults.
 
 ```bash
 /wiki:init
+/wiki:init --global
 ```
 
-The command confirms paths, bootstraps the wiki, then installs and verifies pinned FastEmbed, sqlite-vec, and PyYAML dependencies through `uv`, caches the local embedding model, builds the parse cache, and embeds every current section. It walks through `SCHEMA.md` and proposes agent-memory integration only after runtime JSON reports `"status": "ready"`. It does not ingest a source.
+The command confirms the storage scope and paths, bootstraps the wiki, then installs and verifies pinned FastEmbed, sqlite-vec, and PyYAML dependencies through `uv`, caches the local embedding model, builds the parse cache, and embeds every current section. It walks through `SCHEMA.md` and proposes the matching global or project agent-memory integration only after runtime JSON reports `"status": "ready"`. It does not ingest a source or crawl projects automatically.
 
 ## `/wiki:ingest <source>` {#ingest}
 
@@ -98,4 +99,4 @@ Upgrade an existing wiki with idempotent file operations, mandatory runtime inst
 /wiki:upgrade
 ```
 
-Resolves the installed `init_wiki.py` separately from the current project's absolute root, then runs it with `--upgrade`. Existing content stays untouched while the complete pinned local runtime is installed and verified, parse/vector indexes synchronize, and missing `SCHEMA.md` sections are walked one at a time. See [Upgrade to v3](/upgrade).
+Resolves the installed `init_wiki.py` separately from the configured global or project wiki, then runs it with `--upgrade`. Existing content stays untouched while the complete pinned local runtime is installed and verified, parse/vector indexes synchronize, and missing `SCHEMA.md` sections are walked one at a time. See [Upgrade to v3](/upgrade).

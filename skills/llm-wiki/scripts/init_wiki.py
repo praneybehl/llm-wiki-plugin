@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-init_wiki.py — Bootstrap or upgrade an LLM Wiki structure in a project.
+init_wiki.py — Bootstrap or upgrade an LLM Wiki at a chosen filesystem location.
 
 Plain init creates the directory layout and drops in templates for SCHEMA.md,
 index.md, log.md, the page template, and the optional graph layer
@@ -16,7 +16,7 @@ what to merge by hand. It never overwrites SCHEMA.md — the schema is
 co-evolved with the user.
 
 Usage:
-    python init_wiki.py <project-root> [--wiki-dir wiki] [--raw-dir raw] [--upgrade]
+    python init_wiki.py <base-dir> [--wiki-dir wiki] [--raw-dir raw] [--upgrade]
 
 Examples:
     python init_wiki.py .
@@ -156,7 +156,7 @@ def install_runtime(wiki: Path) -> None:
 def init_wiki(project_root: Path, wiki_dir: str, raw_dir: str, upgrade: bool = False) -> None:
     project_root = project_root.resolve()
     if not project_root.exists():
-        print(f"Error: project root does not exist: {project_root}", file=sys.stderr)
+        print(f"Error: base directory does not exist: {project_root}", file=sys.stderr)
         sys.exit(1)
 
     wiki = project_root / wiki_dir
@@ -240,7 +240,7 @@ def init_wiki(project_root: Path, wiki_dir: str, raw_dir: str, upgrade: bool = F
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("project_root", type=Path, help="Project root directory.")
+    parser.add_argument("project_root", type=Path, metavar="BASE_DIR", help="Base directory containing the wiki and raw-source paths (for example a project root or home directory).")
     parser.add_argument("--wiki-dir", default="wiki", help="Name of the wiki subdirectory (default: wiki).")
     parser.add_argument("--raw-dir", default="raw", help="Name of the raw sources subdirectory (default: raw).")
     parser.add_argument("--upgrade", action="store_true",

@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-09-12
+
+### Added
+
+- Optional `/wiki:learn` workflow for immutable observed task experience, cited source/concept patterns, root-cause hypotheses, applicability and counterexamples.
+- `/wiki:evolve` and stdlib `wiki_evolve.py` for evidence-linked single-file skill proposals, complete baseline/candidate snapshots, fixed-corpus paired evaluation, retained rejected attempts, explicit apply and rollback, whole-skill drift checks and interrupted-transition recovery.
+- A provider-neutral JSON runner contract, optional authenticated Claude Code query adapter, and a 20-task fictional query pilot covering citations, current/historical decisions, contradictions, multi-source answers and abstention. No model improvement is claimed without a measured trial.
+- Validation and held-out gates with no paired regressions, explicit cost/tool limits, repeated runs, malformed-output/timeout rejection and durable experiment history.
+- Idempotent experience/pattern templates and experiment-archive guidance, an optional upgrade schema marker, end-to-end lifecycle tests and PR CI for Python and documentation.
+
+### Changed
+
+- Main plugin/skill version is 3.2.0: additive and backward-compatible, so no Markdown or CLI migration is required. Experience capture, skill editing and paid inference are never started by upgrade.
+- Keep `.evolution/` snapshots out of normal search, lint, statistics and graph extraction. Preserve searchable lessons and trial summaries in existing wiki page types.
+- Prepare Paperclip companion `paperclip-plugin-llm-wiki` v0.5.3 with matching archive exclusions in search, health and page reading. Publication follows merge; this PR does not publish either release.
+- Update command reference, agent workflows, site navigation, upgrade guide, contributor checks, manifest descriptions and machine-readable documentation. Handle documentation pages without a git modification timestamp during local builds.
+
 ## [3.1.1] - 2026-09-04
 
 ### Fixed
@@ -186,7 +203,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v3.1.1...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.2.0
 [3.1.1]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.1.1
 [3.1.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.1.0
 [3.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.0.0

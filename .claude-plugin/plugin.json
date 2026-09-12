@@ -1,6 +1,6 @@
 {
   "name": "llm-wiki",
-  "version": "3.1.1",
+  "version": "3.2.0",
   "description": "Build a shared Markdown knowledge base with local hybrid search and an optional evidence-linked workflow to capture task lessons, evaluate skill improvements, and apply or roll back tested changes.",
   "author": {
     "name": "Praney Behl"

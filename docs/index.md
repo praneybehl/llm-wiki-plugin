@@ -101,7 +101,7 @@ No. Default semantic search runs locally with FastEmbed and sqlite-vec, and Mark
 
 ### Which coding agents support LLM Wiki?
 
-The agentskills.io-compatible skill is verified with Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, and OMP. Claude Code also receives `/wiki:*` slash commands through the plugin; other agents invoke the same workflows through natural language. See the [agent support matrix](/agents).
+The agentskills.io-compatible skill supports Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, OMP, and Hermes. Claude Code also receives `/wiki:*` slash commands through the plugin; other agents invoke the same workflows through natural language. See the [agent support matrix](/agents).
 
 ### How do I install and start using LLM Wiki?
 

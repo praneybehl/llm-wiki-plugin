@@ -80,7 +80,9 @@ if name in ('hermes','openclaw'):
  for line in sys.stdin:
   r=json.loads(line); method=r['method']
   if method=='initialize': value={'agentInfo':{'version':'test-version'}}
-  elif method=='session/new': value={'sessionId':'s',**({'models':{'currentModelId':'test:model'}} if name=='hermes' else {})}
+  elif method=='session/new': value={'sessionId':'s'}
+  elif method=='session/set_model': value={}
+  elif method=='session/load': value={'models':{'currentModelId':'wrong:model' if os.environ.get('FAKE_MODEL_FALLBACK') else 'test:model'}}
   else:
    for update in [{'sessionUpdate':'agent_thought_chunk','content':{'type':'text','text':'private'}},
       {'sessionUpdate':'tool_call','toolCallId':'a','kind':'read','rawInput':{'path':'source.md'}},
@@ -113,6 +115,10 @@ for e in events:
             out = lifecycle.run_runner([sys.executable, str(SCRIPTS/'wiki_evolve_agent.py'), name], request, root, 10)
             assert out['answer'] == '42' and out['skill_sha256'] == 'test' and out['tool_calls'] == 1, (name,out)
             assert '42' in trace.read_text() and 'private' not in trace.read_text(), name
+        os.environ['FAKE_MODEL_FALLBACK'] = '1'
+        fails(lambda: lifecycle.run_runner([sys.executable, str(SCRIPTS/'wiki_evolve_agent.py'), 'hermes'],
+              dict(request, model='test:model'), root, 10), 'did not resolve')
+        del os.environ['FAKE_MODEL_FALLBACK']
         os.environ['FAKE_HANG'] = '1'
         request['trace_path'] = str(root/'interrupted.jsonl')
         try:
@@ -147,7 +153,7 @@ for e in events:
     result = api.execute(api_request, send)
     assert len(sent) == 1 and result['cost'] == .0003
     assert 'temperature' not in sent[0] and sent[0]['thinking'] == {'type':'disabled'}
-    assert sent[0]['service_tier'] == 'standard_only'
+    assert sent[0]['service_tier'] == 'standard_only' and sent[0]['inference_geo'] == 'global'
     assert [json.loads(s)['type'] for s in (root/'api.jsonl').read_text().splitlines()] == ['budget-reserved','budget-settled']
     fails(lambda: api.local_tool('write_file', {'path':'source.md','content':'changed'}, api_request), 'Write outside')
     api_request['trace_path'] = str(root/'uncertain.jsonl')

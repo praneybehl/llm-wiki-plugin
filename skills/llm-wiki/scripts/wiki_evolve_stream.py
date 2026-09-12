@@ -187,9 +187,6 @@ def acp(command, request, text, env=None):
             session = rpc('session/new', {'cwd': str(Path.cwd()), 'mcpServers': []})
             sid = session['sessionId']
             models = session.get('models', {})
-            if Path(command[0]).name == 'hermes':
-                require(':' in models.get('currentModelId', ''),
-                        'Hermes did not resolve the requested provider:model; repair its authentication before inference')
             if Path(command[0]).name == 'openclaw':
                 # OpenClaw's bridge has no ACP model setter. Its public session
                 # mapper uses acp-bridge:<sessionId>; patch only this fresh session.
@@ -204,6 +201,12 @@ def acp(command, request, text, env=None):
                 append_trace(request.get('trace_path'), {'type': 'model-selected', 'model': request['model'], 'session': sid})
             elif models.get('currentModelId') != request['model']:
                 rpc('session/set_model', {'sessionId': sid, 'modelId': request['model']})
+            if Path(command[0]).name == 'hermes':
+                # set_model can silently fall back in the host; reload this fresh,
+                # empty session to verify the resolved provider before any inference.
+                confirmed = rpc('session/load', {'sessionId': sid, 'cwd': str(Path.cwd()), 'mcpServers': []})
+                require(confirmed.get('models', {}).get('currentModelId') == request['model'],
+                        'Hermes did not resolve the requested provider:model; repair its authentication before inference')
             final = rpc('session/prompt', {'sessionId': sid, 'prompt': [{'type': 'text', 'text': text}]})
             require(final.get('stopReason') == 'end_turn', 'ACP turn did not finish normally')
             append_trace(request.get('trace_path'), {'type': 'public-answer', 'text': ''.join(chunks)})

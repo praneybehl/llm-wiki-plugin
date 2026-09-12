@@ -23,6 +23,22 @@ All preflights used training tasks; no final questions were used to repair infra
 - A later Codex run exposed an ONNX telemetry sidecar outside the wiki. Disabling ONNX telemetry removed the actual side effect, without weakening the workspace hash check.
 - The judge initially lacked raw ingestion input, command output and protected-file comparisons. Those observations now accompany grading, so it can assess faithful summaries and completed actions.
 - The first broader study was interrupted during validation after an agent copied an unnecessary host dependency cache; detached child cleanup and prepared-runtime instructions were corrected. The temporary copies were removed, preserving the original cache.
+- A later baseline ingestion also edited an unrelated protected concept. The original run stopped during validation. Completed write violations now score zero with preserved hashes and artifacts, while a fresh workspace permits the remaining comparisons to continue. The restriction is unchanged; malformed runner responses and authentication errors remain fatal.
 - One fresh launch stopped during calibration: its positive answer did not explicitly answer whether the cache could replace Markdown. The positive paraphrase was clarified to cover the complete rubric. Both original calibration and corrected-run evidence remain available.
 
 A live failure can expose an adapter, environment, judge or skill problem. Passing implementation tests alone closes none of those empirical questions. The study result must identify accepted/rejected proposals, final outcomes, transfer outcomes and uncertainty before claiming benefit.
+
+## Remediation coverage
+
+| Original gap | Implemented behavior | Remaining empirical limit |
+| --- | --- | --- |
+| Cross-agent evaluation | Nine native adapters and subprocess protocol tests; explicit host/model selection | Five hosts need account/gateway setup; Pi/OMP checks cover one read task |
+| Answer quality | Blinded semantic judge, calibration, exact evidence quotations, citations, abstention and artifact observations | A model judge is fallible; malformed quotations fail rather than silently passing |
+| Clean comparison | Identical neutral runner boundaries, full skill injection with a hash, no rubric or variant label in inference | Provisioning proves content was supplied, not that a model followed it; native host policies remain |
+| Actual wiki workflow | Permitted mutations, protected-file hashes, actual command I/O, graph and hybrid-search artifacts, shared prepared runtime | Workflow completion and answer-quality improvement are measured separately |
+| Execution evidence | Fsynced public tool I/O as it arrives, surviving interrupted traces and process cleanup | Hosts can expose different detail; hidden reasoning is excluded |
+| Consolidation and reuse | Executable experience-to-pattern consolidation, persistent history and exact repeated-proposal rejection | Similar-but-not-identical proposals remain a maintainer judgment |
+| Independent final testing | Train/validation/final splits, frozen selection and consumed-test ledger | Legacy v1 holdout remains a regression gate; it is explicitly not an independent final set |
+| Broader skill changes | Add/edit/delete coherent text files, create a new skill, carry PURPOSE mappings, export skill plus audit evidence | Bundles verify checksums, not the truth of an observation or a publisher signature |
+| Evidence of benefit | Preregistered project workflow study, cross-agent comparison and task-level uncertainty analysis | Results must support any benefit claim; a rejected or tied candidate cannot demonstrate improvement |
+| Spending control | Pre-request reservations for bounded first-party API inference; shared call/time admission for CLI subscriptions | Native opaque CLI calls cannot offer a hard USD guarantee; the API runner has no shell tool and needs a live API key |

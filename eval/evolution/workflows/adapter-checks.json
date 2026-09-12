@@ -59,8 +59,8 @@
       "host": "hermes",
       "status": "failed",
       "model": "openai-codex:gpt-5.5",
-      "evidence_sha256": "8853dc2e82c6fbbc573f0feb6e2b4a33ddb8f42da70c5568b14936e575ae6909",
-      "blocker": "Installed host profile does not resolve the requested provider:model; adapter stops before inference."
+      "evidence_sha256": "524133379e97e92ce3c3f432fe8278cce2c25d3c0542a1aa94715be936bc7b9d",
+      "blocker": "After explicit model selection, a native ACP session reload still does not confirm the requested authenticated provider:model; adapter stops before inference."
     },
     {
       "host": "codex",

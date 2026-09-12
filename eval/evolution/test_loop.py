@@ -58,6 +58,7 @@ if 'bad-quote' in sys.argv and role=='judge':
     o['evidence']=[{'source':'source.md','quote':'invented quotation'}]
 if 'outside-write' in sys.argv and role=='inference':
     Path('unexpected.txt').write_text('outside wiki')
+    (Path(r['wiki_root'])/'source.md').write_text('changed protected source')
 if 'missing-cost' in sys.argv:
     o['cost']=None
 print(json.dumps(o))
@@ -120,8 +121,17 @@ print(json.dumps(o))
         for role in ('inference', 'maintainer', 'proposer', 'judge'):
             config[role]['argv'] = [sys.executable, str(runner), mode]
         config_path.write_text(json.dumps(config))
-        fails(lambda: loop.run(args, state), message)
-        assert not (state / mode / 'selection.json').exists()
+        if mode == 'bad-quote':
+            fails(lambda: loop.run(args, state), message)
+            assert not (state / mode / 'selection.json').exists()
+        else:
+            failed_run = loop.run(args, state)
+            assert failed_run['test'] == {'baseline': {'passed':0,'total':1}, 'selected': {'passed':0,'total':1}}
+            assert not failed_run['skill_changed'] and (corpus/'source.md').read_text() == 'The verified value is 42.'
+            rows = [json.loads(p.read_text()) for p in (state/mode).glob('rollout-*.json')]
+            assert rows and all(not r['passed'] and r['judge']['verifier']=='workspace-hashes' for r in rows)
+            assert list((state/mode).glob('corpus-violation-*.json'))
+            assert list((state/mode).glob('workspace-violation-*.json'))
     # Recover a real mixed multi-file transition, then refuse unrelated edits.
     candidate = state / 'cycle' / 'best'
     manual = SimpleNamespace(id='mixed', skill=skill, target=None, candidate=candidate, wiki=wiki,

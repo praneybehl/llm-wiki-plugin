@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Nine host adapters (Claude, Codex, Cursor, Gemini, OpenCode, Pi, OMP, Hermes and OpenClaw) with neutral skill provisioning, durable interrupted tool traces and explicitly nullable usage; calibrated semantic judging, source-quotation checks, artifact tasks, and shared call/time/cost accounting across every role.
 - Pre-request inference reservations in a bounded first-party API runner, with conservative model-context/output ceilings, Decimal accounting, no retry after uncertain responses, and expiring reviewed prices. CLI runners reject hard-USD configurations before inference.
 - Task-cluster confidence intervals and paired randomization analysis, plus a 16-task public-project study covering real ingestion, index/log updates, graph compilation and hybrid-search execution.
-- Portable skill/evidence bundles with SHA-256 verification; prepared runtime provisioning, disabled ONNX telemetry side effects and detached subprocess cleanup.
+- Portable skill/evidence bundles with SHA-256 verification; prepared runtime provisioning, disabled ONNX telemetry side effects and detached subprocess cleanup. Completed write-boundary violations retain evidence and score zero without ending the remaining isolated comparisons; runner/protocol failures still stop the run.
 - Version 2 example suites and full-cycle regression tests. Fictional evaluation data lives under `eval/evolution/pilot/`, outside the installed skill, to avoid supplying answer keys to inference.
 
 - Optional `/wiki:learn` workflow for immutable observed task experience, cited source/concept patterns, root-cause hypotheses, applicability and counterexamples.

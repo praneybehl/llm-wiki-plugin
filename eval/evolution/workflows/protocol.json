@@ -14,7 +14,8 @@
   "positive_evidence": "selected skill changed, positive interval lower bound and paired randomization p < .025",
   "selection": "strict validation improvement, no critical regressions, tool ratio <=1.5",
   "cost_policy": "existing subscriptions only; no API inference; measured tokens and reported CLI costs, aggregate USD unknown",
-  "failure_policy": "retain every execution; do not optimize on final failures or replace final tasks; infrastructure failure invalidates study",
+  "failure_policy": "Completed inference with a workspace, skill or protected-corpus write violation scores zero, retains hashes/artifacts, skips the semantic judge and continues in a fresh disposable copy. Runner/authentication/protocol failures abort the study. Retain every execution; never optimize on final failures or replace final tasks.",
   "preflight": "Training tasks only. Both agents executed ingestion, graph extraction and hybrid retrieval. Earlier runs exposed runtime provisioning, ONNX telemetry sidecar and missing judge observations; these infrastructure issues were fixed before this protocol freeze. The first study was interrupted during validation and never exposed final tasks.",
-  "calibration_revision": "Positive paraphrase explicitly answers the replacement question; the previous incomplete positive failed calibration before training/final testing."
+  "calibration_revision": "Positive paraphrase explicitly answers the replacement question; the previous incomplete positive failed calibration before training/final testing.",
+  "measurement_revision": "The preceding run stopped during validation when baseline inference edited an unrelated protected concept. The task failure is now scored rather than aborting all comparisons. No final task had been exposed. Training/validation tasks, baseline and selection rules are unchanged."
 }

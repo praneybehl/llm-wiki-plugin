@@ -260,19 +260,23 @@ def rollout(task, skill, corpus, calls, archive, label):
             request['runtime_python'] = calls.config['runtime_python']
         output = calls.invoke('inference', request, work)
         require(output.get('skill_sha256') == request['skill_sha256'], 'Runner did not attest supplied skill injection')
-        require(tree(work / 'skill') == frozen_skill, 'Inference modified skill')
+        skill_unchanged = tree(work / 'skill') == frozen_skill
         final_workspace = tree(work)
         outside = [name for name in set(original_workspace) | set(final_workspace)
                    if not name.startswith('wiki/') and original_workspace.get(name) != final_workspace.get(name)]
         if outside:
             event(archive, 'workspace-violation', {'label': label, 'task': task['id'], 'paths': sorted(outside),
                   'before': original_workspace, 'after': final_workspace})
-        require(not outside, 'Inference wrote outside the task wiki: ' + ', '.join(sorted(outside)))
         after = tree(work / 'wiki')
         changed = {p for p in set(before) | set(after) if before.get(p) != after.get(p)}
         allowed = task.get('allow_write', [])
-        require(all(any(fnmatch.fnmatchcase(p, pattern) for pattern in allowed) for p in changed),
-                'Inference changed a protected corpus file')
+        protected = sorted(p for p in changed if not any(fnmatch.fnmatchcase(p, pattern) for pattern in allowed))
+        if protected:
+            event(archive, 'corpus-violation', {'label': label, 'task': task['id'], 'paths': protected,
+                  'before': before, 'after': after})
+        integrity = {'protected_files_unchanged': not protected, 'skill_unchanged': skill_unchanged,
+                     'workspace_unchanged': not outside, 'permitted_changes': sorted(changed-set(protected))}
+        boundary_ok = not outside and not protected and skill_unchanged
         require(isinstance(output.get('answer'), str) and type(output.get('abstain')) is bool,
                 'Answer and abstention required')
         citations = output.get('citations')
@@ -287,35 +291,43 @@ def rollout(task, skill, corpus, calls, archive, label):
             valid = valid and bool(citations)
         artifacts = artifact_checks(task, work / 'wiki')
         commands = command_checks(task, output['events'])
-        observations = {}
-        for check, passed_check in zip(task.get('artifacts', []), artifacts):
-            path = inside(work / 'wiki', check['path'])
-            observations[check['path']] = {'check_passed': passed_check, 'exists': path.is_file(),
-                                           'content': path.read_text() if path.is_file() else None}
-        source_paths = set(task['sources']) | (set(citations) if valid else set())
-        sources = {p: inside(work / 'wiki', p).read_text(encoding='utf-8') for p in source_paths}
-        # The judge gets no model, variant, history, or skill instructions.
-        judge = calls.invoke('judge', {'question': task['question'], 'rubric': task['rubric'],
-                              'answer': output['answer'], 'abstain': output['abstain'],
-                              'citations': citations, 'sources': sources, 'artifacts': observations,
-                              'integrity': {'protected_files_unchanged': True, 'skill_unchanged': True,
-                                            'permitted_changes': sorted(changed)},
-                              'execution': [row for row in command_observations(output['events'])
-                                  if any(all(s in row['command'] for s in fragments) for fragments in task.get('required_commands', []))]}, work)
-        grounded = grounded_verdict(judge, sources, not task['abstain'] and bool(sources))
-        passed = (valid and all(artifacts) and all(commands) and output['abstain'] == task['abstain']
+        if boundary_ok:
+            observations = {}
+            for check, passed_check in zip(task.get('artifacts', []), artifacts):
+                path = inside(work / 'wiki', check['path'])
+                observations[check['path']] = {'check_passed': passed_check, 'exists': path.is_file(),
+                                               'content': path.read_text() if path.is_file() else None}
+            source_paths = set(task['sources']) | (set(citations) if valid else set())
+            sources = {p: inside(work / 'wiki', p).read_text(encoding='utf-8') for p in source_paths}
+            # The judge gets no model, variant, history, or skill instructions.
+            judge = calls.invoke('judge', {'question': task['question'], 'rubric': task['rubric'],
+                                  'answer': output['answer'], 'abstain': output['abstain'],
+                                  'citations': citations, 'sources': sources, 'artifacts': observations,
+                                  'integrity': integrity,
+                                  'execution': [row for row in command_observations(output['events'])
+                                      if any(all(s in row['command'] for s in fragments) for fragments in task.get('required_commands', []))]}, work)
+            grounded = grounded_verdict(judge, sources, not task['abstain'] and bool(sources))
+        else:
+            # A completed task that violates its boundary scores zero. Its disposable
+            # copy is discarded; changed evidence cannot be used to pass a model judge.
+            judge = {'passed': False, 'reason': 'Task write boundary violated: ' +
+                     ', '.join(sorted(outside)+['wiki/'+p for p in protected]), 'evidence': [],
+                     'verifier': 'workspace-hashes'}
+            grounded = False
+        passed = (boundary_ok and valid and all(artifacts) and all(commands) and output['abstain'] == task['abstain']
                   and judge['passed'] and grounded)
         row = {'task': task['id'], 'split': task['split'], 'label': label, 'passed': bool(passed),
                'question': task['question'], 'output': output, 'judge': judge,
                'model': calls.config['inference']['model'], 'runner': calls.config['inference']['argv'],
-               'checks': {'citations': valid, 'artifacts': artifacts, 'commands': commands, 'grounding': bool(grounded)},
+               'checks': {'citations': valid, 'artifacts': artifacts, 'commands': commands, 'grounding': bool(grounded),
+                          'integrity': integrity},
                'changed': sorted(changed)}
         # Preserve artifacts as evidence, not just a success claim.
         artifact_dir = archive / ('artifacts-' + slug(label) + '-' + task['id'])
         artifact_dir.mkdir()
         for p in changed:
             if p in after:
-                target = inside(artifact_dir, p)
+                target = artifact_dir / p  # Path originates from the symlink-free tree scan.
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(work / 'wiki' / p, target)
         event(archive, 'rollout', row)

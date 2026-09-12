@@ -83,7 +83,8 @@ def execute(request, send=post):
         trace = request.get('trace_path')
         append_trace(trace, {'type': 'budget-reserved', 'turn': turn, 'ceiling_usd': str(cap), 'spent_usd': str(spent)})
         result = send({'model': model, 'max_tokens': MAX_OUTPUT, 'messages': messages, 'tools': tools,
-                       'tool_choice': {'type': 'any'}, 'thinking': {'type': 'disabled'}, 'service_tier': 'standard_only'})
+                       'tool_choice': {'type': 'any'}, 'thinking': {'type': 'disabled'}, 'service_tier': 'standard_only',
+                       'inference_geo': 'global'})
         measured = result['usage']
         require(all(type(measured.get(k)) is int and measured[k] >= 0 for k in usage), 'API usage missing')
         require(measured['input_tokens'] <= CONTEXT_LIMIT and measured['output_tokens'] <= MAX_OUTPUT,

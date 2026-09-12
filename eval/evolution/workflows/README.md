@@ -35,8 +35,8 @@ A live failure can expose an adapter, environment, judge or skill problem. Passi
 | --- | --- | --- |
 | Cross-agent evaluation | Nine native adapters and subprocess protocol tests; explicit host/model selection | Five hosts need account/gateway setup; Pi/OMP checks cover one read task |
 | Answer quality | Blinded semantic judge, calibration, exact evidence quotations, citations, abstention and artifact observations | A model judge is fallible; malformed quotations fail rather than silently passing |
-| Clean comparison | Identical neutral runner boundaries, full skill injection with a hash, no rubric or variant label in inference | Provisioning proves content was supplied, not that a model followed it; native host policies remain |
-| Actual wiki workflow | Permitted mutations, protected-file hashes, actual command I/O, graph and hybrid-search artifacts, shared prepared runtime | Workflow completion and answer-quality improvement are measured separately |
+| Clean comparison | Identical neutral runner boundaries, full skill injection with a hash, no rubric or variant label in inference | Provisioning proves content was supplied, not that a model followed it; progressive native skill discovery is not measured |
+| Actual wiki workflow | Permitted mutations, protected-file hashes, actual command I/O, graph and hybrid-search artifacts, shared prepared runtime | Workflow completion and answer-quality improvement are measured separately; host-wide filesystem isolation depends on the native runner |
 | Execution evidence | Fsynced public tool I/O as it arrives, surviving interrupted traces and process cleanup | Hosts can expose different detail; hidden reasoning is excluded |
 | Consolidation and reuse | Executable experience-to-pattern consolidation, persistent history and exact repeated-proposal rejection | Similar-but-not-identical proposals remain a maintainer judgment |
 | Independent final testing | Train/validation/final splits, frozen selection and consumed-test ledger | Legacy v1 holdout remains a regression gate; it is explicitly not an independent final set |

@@ -300,10 +300,14 @@ def rollout(task, skill, corpus, calls, archive, label):
         commands = command_checks(task, output['events'])
         if boundary_ok:
             observations = {}
-            for check, passed_check in zip(task.get('artifacts', []), artifacts):
-                path = inside(work / 'wiki', check['path'])
-                observations[check['path']] = {'check_passed': passed_check, 'exists': path.is_file(),
-                                               'content': path.read_text() if path.is_file() else None}
+            checked = {check['path']: passed_check for check, passed_check in zip(task.get('artifacts', []), artifacts)}
+            for name in sorted(set(checked) | changed):
+                path = inside(work / 'wiki', name)
+                try:
+                    content = path.read_text(encoding='utf-8') if path.is_file() else None
+                except UnicodeDecodeError:
+                    content = None
+                observations[name] = {'check_passed': checked.get(name), 'exists': path.is_file(), 'content': content}
             source_paths = set(task['sources']) | (set(citations) if valid else set())
             sources = {p: inside(work / 'wiki', p).read_text(encoding='utf-8') for p in source_paths}
             # The judge gets no model, variant, history, or skill instructions.
@@ -313,7 +317,9 @@ def rollout(task, skill, corpus, calls, archive, label):
                                   'integrity': integrity,
                                   'execution': [row for row in command_observations(output['events'])
                                       if any(all(s in row['command'] for s in fragments) for fragments in task.get('required_commands', []))]}, work)
-            grounded = grounded_verdict(judge, sources, not task['abstain'] and bool(sources))
+            # Saved artifacts can prove observed changes, but not replace factual sources.
+            evidence_text = sources | {p: o['content'] for p, o in observations.items() if o['content'] is not None}
+            grounded = grounded_verdict(judge, evidence_text, not task['abstain'] and bool(sources))
         else:
             # A completed task that violates its boundary scores zero. Its disposable
             # copy is discarded; changed evidence cannot be used to pass a model judge.

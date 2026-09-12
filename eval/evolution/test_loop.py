@@ -43,10 +43,16 @@ if role=='inference':
     o.update(answer='42' if good else '0',abstain=False,citations=['source.md'],skill_sha256=r['skill_sha256'])
     if good and r.get('allow_write'):
         (Path(r['wiki_root'])/'result.json').write_text('{"value":42}')
+        (Path(r['wiki_root'])/'proof.txt').write_text('Observed result: 42')
 elif role=='judge':
     o.update(tool_calls=0,events=[])
     assert 'skill_files' not in r and 'label' not in r
     o.update(passed=r['answer']=='42',reason='checked numerical value',evidence=[{'source':'source.md','quote':'42'}])
+    if 'proof.txt' in r.get('artifacts', {}):
+        assert r['artifacts']['result.json']['check_passed'] is True
+        assert r['artifacts']['proof.txt']['content']=='Observed result: 42'
+        assert 'proof.txt' not in r['sources']
+        o['evidence']=[{'source':'proof.txt','quote':'Observed result: 42'}]
 elif role=='maintainer':
     assert all(x['split']=='train' for x in r['experiences'])
     assert 'TEST_SECRET' not in json.dumps(r)
@@ -77,7 +83,7 @@ print(json.dumps(o))
     suite = {'version': 2, 'corpus': 'corpus', 'tasks': [
         {'id': s, 'split': s, 'question': s + (' TEST_SECRET' if s == 'test' else ''),
          'rubric': 'Answer 42 with supporting source', 'abstain': False, 'sources': ['source.md'],
-         **({'allow_write': ['result.json'], 'artifacts': [{'path': 'result.json', 'kind': 'json', 'equals': {'value':42}}]} if s == 'test' else {})}
+         **({'allow_write': ['result.json', 'proof.txt'], 'artifacts': [{'path': 'result.json', 'kind': 'json', 'equals': {'value':42}}]} if s == 'test' else {})}
         for s in ('train', 'validation', 'test')]}
     suite['calibration'] = [dict(question='grade', rubric='Answer 42', answer=answer, abstain=False,
                                  sources=['source.md'], citations=['source.md'], passed=passed)

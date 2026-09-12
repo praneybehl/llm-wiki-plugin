@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Capture experience and validate evidence-linked, single-file skill improvements.
+"""Capture experience and validate evidence-linked, skill improvements.
 
 Stdlib only. Candidates run in copies; the installed skill changes only with
 `apply`. `rollback` restores the accepted experiment's original file, refusing
@@ -179,11 +179,20 @@ def propose(args, state):
     exp = state / slug(args.id)
     require(not exp.exists(), 'Experiment ID already exists; use a new ID')
     source = args.skill.resolve()
-    require((source / 'SKILL.md').is_file(), 'Skill directory must contain SKILL.md')
-    target = inside(source, args.target)
-    require(target.is_file(), 'Target must be an existing file in this skill')
-    before, after = target.read_text(encoding='utf-8'), args.candidate.read_text(encoding='utf-8')
-    require(before != after and after.strip(), 'Candidate must be nonempty and different')
+    directory = args.candidate.is_dir()
+    require(directory or args.target, 'File proposals require --target')
+    require(not args.skill.is_symlink(), 'Skill cannot be a symlink')
+    require(source.is_dir() or directory, 'New skills require a candidate directory')
+    require(not source.is_relative_to(state.resolve()), 'Installed target cannot be an experiment archive')
+    if source.exists():
+        require((source / 'SKILL.md').is_file() or not tree(source), 'Skill directory must contain SKILL.md or be empty')
+    if directory:
+        require((args.candidate / 'SKILL.md').is_file(), 'Candidate requires SKILL.md')
+    else:
+        target = inside(source, args.target)
+        require(target.is_file(), 'Target must be an existing file in this skill')
+        after = args.candidate.read_text(encoding='utf-8')
+        require(after.strip(), 'Candidate must be nonempty')
     require(args.reason.strip(), 'Proposal reason is required')
     evidence = {}
     for name in args.evidence:
@@ -193,15 +202,23 @@ def propose(args, state):
     require(evidence, 'At least one evidence page is required')
     with tempfile.TemporaryDirectory(prefix='.staging-', dir=state) as tmp:
         staging = Path(tmp) / 'experiment'
-        baseline = copy_tree(source, staging / 'baseline')
-        copy_tree(source, staging / 'candidate')
-        (staging / 'candidate' / args.target).write_text(after, encoding='utf-8')
-        value = {'id': args.id, 'skill': str(source), 'target': args.target,
+        (staging / 'baseline').mkdir(parents=True)
+        baseline = copy_tree(source, staging / 'baseline') if source.exists() else {}
+        copy_tree(args.candidate if directory else source, staging / 'candidate')
+        if not directory:
+            (staging / 'candidate' / args.target).write_text(after, encoding='utf-8')
+        require(tree(staging / 'candidate') != baseline, 'Candidate must differ from baseline')
+        value = {'id': args.id, 'skill': str(source), 'target': args.target if not directory else None, 'new_skill': not source.exists(),
                  'reason': args.reason, 'evidence': evidence, 'baseline': baseline,
                  'candidate': tree(staging / 'candidate')}
         (staging / 'proposal.json').write_text(encode(value), encoding='utf-8')
-        diff = ''.join(difflib.unified_diff(before.splitlines(True), after.splitlines(True),
-                                          fromfile='baseline/' + args.target, tofile='candidate/' + args.target))
+        diff = ''
+        for name in sorted(set(baseline) | set(value['candidate'])):
+            old, new = staging / 'baseline' / name, staging / 'candidate' / name
+            before = old.read_text(encoding='utf-8') if old.exists() else ''
+            after = new.read_text(encoding='utf-8') if new.exists() else ''
+            diff += ''.join(difflib.unified_diff(before.splitlines(True), after.splitlines(True),
+                                               fromfile='baseline/' + name, tofile='candidate/' + name))
         (staging / 'change.diff').write_text(diff, encoding='utf-8')
         staging.rename(exp)
     return {'id': args.id, 'status': 'proposed', 'diff': str(exp / 'change.diff')}
@@ -372,6 +389,7 @@ def evaluate(args, exp):
 def transition(exp, rollback=False):
     value = manifest(exp)
     source = Path(value['skill'])
+    source.mkdir(parents=True, exist_ok=True)
     lock = source / '.wiki-evolve-lock'
     try:
         lock.mkdir()
@@ -385,7 +403,6 @@ def transition(exp, rollback=False):
 
 def promote(exp, value, rollback):
     source = Path(value['skill'])
-    target = inside(source, value['target'])
     records = list(exp.glob('evaluation-*.json'))
     require(len(records) == 1, 'A completed evaluation is required')
     report = read_json(records[0])
@@ -404,19 +421,44 @@ def promote(exp, value, rollback):
     if current['status'] in (pending, done) and actual == value[after]:
         atomic(journal, encode({'status': done}).encode())
         return {'id': value['id'], 'status': done}
-    require(actual == value[before], 'Installed skill changed; refusing to overwrite concurrent edits')
+    if current['status'] == pending:
+        # A crash may leave a mixture of the two snapshots. Only those exact file states are recoverable.
+        require(set(actual) <= set(value[before]) | set(value[after]), 'Unexpected files during recovery')
+        for name in set(value[before]) | set(value[after]):
+            require(actual.get(name) in (value[before].get(name), value[after].get(name)),
+                    'Installed skill changed during recovery')
+    else:
+        require(actual == value[before], 'Installed skill changed; refusing to overwrite concurrent edits')
     require(current['status'] != done, 'Installed skill no longer matches completed transition')
     atomic(journal, encode({'status': pending}).encode())
-    atomic(target, (exp / after / value['target']).read_bytes(), value[after][value['target']]['mode'])
+    for name in sorted(set(value[before]) | set(value[after])):
+        target = inside(source, name)
+        if name in value[after]:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            atomic(target, (exp / after / name).read_bytes(), value[after][name]['mode'])
+        else:
+            target.unlink(missing_ok=True)
+    require(tree(source) == value[after], 'Transition did not reproduce the snapshot')
     atomic(journal, encode({'status': done}).encode())
-    event(exp, done, {'target': str(target)})
+    event(exp, done, {'skill': str(source)})
     return {'id': value['id'], 'status': done}
+
+
+def run_records(exp):
+    return [read_json(p) for p in exp.glob('run-*.json') if p.name != 'run-inputs.json']
 
 
 def history(state):
     rows = []
     for exp in sorted(state.iterdir()):
-        if not exp.is_dir() or exp.is_symlink() or not (exp / 'proposal.json').is_file():
+        if not exp.is_dir() or exp.is_symlink():
+            continue
+        if (exp / 'run-inputs.json').is_file():
+            records = run_records(exp)
+            rows.append({'id': exp.name, 'kind': 'run', 'status': records[-1]['status'] if records else 'incomplete',
+                         'iterations': [read_json(p) for p in exp.glob('iteration-*.json')]})
+            continue
+        if not (exp / 'proposal.json').is_file():
             continue
         value = read_json(exp / 'proposal.json')
         evaluations = [read_json(p) for p in exp.glob('evaluation-*.json')]
@@ -436,7 +478,8 @@ def main():
     capture_parser.add_argument('--raw', type=Path, required=True)
     capture_parser.add_argument('--record', type=Path, required=True)
     p = sub.add_parser('propose', help='Snapshot one skill and stage an evidence-linked edit')
-    for flag in ('id', 'target', 'reason'):
+    p.add_argument('--target', help='Single existing file; omit for a complete candidate directory')
+    for flag in ('id', 'reason'):
         p.add_argument('--' + flag, required=True)
     p.add_argument('--skill', type=Path, required=True)
     p.add_argument('--candidate', type=Path, required=True)
@@ -467,6 +510,11 @@ def main():
                     exp = inside(state, slug(args.id))
                     if args.action == 'evaluate':
                         result = evaluate(args, exp)
+                    elif args.action == 'show' and (exp / 'run-inputs.json').exists():
+                        result = {'inputs': read_json(exp / 'run-inputs.json'), 'results': run_records(exp),
+                                  'iterations': [read_json(p) for p in exp.glob('iteration-*.json')],
+                                  'selection': read_json(exp / 'selection.json') if (exp / 'selection.json').exists() else None,
+                                  'trace_directory': str(exp)}
                     elif args.action == 'show':
                         result = {'proposal': manifest(exp), 'inputs': [read_json(p) for p in exp.glob('inputs-*.json')], 'diff': (exp / 'change.diff').read_text(),
                                   'evaluations': [read_json(p) for p in exp.glob('evaluation-*.json')]}

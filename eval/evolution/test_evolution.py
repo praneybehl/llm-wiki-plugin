@@ -163,8 +163,8 @@ print(json.dumps({'answer':'correct' if 'candidate' in s else 'wrong',
         assert (wiki/'.evolution/README.md').is_file()
         assert any(g['marker']=='## Skill evolution' for g in init_wiki.detect_schema_gaps(wiki/'SCHEMA.md'))
 
-    starter=e.read_json(REPO/'skills/llm-wiki/assets/evolution/suite.json')
-    pilot=REPO/'skills/llm-wiki/assets/evolution/wiki'
+    starter=e.read_json(REPO/'eval/evolution/pilot/suite.json')
+    pilot=REPO/'eval/evolution/pilot/wiki'
     assert len(e.suite_contract(starter,pilot))==20
     for task in starter['tasks']:
         sources=' '.join((pilot/c).read_text() for c in task['citations'])

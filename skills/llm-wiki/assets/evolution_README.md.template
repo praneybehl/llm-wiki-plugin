@@ -11,3 +11,5 @@ See the installed skill's `references/evolution-workflow.md` for capture, consol
 Apply/rollback also use a temporary `.wiki-evolve-lock/` in the target skill to coordinate changes from different wikis. After a process dies, inspect both this lock and the wiki lock before removing stale empty lock directories and retrying. This lock directory is excluded from skill snapshots.
 
 Each started trial also preserves its suite/runner configuration and a complete frozen `corpus/` under the experiment directory. Keep these private alongside the skill snapshots. Corpus hashes are rechecked during promotion. An interrupted trial is reported as incomplete and requires a new proposal ID; do not reuse partially recorded input artifacts.
+
+`wiki_evolve_loop.py` also stores bounded evolution runs here. `learning.json` preserves training patterns and proposal history across runs. Final-test results remain in each run archive and must never be fed back into selection. Raw training observations live in the configured raw root. Run budgets count every role and final/transfer call.

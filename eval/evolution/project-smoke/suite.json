@@ -1,0 +1,77 @@
+{
+  "version": 2,
+  "corpus": "wiki",
+  "tasks": [
+    {
+      "id": "train",
+      "split": "train",
+      "question": "Which component generates embeddings? Is the cache authoritative?",
+      "rubric": "Identify FastEmbed, distinguish regenerable cache from canonical Markdown, and cite retrieval.md.",
+      "sources": [
+        "retrieval.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "validation",
+      "split": "validation",
+      "question": "What kind of version change is required for an additive optional feature?",
+      "rubric": "Identify a minor version increment and cite releases.md.",
+      "sources": [
+        "releases.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "release-artifact",
+      "split": "test",
+      "question": "Create version-audit.json with integer fields json_files and version_fields describing the main release version locations. Explain and cite the source.",
+      "rubric": "The saved artifact records three JSON files and four version fields. The answer accurately explains the artifact and cites version-locations.md.",
+      "sources": [
+        "version-locations.md"
+      ],
+      "abstain": false,
+      "allow_write": [
+        "version-audit.json"
+      ],
+      "artifacts": [
+        {
+          "path": "version-audit.json",
+          "kind": "json",
+          "equals": {
+            "json_files": 3,
+            "version_fields": 4
+          }
+        }
+      ]
+    }
+  ],
+  "calibration": [
+    {
+      "question": "What version increment is required for an additive optional feature?",
+      "rubric": "Identify a minor increment, not a major increment, supported by releases.md.",
+      "answer": "An optional addition calls for a minor release.",
+      "sources": [
+        "releases.md"
+      ],
+      "citations": [
+        "releases.md"
+      ],
+      "abstain": false,
+      "passed": true
+    },
+    {
+      "question": "What version increment is required for an additive optional feature?",
+      "rubric": "Identify a minor increment, not a major increment, supported by releases.md.",
+      "answer": "A major increment is required for every optional addition.",
+      "sources": [
+        "releases.md"
+      ],
+      "citations": [
+        "releases.md"
+      ],
+      "abstain": false,
+      "passed": false
+    }
+  ]
+}

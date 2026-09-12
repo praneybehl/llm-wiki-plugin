@@ -1,0 +1,69 @@
+{
+  "date": "2026-09-12",
+  "status": "completed",
+  "selection": [
+    {
+      "iteration": 0,
+      "status": "rejected",
+      "validation": {
+        "best": 1,
+        "candidate": 1
+      }
+    }
+  ],
+  "original_test": {
+    "baseline": {
+      "passed": 0,
+      "total": 1
+    },
+    "selected": {
+      "passed": 1,
+      "total": 1
+    }
+  },
+  "original_transfer_test": [
+    {
+      "baseline": {
+        "passed": 0,
+        "total": 1
+      },
+      "selected": {
+        "passed": 0,
+        "total": 1
+      }
+    }
+  ],
+  "artifact_checks": {
+    "passed": 4,
+    "total": 4
+  },
+  "corrected_judge_replay": {
+    "passed": 4,
+    "total": 4
+  },
+  "budget": {
+    "calls": 18,
+    "tokens": 610338,
+    "cost_usd": null,
+    "elapsed_seconds": 272.65057391597657
+  },
+  "runtime_hashes": {
+    "wiki_evolve.py": {
+      "sha256": "a9849c65f8c2210d7617ab35aad3ed0e4b53b2919dd212ae3600c6a38de025b2",
+      "mode": 420
+    },
+    "wiki_evolve_agent.py": {
+      "sha256": "1fcda215063e30ccb7e77e8b88c37dc4ea6a9bf2b9b5d80a2736367c35105c90",
+      "mode": 420
+    },
+    "wiki_evolve_claude.py": {
+      "sha256": "f2b1bc2e76086bd243734c5f3ec85502f71e8c0471446259893ce55429452ac8",
+      "mode": 420
+    },
+    "wiki_evolve_loop.py": {
+      "sha256": "38ebbf3dd196f0486708298d79b4c15b443fbe04c68b1d1e7e113ccd49d92910",
+      "mode": 420
+    }
+  },
+  "interpretation": "Validation tied, so no skill was adopted. Artifact checks passed for both agents. Original final grades exposed artifact evidence-label errors; replay after schema correction is a grader regression check, not an optimization gain."
+}

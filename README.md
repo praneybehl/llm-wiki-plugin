@@ -15,9 +15,9 @@ Everything canonical stays in readable Markdown. Default semantic search is loca
 ## What's new in v3.2.0
 
 - **Learn from completed work.** `/wiki:learn` captures verified successes/failures and consolidates cited patterns, applicability and counterexamples.
-- **Turn evidence into tested procedures.** `/wiki:evolve` stages a single-file skill edit, compares baseline/candidate snapshots, and retains rejected proposals and measurements.
+- **Turn evidence into tested procedures.** `/wiki:evolve` runs training, evidence consolidation, whole-skill proposals, validation, and independent final testing, retaining rejected attempts. Claude Code and Codex adapters support bounded runs and cross-agent transfer.
 - **Explicit apply and rollback.** Only a reviewed, passing change can be applied; whole-skill snapshot checks prevent overwriting intervening edits.
-- **A runnable query pilot.** Twenty fictional tasks cover citations, superseded decisions, contradictions and abstention, with a provider-neutral runner contract and optional Claude CLI adapter.
+- **Runnable evaluation examples.** Separate training, validation and final-test tasks cover source-grounded answers and file artifacts, with calibrated judging and Claude Code/Codex runners. Fictional fixtures stay outside the installed skill.
 - **Compatible upgrade.** Existing Markdown and commands remain valid. `/wiki:upgrade` adds optional templates and archive guidance idempotently.
 
 See [Learning and skill evolution](https://praneybehl.github.io/llm-wiki-plugin/evolution.html) for the full workflow, evaluation limits and inference costs. This release adds tooling; it does not claim measured model gains.

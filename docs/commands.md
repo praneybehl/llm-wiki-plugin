@@ -109,4 +109,4 @@ Capture verified successes or failures as immutable raw experience, ingest a sou
 
 ## `/wiki:evolve <goal or action>` {#evolve}
 
-Propose an evidence-linked edit to one existing file in a skill, evaluate isolated baseline/candidate copies, and retain measured outcomes even when rejected. `history` and `show <id>` inspect past attempts; `apply <id>` installs an authorized, reviewed passing candidate; `rollback <id>` restores its baseline if no intervening edits occurred. See [Learning and skill evolution](/evolution) for runner setup, the 20-task pilot, budget gates and recovery.
+Run bounded training, consolidate observed evidence, propose one complete skill change, select on validation, and test the frozen result independently. `history` and `show <id>` inspect past attempts; `apply <id>` installs an authorized, reviewed passing candidate; `rollback <id>` restores its baseline if no intervening edits occurred. See [Learning and skill evolution](/evolution) for runner setup, the demonstration suites, budget controls and recovery.

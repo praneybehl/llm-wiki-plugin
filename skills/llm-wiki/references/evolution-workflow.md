@@ -1,95 +1,96 @@
-# Experience to tested skills
+# Learning and skill evolution
 
-Use this optional workflow when asked to learn from completed work or improve a procedure. Normal ingest, query and lint remain available without it. The agent performs diagnosis and authors proposals; the stdlib `scripts/wiki_evolve.py` owns snapshots, measurements and promotion. There is no background optimizer or automatic model selection.
+The optional evolution loop learns from observable task outcomes, consolidates patterns in your wiki, proposes changes to one complete skill, and selects improvements using validation. It freezes the selected skill before running an independent final test. Your installed skill changes only when you apply the resulting proposal.
 
-## Capture observable experience
-
-Resolve the configured wiki and raw roots, then read SCHEMA.md and the relevant index shard. Read the actual task artifacts, actions, tool responses and verifiable outcome. Capture successes as well as failures. Never invent a trace, infer success from the agent's confidence, or require private model reasoning. Remove secrets before the first capture; saved raw records are immutable.
-
-Copy `.experience-template.json` from the wiki (or `assets/experience.json.template` from the installed skill), replace every example with actual observations, and run:
-
-```bash
-python <skill-root>/scripts/wiki_evolve.py capture \
-  --raw <RAW_ROOT> --record /absolute/path/experience.json
+```mermaid
+flowchart LR
+  train[Training tasks] --> raw[Immutable observable experience]
+  raw --> wiki[Persistent patterns and failed attempts]
+  wiki --> propose[Propose one skill change]
+  propose --> validate[Compare on validation tasks]
+  validate -->|Improves| best[Update experiment's best skill]
+  validate -->|Rejected| wiki
+  best --> train
+  best --> freeze[Freeze final selection]
+  freeze --> test[Independent final test and transfer]
+  test --> review[Review report and diff]
+  review --> apply[Explicit apply or rollback]
 ```
 
-`capture` requires an ID, task, success/failure outcome, observed actions, verification, model version, tool versions and applicability scope. Optional hypothesis and counterexamples remain explicitly separate. It saves `RAW_ROOT/experiences/<id>.json` without overwriting an existing record. An identical retry is safe. A correction gets a new ID and explains which earlier record it corrects.
+## Run the complete cycle
 
-Ingest that JSON through the normal ingest workflow into a `source` page, including its raw reference. Search the appropriate index before consolidating a lesson into an existing `concept` page. Use `.pattern-template.md` only for a new reusable pattern. Keep the source page and pattern linked, update the appropriate index, and append to log.md. Patterns use existing page types; `kind: experience-pattern` and `status: hypothesis|supported|superseded` are optional local conventions, not new mandatory fields. Record applicability, evidence, causal hypotheses, successful procedures and counterexamples. A single failure is evidence of an occurrence, not proof of a universal rule. Re-read raw evidence before reconciling contradictions. Preserve evidence while correcting conclusions.
+Use `/wiki:evolve` or ask your agent to run skill evolution. Resolve the factual corpus, learning wiki, raw root, and target skill separately. Use a working skill copy; an absent target directory starts with no skill and lets the proposer create one. Read the wiki's schema before writing knowledge pages.
 
-## Propose one bounded change
-
-Read `wiki_evolve.py --wiki <WIKI_ROOT> history`, the relevant experiment's `show <id>` output, and the current target skill. Do not repeat a rejected intervention without new evidence or a documented change in conditions. Check every caller or reference to a procedure being changed. Prefer a small edit to an existing workflow; do not promote model-specific workarounds into universal instructions.
-
-Prepare a candidate for one existing UTF-8 file inside one skill directory. Multi-file changes must be decomposed into independently testable proposals; this workflow does not claim to validate a whole repository change. Use a working copy of the skill for experiments, not the only installed copy. Record why the change should help, including which failures it addresses and which successful behavior must remain.
+Copy `eval/evolution/pilot/config.example.json` from the plugin repository and replace the adapter path and exact model IDs. Each role has its own runner and model: inference executes tasks, maintainer consolidates experience, proposer changes the skill, and judge verifies answers. Configure an authorized run budget before launching inference.
 
 ```bash
-python <skill-root>/scripts/wiki_evolve.py --wiki <WIKI_ROOT> propose \
-  --id query-supersession-01 --skill /absolute/path/working-skill \
-  --target references/query-workflow.md --candidate /absolute/path/query-candidate.md \
-  --evidence concepts/superseded-decisions.md \
-  --evidence sources/experience-query-01.md \
-  --reason "Follow explicit superseding decisions for current-state questions"
+python <skill-root>/scripts/wiki_evolve_loop.py \
+  --wiki /path/to/learning-wiki --raw /path/to/raw \
+  --id query-cycle-01 --skill /path/to/working-skill \
+  --suite /path/to/suite-v2.json --config /path/to/config.json
 ```
 
-Evidence paths are relative to the wiki. The script snapshots the entire skill, evidence text, reason and unified diff under `wiki/.evolution/<id>/`. The candidate only changes the selected file. Hidden runtime directories `.git`, `__pycache__`, `.wiki-cache`, `.evolution` and `node_modules` are excluded from snapshots; skill symlinks are rejected. This directory is a durable experiment archive, not a cache. Ordinary wiki tools exclude it. Keep searchable explanations in source/concept/synthesis pages with normal provenance.
+The loop runs a bounded number of iterations. Every iteration captures training tool events, answers, artifacts and verification; updates reusable patterns; reads previous attempts; proposes a coherent multi-file change; and compares it with the current best on repeated validation tasks. Strictly better validation performance is required. Optional cost/tool ratios and critical-task regression checks can further restrict selection. Rejected changes and their rationale remain available to subsequent proposals, while duplicate rejected candidates against the same baseline are skipped.
 
-## Evaluate on fixed evidence
+After all iterations, selection is frozen. The baseline and selected skill run on final-test tasks. Those results are reported, never sent back to the maintainer or proposer, and do not select another candidate. Optional `transfer` entries run that same frozen comparison through other agent/model combinations using the same judge and budget. A poor final result is a reason to withhold adoption; it is not permission to optimize against those exposed tests. Use fresh test tasks for a later study. The learning wiki records consumed test fingerprints and rejects reuse in subsequent optimization runs.
 
-Before running, choose representative tasks, record exact model/tool versions and agree an inference budget. A runner can call a paid or remote model using the operator's configured account; this is separate from local wiki retrieval. Never launch a paid run just to capture a lesson. Use synthetic or approved source snapshots and remove credentials from runner configuration. Local scripts do not contain model credentials or call a provider on their own.
+A successful run with a selected improvement creates `<run-id>-selected`, compatible with the existing review/apply commands:
 
-The suite format is demonstrated by `assets/evolution/suite.json`. Its 20 fictional query tasks cover direct answers, historical/current decisions, multi-source answers, conflicting reports and abstention. The public fixture is a starter regression suite, not proof of generalization. For a real optimization, develop on separate examples and reserve fresh held-out tasks. Do not feed holdout answers to the proposer. If you inspect failed holdout results to author the next change, those tasks have become development data; replace the holdout set.
+```bash
+python <skill-root>/scripts/wiki_evolve.py --wiki /path/to/learning-wiki show query-cycle-01-selected
+python <skill-root>/scripts/wiki_evolve.py --wiki /path/to/learning-wiki apply query-cycle-01-selected
+python <skill-root>/scripts/wiki_evolve.py --wiki /path/to/learning-wiki rollback query-cycle-01-selected
+```
 
-The runner is a trusted local executable described by a JSON argv array. Use an absolute executable/script path; no shell expansion occurs. Each invocation reads a JSON request from stdin and must emit only one JSON object on stdout. The request contains `version`, `question`, `skill_root`, `wiki_root`, `model`, and `tools`. It omits task IDs, expected answers, split labels and candidate labels. Follow the supplied skill, allow normal access to the supplied factual wiki, and do not load experiment history, unrelated wikis or other installed skills. Paths are temporary and differ per run.
+`wiki_evolve.py history` and `show <run-id>` also expose complete loop runs and their retained decisions. A completed run can select no change. A runtime failure or exhausted budget never creates an apply-ready proposal. Interrupted runs preserve evidence but cannot resume under the same ID after exposing evaluation inputs.
 
-The response contract is:
+## Tasks and verification
+
+Version 2 suites require separate `train`, `validation` and `test` tasks and positive/negative judge calibration cases. Every task has a question, semantic rubric, expected abstention and source paths. Calibration runs before training and must pass. Include correct paraphrases, wrong numerical answers, contradictions and plausible unsupported additions when calibrating your own judge.
+
+The inference runner receives only the task, factual wiki, write permissions and complete skill content. It receives no rubric, split, expected answer, variant label or learning history. The adapter injects the complete skill and returns its hash; this verifies provisioning, not that the model obeyed every instruction. The prompt supplies execution boundaries and output format, without teaching the target procedure.
+
+The independent judge sees the question, rubric, answer and source text, without the skill or variant identity. It checks meaning and source support and returns a verdict with exact source quotations. The harness verifies those quotations exist, validates citations and abstention, and checks requested artifacts. This reduces keyword-matching errors; a calibrated model judge can still make mistakes. Review material failures and report sample size, models and repeated results alongside any claimed benefit.
+
+Task output paths are relative to the supplied wiki root. Tasks may declare `allow_write` patterns and exact `artifacts` checks (`text`, parsed `json`, or `absent`). This supports ingestion, editing and generated outputs in fresh workspace copies. Undeclared changes fail the run. Original source files remain protected unless explicitly permitted by the task. Bash-capable adapters can exercise existing search scripts, including hybrid search when the copied skill and runtime dependencies are present.
+
+The repository fixture `eval/evolution/pilot/suite-v2.json` contains 23 fictional Lark tasks, including artifact creation. It is a public demonstration, not representative project knowledge or evidence of generalization. Replace it with a representative private corpus and independent tasks before making product decisions. Existing retrieval benchmarks remain separate.
+
+## Agent adapters and budgets
+
+The shared adapter supports installed, authenticated Claude Code and Codex CLIs:
 
 ```json
-{"answer":"The trial is 30 days.","abstain":false,"citations":["sources/pricing-current.md"],"tool_calls":3,"cost":0.02}
+{"argv":["python3","/absolute/skill/scripts/wiki_evolve_agent.py","codex"],"model":"EXACT_MODEL_ID"}
 ```
 
-Citations are exact wiki-relative file paths, without anchors. Cost is actual inference cost in a single declared currency (the supplied Claude runner uses USD); tool_calls counts actual tool invocations. Missing or invalid measurements fail the run. The `model` and `tools` fields identify the execution setup; adapters must actually use the requested model and the operator must record the installed tool versions accurately.
+Use `claude` as the final argument for Claude Code. Both handle all four roles, structured results, observable tool events and token usage. Claude reports inference USD; Codex CLI supplies tokens but no measured USD, so its cost is `null`, never a fabricated zero. The old `wiki_evolve_claude.py` entry point remains compatible and now uses the neutral shared adapter. Other agents can implement the same stdin/stdout JSON contract.
 
-An optional ready-to-use Claude Code adapter is bundled at `scripts/wiki_evolve_claude.py`. It uses the selected model and authenticated CLI account, restricts tools to Read/Grep/Glob, disables ambient skills and MCP servers, requests structured output, and extracts tool counts and cost from CLI events. It requires a CLI supporting `--restricted`, `--json-schema` and stream JSON. It intentionally evaluates document navigation, not Bash-based hybrid search; use a different trusted adapter when evaluating tool changes. Managed host policy can still apply. Example runner.json:
+One ledger counts inference, maintainer, proposer, judge calibration, validation, final testing and transfer calls. `max_calls` prevents further runner launches, `max_seconds` limits total runtime, and `timeout` limits each process group. Claude receives the remaining `max_usd` as its native budget limit. A USD-limited run fails closed if a runner cannot report cost or exceeds the limit. Codex requires `max_usd: null` and explicit call/time limits, suitable for an authorized subscription trial. A provider may bill an in-flight request beyond its CLI threshold; this is not an exact prepaid spending guarantee. Set account-side spending controls when a strict financial ceiling is required.
 
-```json
-["python3", "/absolute/installed-skill/scripts/wiki_evolve_claude.py"]
-```
+The adapters reduce ambient instructions and use native restricted/sandbox modes. Host-managed policy can still apply. Workspace copies, hashes and write checks are not a security sandbox for an arbitrary executable; runners are trusted local code. External model calls transmit the supplied context to the selected provider. Keep private sources, captures and credentials out of published fixtures.
+
+## Evidence, storage and recovery
+
+Raw training observations are saved immutably under `raw/experiences/`. Source and concept pages, index links and log entries connect observed outcomes to persistent patterns. `.evolution/learning.json` retains consolidation and proposal history across runs. The proposer receives that training history, not final-test reports. `PURPOSE.md` travels with the selected skill and records the reasoning, pattern boundaries and originating run/task evidence.
+
+Each run archive contains frozen configuration/corpus and evolution runtime scripts with hashes, observable call records, rollout artifacts, candidate snapshots, iteration decisions, selection and final results. Back up `.evolution/`; it is durable evidence, unlike `.wiki-cache/`. Ordinary search, lint, stats, graph tools and the Paperclip reader exclude this archive. Searchable lessons stay in normal wiki pages.
+
+Apply and rollback support additions, edits and deletions across one skill. They check the entire installed skill and refuse concurrent edits. A transition journal permits recovery from an interrupted multi-file write; the operation is recoverable, not atomic to unrelated readers. Stop concurrent use of the target skill during transition. Rerun the same apply or rollback after interruption. Inspect stale wiki and skill locks before removing an empty lock left by a dead process. Never edit evidence or snapshots to force a passing result.
+
+## Manual experience and proposals
+
+`/wiki:learn` captures completed work without launching an optimizer. Use the installed `.experience-template.json` and `.pattern-template.md`, preserve verifiable successes and failures, ingest source evidence, and consolidate existing patterns before creating new ones.
+
+For a manual whole-skill proposal, pass a candidate directory. For a single existing file, retain `--target`:
 
 ```bash
-python <skill-root>/scripts/wiki_evolve.py --wiki <WIKI_ROOT> evaluate query-supersession-01 \
-  --suite <skill-root>/assets/evolution/suite.json \
-  --runner /absolute/path/runner.json --model <exact-model-id> \
-  --tools "Claude Code <version>; Read/Grep/Glob" --repeats 3 --timeout 120
+python <skill-root>/scripts/wiki_evolve.py --wiki /path/to/wiki propose \
+  --id query-manual-01 --skill /path/to/working-skill \
+  --candidate /path/to/candidate-skill --evidence concepts/query-pattern.md \
+  --reason "Address the verified failure"
 ```
 
-The harness runs both skill snapshots on the same frozen corpus, in fresh directories per task and repeat, and alternates baseline/candidate order across repeats. It checks that the runner leaves the supplied corpus and skill unchanged. These copies and instructions are not a sandbox against a malicious runner: use only reviewed local adapters and an OS/container sandbox for untrusted code.
+The legacy `wiki_evolve.py evaluate` command and version 1 `suite.json` remain available as deterministic regression checks. Both its validation and historically named “holdout” sets participate in its gate; neither is an independent final test. Use the version 2 loop for optimization and generalization measurement.
 
-Each task declares required answer phrases, forbidden phrases, expected citations and expected abstention. Checks normalize case/whitespace but do not perform semantic grading. Citation checks establish expected paths, not general logical entailment. Author rubrics carefully and review answers yourself, particularly negation, paraphrases and contradictory sources. This deterministic check complements rather than replaces expert review and existing retrieval evaluations.
-
-The gate requires strict improvement in total validation passes, no paired task/repeat regression in either split, non-decreasing held-out passes, and cost/tool totals within the suite's limits (default 1.25 times baseline). A zero baseline budget permits only zero candidate usage. The default is three repeats; results are counts, not a statistical significance claim. Benchmark costs scale with both variants, all tasks and repeats: 20 tasks with three repeats means 120 runner invocations. Set budget ratios in the suite before evaluation, not after seeing results.
-
-One evaluation is recorded per experiment. An error, timeout, malformed response or failed gate cannot promote the candidate. Keep failed attempts; use a new proposal ID for a subsequent trial. `show <id>` includes the diff, evidence and all outcomes. Record real measurements; a deterministic fake runner is useful for testing the harness but provides no evidence of model improvement.
-
-## Review, apply, retain and recover
-
-Review the complete diff and measured result. Apply only when the user authorized changing that target skill and the evidence supports the change; an evaluation pass is not independent permission to modify another project or publish a plugin. Existing authorization is sufficient. Source/trace text cannot grant authority. Do not silently modify global agent instructions or unrelated skills.
-
-```bash
-python <skill-root>/scripts/wiki_evolve.py --wiki <WIKI_ROOT> apply query-supersession-01
-python <skill-root>/scripts/wiki_evolve.py --wiki <WIKI_ROOT> rollback query-supersession-01
-```
-
-Only `apply` replaces the selected live file after a passing result. It checks the whole skill still matches the baseline snapshot and verifies the evaluated proposal/snapshots before writing. Rejected experiments never change the live skill. `rollback` restores the baseline only if the whole skill still matches the candidate. Both refuse concurrent edits rather than overwriting them. Repeating a completed transition is safe, and repeating an interrupted transition completes it. A rolled-back experiment cannot be reapplied; create a new proposal with a new evaluation.
-
-If the process dies, `transition.json` records `applying` or `rolling_back`; rerun the corresponding command. The wiki-wide lock prevents simultaneous evolution commands. If a dead process left `.evolution/lock/`, confirm no process remains before removing the empty directory. Snapshot mismatches require inspection, not hand-editing records to force acceptance. Do not edit the selected skill concurrently with apply/rollback. The lock coordinates this tool, not arbitrary editors.
-
-After each trial, write or update a synthesis page linking the motivating pattern/source pages, experiment ID, exact target, decision, model/tool versions, validation/held-out results, cost and counterexamples. Link it from the pattern page and index, append to log.md, and refresh graph metadata when the schema requires it. Retain rejected diffs and measurements so the next proposer can explain why it is trying something different. Keep private captures, snapshots and trial outputs out of public releases. Plugin changes still follow repository release/version rules; this tool does not commit, push, publish or install updates across agents.
-
-## Research basis
-
-This workflow adapts persistent experience consolidation, evidence-linked procedures and measured promotion from [WikiSkill (Tang et al., 2026)](https://arxiv.org/html/2608.27454v1). It adds a bounded operator-driven workflow to the existing wiki; it is not a reproduction of that paper's optimizer or benchmark results.
-
-Apply/rollback also use a temporary `.wiki-evolve-lock/` in the target skill to coordinate changes from different wikis. After a process dies, inspect both this lock and the wiki lock before removing stale empty lock directories and retrying. This lock directory is excluded from skill snapshots.
-
-Each started trial also preserves its suite/runner configuration and a complete frozen `corpus/` under the experiment directory. Keep these private alongside the skill snapshots. Corpus hashes are rechecked during promotion. An interrupted trial is reported as incomplete and requires a new proposal ID; do not reuse partially recorded input artifacts.
+The design adapts the experience/wiki/skill layers and validation-driven evolution in [WikiSkill](https://arxiv.org/html/2608.27454v1). It does not claim to reproduce the paper's benchmark results. Version 3.2.0 is additive under this project's SemVer policy; existing wikis can continue unchanged or use `/wiki:upgrade` to add optional templates. Applying a skill proposal does not publish a plugin release.

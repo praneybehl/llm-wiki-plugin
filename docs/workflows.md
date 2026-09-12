@@ -109,4 +109,4 @@ A reasonable default: structural lint after every 5 ingests, semantic lint weekl
 
 ## Learn and evolve
 
-Completed tasks can become immutable experience sources and reusable concept patterns through `/wiki:learn`. `/wiki:evolve` connects those patterns to a proposed skill edit, compares isolated baseline/candidate snapshots, retains failed experiments and explicitly applies or rolls back an authorized change. Ordinary factual wiki access stays available. See [Learning and skill evolution](/evolution) for the complete workflow, executable pilot and evaluation boundaries.
+Completed tasks can become immutable experience sources and reusable concept patterns through `/wiki:learn`. `/wiki:evolve` runs bounded training and pattern consolidation, proposes whole-skill changes, selects on validation, and measures a frozen selection on independent final tests. It retains failed experiments and explicitly applies or rolls back authorized changes. Ordinary factual wiki access stays available. See [Learning and skill evolution](/evolution) for the complete workflow, executable pilot and evaluation boundaries.

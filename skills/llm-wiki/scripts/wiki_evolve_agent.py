@@ -65,6 +65,7 @@ def prompt(request):
                       'from a single success. Previous rejected proposals remain evidence. Do not use tools.',
         'proposer': 'Propose one coherent skill improvement using the supplied patterns and observable experiences. '
                     'Return files to add or replace, or null content to delete a file, within this one skill. '
+                    'Omit unchanged files; null explicitly deletes a file. Never delete or empty SKILL.md. '
                     'A new skill must include SKILL.md. Cite supporting pattern IDs and explain the change. '
                     'Inspect prior attempts and do not repeat a rejected change without new evidence. Do not use tools.',
     }

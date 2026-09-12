@@ -171,6 +171,7 @@ class Calls:
             self.cost_known = self.tokens_known = False
             trace = Path(request['trace_path'])
             event(self.archive, 'call-error', dict(record, error=type(exc).__name__,
+                  message=re.sub(r'(?i)(?:sk-[\w-]+|bearer\s+[\w.\-]+)', '[redacted]', str(exc)[-4000:]),
                   trace_sha256=digest(trace.read_bytes()) if trace.exists() else None))
             raise
 
@@ -532,29 +533,43 @@ def run(args, state):
                 atomic(archive / 'patterns.json', encode(patterns).encode())
                 proposal = calls.invoke('proposer', {'skill_files': skill_text(best), 'patterns': patterns,
                                         'experiences': rows, 'history': prior_history + history}, work)
-                changes = proposal.get('changes')
-                require(isinstance(changes, dict) and changes, 'Proposer must return nonempty file changes')
-                require(isinstance(proposal.get('reason'), str) and proposal['reason'].strip(), 'Proposal reason required')
-                evidence = proposal.get('evidence')
-                require(isinstance(evidence, list) and evidence and set(evidence) <= set(patterns),
-                        'Proposal must cite existing patterns')
                 candidate = work / f'candidate-{iteration}'
                 copy_tree(best, candidate)
-                for name, body in changes.items():
-                    path = inside(candidate, name)
-                    require(body is None or isinstance(body, str), 'Changed files must contain text or null')
-                    if body is None:
-                        path.unlink(missing_ok=True)
-                    else:
-                        path.parent.mkdir(parents=True, exist_ok=True)
-                        path.write_text(body, encoding='utf-8')
-                require((candidate / 'SKILL.md').is_file() and (candidate / 'SKILL.md').read_text().strip(), 'Proposal must retain or create nonempty SKILL.md')
-                purpose = '# Purpose\n\n' + proposal['reason'] + '\n\n'
-                for key in evidence:
-                    item = patterns[key]
-                    purpose += f"## {key}\n\n{item['claim']}\n\nScope: {item['scope']}\n\nCounterexamples: {item['counterexamples']}\n\nEvidence: run {item.get('run', args.id)}, iteration {item['iteration']}, tasks {', '.join(item['evidence'])}.\n\n"
-                (candidate / 'PURPOSE.md').write_text(purpose, encoding='utf-8')
-                candidate_hash = fingerprint(candidate)
+                try:
+                    changes = proposal.get('changes')
+                    require(isinstance(changes, dict) and changes, 'Proposer must return nonempty file changes')
+                    require(isinstance(proposal.get('reason'), str) and proposal['reason'].strip(), 'Proposal reason required')
+                    evidence = proposal.get('evidence')
+                    require(isinstance(evidence, list) and evidence and set(evidence) <= set(patterns),
+                            'Proposal must cite existing patterns')
+                    for name, body in changes.items():
+                        require(isinstance(name, str), 'Proposed file paths must be strings')
+                        path = inside(candidate, name)
+                        require(body is None or isinstance(body, str), 'Changed files must contain text or null')
+                        if body is None:
+                            path.unlink(missing_ok=True)
+                        else:
+                            path.parent.mkdir(parents=True, exist_ok=True)
+                            path.write_text(body, encoding='utf-8')
+                    require((candidate / 'SKILL.md').is_file() and (candidate / 'SKILL.md').read_text().strip(), 'Proposal must retain or create nonempty SKILL.md')
+                    purpose = '# Purpose\n\n' + proposal['reason'] + '\n\n'
+                    for key in evidence:
+                        item = patterns[key]
+                        purpose += f"## {key}\n\n{item['claim']}\n\nScope: {item['scope']}\n\nCounterexamples: {item['counterexamples']}\n\nEvidence: run {item.get('run', args.id)}, iteration {item['iteration']}, tasks {', '.join(item['evidence'])}.\n\n"
+                    (candidate / 'PURPOSE.md').write_text(purpose, encoding='utf-8')
+                    candidate_hash = fingerprint(candidate)
+                except (ValueError, TypeError, KeyError, FileExistsError, IsADirectoryError, NotADirectoryError) as exc:
+                    # Invalid model-authored patches are rejected proposals, not a
+                    # reason to lose the remaining cycle or skip the frozen test.
+                    entry = {'iteration': iteration, 'status': 'rejected', 'invalid_reason': str(exc),
+                             'reason': proposal.get('reason', 'Invalid proposal'), 'changes': proposal.get('changes', {}),
+                             'evidence': proposal.get('evidence', []), 'fingerprint': fingerprint(candidate),
+                             'baseline': fingerprint(best), 'run': args.id}
+                    copy_tree(candidate, archive / f'invalid-candidate-{iteration}')
+                    history.append(entry)
+                    event(archive, 'iteration', entry)
+                    atomic(learning_path, encode({'patterns': patterns, 'history': prior_history + history}).encode())
+                    continue
                 entry = {'iteration': iteration, 'reason': proposal['reason'], 'changes': changes,
                          'evidence': evidence, 'fingerprint': candidate_hash, 'baseline': fingerprint(best), 'run': args.id}
                 if candidate_hash in seen:
@@ -651,7 +666,9 @@ def run(args, state):
             failure = {'run': args.id, 'status': 'error', 'error': type(exc).__name__,
                        'proposal': calls.last_proposal}
             atomic(learning_path, encode({'patterns': patterns, 'history': prior_history + history + [failure]}).encode())
-        event(archive, 'run', {'status': 'error', 'error': type(exc).__name__, 'budget': calls.summary()})
+        event(archive, 'run', {'status': 'error', 'error': type(exc).__name__,
+              'message': re.sub(r'(?i)(?:sk-[\w-]+|bearer\s+[\w.\-]+)', '[redacted]', str(exc)[-4000:]),
+              'budget': calls.summary()})
         raise
 
 

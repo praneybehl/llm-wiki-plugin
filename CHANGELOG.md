@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [3.2.0] - 2026-09-12
 
 ### Added
-- Complete bounded evolution loop with persistent training evidence and patterns, multi-file proposals, retained failed attempts, validation-only selection, independent final testing and optional cross-agent transfer.
+- Complete bounded evolution loop with persistent training evidence and patterns, multi-file proposals, retained failed attempts, validation-only selection, independent final testing and optional cross-agent transfer. Invalid model-authored patches are retained as rejections without aborting the remaining cycle.
 - Nine host adapters (Claude, Codex, Cursor, Gemini, OpenCode, Pi, OMP, Hermes and OpenClaw) with neutral skill provisioning, durable interrupted tool traces and explicitly nullable usage; calibrated semantic judging, source-quotation checks, artifact tasks, and shared call/time/cost accounting across every role.
 - Pre-request inference reservations in a bounded first-party API runner, with conservative model-context/output ceilings, Decimal accounting, no retry after uncertain responses, and expiring reviewed prices. CLI runners reject hard-USD configurations before inference.
 - Task-cluster confidence intervals and paired randomization analysis, plus a 16-task public-project study covering real ingestion, index/log updates, graph compilation and hybrid-search execution.

@@ -54,6 +54,8 @@ elif role=='maintainer':
 else:
     assert 'TEST_SECRET' not in json.dumps(r)
     o.update(changes={'SKILL.md':'learned','references/check.md':'Read source'},reason='Verify',evidence=['verify'])
+if 'invalid-skill' in sys.argv and role=='proposer':
+    o['changes']['SKILL.md']=None
 if 'bad-quote' in sys.argv and role=='judge':
     o['evidence']=[{'source':'source.md','quote':'invented quotation'}]
 if 'outside-write' in sys.argv and role=='inference':
@@ -101,6 +103,7 @@ print(json.dumps(o))
     fails(lambda: loop.run(args, state), 'budget exhausted')
     assert len(list((state / 'budget').glob('call-start-*.json'))) == 1
     assert not (state / 'budget' / 'selection.json').exists()
+    assert 'budget exhausted' in lifecycle.run_records(state/'budget')[-1]['message']
     # New skill can be created and rolled back to an empty directory.
     config['budget']['max_calls'] = 40
     config_path.write_text(json.dumps(config))
@@ -132,6 +135,17 @@ print(json.dumps(o))
             assert rows and all(not r['passed'] and r['judge']['verifier']=='workspace-hashes' for r in rows)
             assert list((state/mode).glob('corpus-violation-*.json'))
             assert list((state/mode).glob('workspace-violation-*.json'))
+    args.id = 'invalid-skill'
+    suite['tasks'][2]['question'] += ' invalid-skill'
+    suite_path.write_text(json.dumps(suite))
+    for role in ('inference','maintainer','proposer','judge'):
+        config[role]['argv'] = [sys.executable, str(runner), 'invalid-skill']
+    config_path.write_text(json.dumps(config))
+    invalid_run = loop.run(args, state)
+    assert len(invalid_run['history']) == 2 and all(h['status']=='rejected' and 'SKILL.md' in h['invalid_reason'] for h in invalid_run['history'])
+    assert invalid_run['status']=='completed' and not invalid_run['skill_changed']
+    assert invalid_run['test']['baseline']['total']==1 and invalid_run['test']['selected']['total']==1
+    assert (skill/'SKILL.md').read_text()=='baseline'
     # Recover a real mixed multi-file transition, then refuse unrelated edits.
     candidate = state / 'cycle' / 'best'
     manual = SimpleNamespace(id='mixed', skill=skill, target=None, candidate=candidate, wiki=wiki,

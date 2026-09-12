@@ -9,11 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [3.2.0] - 2026-09-12
 
 ### Added
+- Complete bounded evolution loop with persistent training evidence and patterns, multi-file proposals, retained failed attempts, validation-only selection, independent final testing and optional cross-agent transfer.
+- Shared Claude Code/Codex adapters with neutral full-skill provisioning, observable tool traces and measured token usage; calibrated semantic judging, source-quotation checks, artifact tasks, and shared call/time/cost accounting across every role.
+- Version 2 example suites and full-cycle regression tests. Fictional evaluation data lives under `eval/evolution/pilot/`, outside the installed skill, to avoid supplying answer keys to inference.
 
 - Optional `/wiki:learn` workflow for immutable observed task experience, cited source/concept patterns, root-cause hypotheses, applicability and counterexamples.
-- `/wiki:evolve` and stdlib `wiki_evolve.py` for evidence-linked single-file skill proposals, complete baseline/candidate snapshots, fixed-corpus paired evaluation, retained rejected attempts, explicit apply and rollback, whole-skill drift checks and interrupted-transition recovery.
+- `/wiki:evolve` and stdlib `wiki_evolve.py` for evidence-linked whole-skill proposals and new skills, complete baseline/candidate snapshots, fixed-corpus paired evaluation, retained rejected attempts, explicit apply and rollback, whole-skill drift checks and interrupted-transition recovery.
 - A provider-neutral JSON runner contract, optional authenticated Claude Code query adapter, and a 20-task fictional query pilot covering citations, current/historical decisions, contradictions, multi-source answers and abstention. No model improvement is claimed without a measured trial.
-- Validation and held-out gates with no paired regressions, explicit cost/tool limits, repeated runs, malformed-output/timeout rejection and durable experiment history.
+- Retained legacy version 1 regression gates; the new version 2 loop selects on validation only and reserves final tests for reporting. Both preserve failed attempts and reject malformed outputs and timeouts.
 - Idempotent experience/pattern templates and experiment-archive guidance, an optional upgrade schema marker, end-to-end lifecycle tests and PR CI for Python and documentation.
 
 ### Changed

@@ -96,6 +96,7 @@ class Calls:
     """One ledger for inference, consolidation, proposal and judging, including failures."""
     def __init__(self, config, archive):
         self.config, self.archive = config, archive
+        self.runtime_files = {p: digest(p.read_bytes()) for p in Path(__file__).parent.glob('wiki_evolve*.py')}
         self.started = time.monotonic()
         self.count, self.tokens, self.cost = 0, 0, Decimal(0)
         self.cost_known = True
@@ -124,6 +125,8 @@ class Calls:
                 reservation(item['model'])
 
     def invoke(self, role, request, cwd):
+        require(all(p.is_file() and digest(p.read_bytes()) == sha for p, sha in self.runtime_files.items()),
+                'Evolution runtime changed during the run; start a fresh trial')
         budget = self.config['budget']
         remaining = budget['max_seconds'] - (time.monotonic() - self.started)
         require(self.count < budget['max_calls'] and remaining > 0, 'Run call/time budget exhausted')
@@ -141,6 +144,8 @@ class Calls:
         event(self.archive, 'call-start', record)
         try:
             output = run_runner(item['argv'], request, cwd, min(remaining, budget['timeout']))
+            require(all(p.is_file() and digest(p.read_bytes()) == sha for p, sha in self.runtime_files.items()),
+                    'Evolution runtime changed during the call; trial evidence is invalid')
             require(isinstance(output, dict), 'Runner output must be an object')
             if role == 'proposer':
                 self.last_proposal = output

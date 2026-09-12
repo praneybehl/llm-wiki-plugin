@@ -135,6 +135,13 @@ for e in events:
               **{r: {'argv': [sys.executable,str(SCRIPTS/'wiki_evolve_agent.py'),'claude'], 'model': 'sonnet'}
                  for r in ('inference','judge','maintainer','proposer')}}
     fails(lambda: loop.Calls(config, root), 'Hard USD budgets require')
+    config['budget']['max_usd'] = None
+    ledger = loop.Calls(config, root)
+    dependency = root/'runtime-helper.py'; dependency.write_text('original')
+    ledger.runtime_files[dependency] = lifecycle.digest(dependency.read_bytes())
+    dependency.write_text('edited during trial')
+    fails(lambda: ledger.invoke('judge', {}, root), 'runtime changed')
+    assert ledger.count == 0 and not list(root.glob('call-start-*.json'))
     # An unreservable call never reaches the provider; uncertain calls retain debit.
     api_request = dict(request, model='claude-sonnet-5', max_usd=.01, trace_path=str(root/'api.jsonl'))
     fails(lambda: api.execute(dict(api_request, max_usd=float('inf'))), 'finite')

@@ -9,3 +9,5 @@ Only `apply` changes the selected installed skill after a passing evaluation. A 
 See the installed skill's `references/evolution-workflow.md` for capture, consolidation, evaluation, promotion and recovery. An agent runner is a trusted local program. The copies supplied to it are not an operating-system sandbox.
 
 Apply/rollback also use a temporary `.wiki-evolve-lock/` in the target skill to coordinate changes from different wikis. After a process dies, inspect both this lock and the wiki lock before removing stale empty lock directories and retrying. This lock directory is excluded from skill snapshots.
+
+Each started trial also preserves its suite/runner configuration and a complete frozen `corpus/` under the experiment directory. Keep these private alongside the skill snapshots. Corpus hashes are rechecked during promotion. An interrupted trial is reported as incomplete and requires a new proposal ID; do not reuse partially recorded input artifacts.

@@ -292,7 +292,8 @@ def run_runner(argv, request, cwd, timeout):
 
 def evaluate(args, exp):
     value = manifest(exp)
-    require(not list(exp.glob('evaluation-*.json')), 'Evaluation already recorded; use a new proposal for a new trial')
+    require(not list(exp.glob('evaluation-*.json')) and not list(exp.glob('inputs-*.json')),
+            'Evaluation already recorded or started; use a new proposal for a new trial')
     require(not (exp / 'transition.json').exists(), 'Cannot evaluate a promoted experiment')
     suite_path = args.suite.resolve()
     suite = read_json(suite_path)
@@ -303,10 +304,17 @@ def evaluate(args, exp):
     finite(args.timeout, 'timeout')
     require(args.repeats >= 1 and args.timeout > 0, 'Positive repeats and timeout required')
     require(args.model.strip() and args.tools.strip(), 'Model and tool versions required')
-    # Freeze corpus once. Every rollout receives a fresh copy of both inputs.
+    suite_contract(suite, corpus)
+    # Preserve inputs before invoking a runner, including for failed/interrupted trials.
+    event(exp, 'inputs', {'suite': suite, 'model': args.model, 'tools': args.tools,
+                          'runner': runner, 'repeats': args.repeats, 'timeout': args.timeout,
+                          'proposal_sha256': digest((exp / 'proposal.json').read_bytes())})
+    corpus_hash = copy_tree(corpus, exp / 'corpus')
+    # Every rollout receives a fresh copy of the archived inputs.
     with tempfile.TemporaryDirectory(prefix='wiki-evaluation-') as tmp:
         workspace = Path(tmp)
-        corpus_hash = copy_tree(corpus, workspace / 'corpus')
+        require(copy_tree(exp / 'corpus', workspace / 'corpus') == corpus_hash,
+                'Archived corpus changed during preparation')
         tasks = suite_contract(suite, workspace / 'corpus')
         rows = []
         try:
@@ -330,6 +338,7 @@ def evaluate(args, exp):
                             rows.append({'task': task['id'], 'split': task['split'], 'repeat': repeat,
                                          'variant': variant, **result, 'output': output})
             manifest(exp)
+            require(tree(exp / 'corpus') == corpus_hash, 'Archived corpus changed during evaluation')
             totals = {}
             for split in ('validation', 'holdout'):
                 totals[split] = {variant: sum(r['passed'] for r in rows if r['split'] == split and r['variant'] == variant)
@@ -381,6 +390,7 @@ def promote(exp, value, rollback):
     require(len(records) == 1, 'A completed evaluation is required')
     report = read_json(records[0])
     require(report['status'] == 'passed', 'Evaluation did not pass; installed skill is unchanged')
+    require(tree(exp / 'corpus') == report['corpus'], 'Archived corpus changed after evaluation')
     require(report['proposal_sha256'] == digest((exp / 'proposal.json').read_bytes()), 'Proposal changed after evaluation')
     journal = exp / 'transition.json'
     current = read_json(journal) if journal.exists() else {'status': 'proposed'}
@@ -410,7 +420,7 @@ def history(state):
             continue
         value = read_json(exp / 'proposal.json')
         evaluations = [read_json(p) for p in exp.glob('evaluation-*.json')]
-        status = evaluations[0]['status'] if evaluations else 'proposed'
+        status = evaluations[0]['status'] if evaluations else ('incomplete' if list(exp.glob('inputs-*.json')) else 'proposed')
         if (exp / 'transition.json').exists():
             status = read_json(exp / 'transition.json')['status']
         rows.append({'id': value['id'], 'reason': value['reason'], 'target': value['target'],
@@ -458,7 +468,7 @@ def main():
                     if args.action == 'evaluate':
                         result = evaluate(args, exp)
                     elif args.action == 'show':
-                        result = {'proposal': manifest(exp), 'diff': (exp / 'change.diff').read_text(),
+                        result = {'proposal': manifest(exp), 'inputs': [read_json(p) for p in exp.glob('inputs-*.json')], 'diff': (exp / 'change.diff').read_text(),
                                   'evaluations': [read_json(p) for p in exp.glob('evaluation-*.json')]}
                     else:
                         result = transition(exp, rollback=args.action == 'rollback')

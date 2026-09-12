@@ -92,6 +92,14 @@ print(json.dumps({'answer':'correct' if 'candidate' in s else 'wrong',
             assert [p['slug'] for p in wiki_search.collect_pages(wiki)]==['lesson']
             assert len(wiki_lint.collect_pages(wiki)) == 1
             passed=evaluate(state,'good');assert passed['status']=='passed'
+            assert (state/'good/corpus/fact.md').read_text()=='correct'
+            assert list((state/'good').glob('inputs-*.json'))
+            (corpus/'fact.md').write_text('later source change')
+            assert (state/'good/corpus/fact.md').read_text()=='correct'
+            (corpus/'fact.md').write_text('correct')
+            (state/'good/corpus/fact.md').write_text('tampered')
+            fails(lambda:e.transition(state/'good'), 'Archived corpus changed')
+            (state/'good/corpus/fact.md').write_text('correct')
             assert passed['totals']['validation']=={'baseline':0,'candidate':2}
             fails(lambda:evaluate(state,'good'), 'already recorded')
             (skill/'SKILL.md').write_text('concurrent\n')
@@ -120,6 +128,8 @@ print(json.dumps({'answer':'correct' if 'candidate' in s else 'wrong',
                 fails(lambda:evaluate(state,name))
                 assert e.read_json(next((state/name).glob('evaluation-*.json')))['status']=='error'
                 fails(lambda:e.transition(state/name))
+                assert list((state/name).glob('inputs-*.json'))
+                assert (state/name/'corpus/fact.md').read_text()=='correct'
             proposal(state,'tamper')
             (state/'tamper/candidate/SKILL.md').write_text('tampered')
             fails(lambda:evaluate(state,'tamper'), 'snapshot changed')

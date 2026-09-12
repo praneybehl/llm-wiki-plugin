@@ -91,3 +91,5 @@ After each trial, write or update a synthesis page linking the motivating patter
 This workflow adapts persistent experience consolidation, evidence-linked procedures and measured promotion from [WikiSkill (Tang et al., 2026)](https://arxiv.org/html/2608.27454v1). It adds a bounded operator-driven workflow to the existing wiki; it is not a reproduction of that paper's optimizer or benchmark results.
 
 Apply/rollback also use a temporary `.wiki-evolve-lock/` in the target skill to coordinate changes from different wikis. After a process dies, inspect both this lock and the wiki lock before removing stale empty lock directories and retrying. This lock directory is excluded from skill snapshots.
+
+Each started trial also preserves its suite/runner configuration and a complete frozen `corpus/` under the experiment directory. Keep these private alongside the skill snapshots. Corpus hashes are rechecked during promotion. An interrupted trial is reported as incomplete and requires a new proposal ID; do not reuse partially recorded input artifacts.

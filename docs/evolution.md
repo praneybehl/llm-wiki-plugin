@@ -108,3 +108,5 @@ Apply and rollback verify the whole selected skill before replacing its target f
 See the complete agent procedure in [evolution-workflow.md](https://github.com/praneybehl/llm-wiki-plugin/blob/main/skills/llm-wiki/references/evolution-workflow.md). The design adapts ideas from [WikiSkill](https://arxiv.org/html/2608.27454v1), without reproducing its autonomous optimizer or claiming its benchmark gains.
 
 Apply/rollback also use a temporary `.wiki-evolve-lock/` in the target skill to coordinate changes from different wikis. After a process dies, inspect both this lock and the wiki lock before removing stale empty lock directories and retrying. This lock directory is excluded from skill snapshots.
+
+Each started trial also preserves its suite/runner configuration and a complete frozen `corpus/` under the experiment directory. Keep these private alongside the skill snapshots. Corpus hashes are rechecked during promotion. An interrupted trial is reported as incomplete and requires a new proposal ID; do not reuse partially recorded input artifacts.

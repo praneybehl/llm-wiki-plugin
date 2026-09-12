@@ -209,10 +209,6 @@ def execute(agent, request):
             except subprocess.TimeoutExpired:
                 output['agent_version'] = 'unknown'
         output['requested_model'] = request['model']
-        if role == 'proposer':
-            files = output.pop('files')
-            require(len({f['path'] for f in files}) == len(files), 'Duplicate proposed paths')
-            output['changes'] = {f['path']: f['content'] for f in files}
         if inference:
             output['skill_sha256'] = request.get('skill_sha256')
         return output

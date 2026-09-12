@@ -54,6 +54,12 @@ elif role=='maintainer':
 else:
     assert 'TEST_SECRET' not in json.dumps(r)
     o.update(changes={'SKILL.md':'learned','references/check.md':'Read source'},reason='Verify',evidence=['verify'])
+if 'files-format' in sys.argv and role=='proposer':
+    o['changes']['SKILL.md']='learned via file-list format'
+    o['files']=[{'path':k,'content':v} for k,v in o.pop('changes').items()]
+if 'duplicate-files' in sys.argv and role=='proposer':
+    o['files']=[{'path':'SKILL.md','content':'learned'},{'path':'SKILL.md','content':None}]
+    del o['changes']
 if 'invalid-skill' in sys.argv and role=='proposer':
     o['changes']['SKILL.md']=None
 if 'bad-quote' in sys.argv and role=='judge':
@@ -146,6 +152,18 @@ print(json.dumps(o))
     assert invalid_run['status']=='completed' and not invalid_run['skill_changed']
     assert invalid_run['test']['baseline']['total']==1 and invalid_run['test']['selected']['total']==1
     assert (skill/'SKILL.md').read_text()=='baseline'
+    for mode in ('duplicate-files','files-format'):
+        args.id = mode
+        suite['tasks'][2]['question'] += ' '+mode
+        suite_path.write_text(json.dumps(suite))
+        for role in ('inference','maintainer','proposer','judge'):
+            config[role]['argv'] = [sys.executable, str(runner), mode]
+        config_path.write_text(json.dumps(config))
+        measured = loop.run(args, state)
+        if mode == 'duplicate-files':
+            assert all('Duplicate' in h['invalid_reason'] for h in measured['history']) and not measured['skill_changed']
+        else:
+            assert measured['history'][0]['status']=='accepted' and measured['skill_changed']
     # Recover a real mixed multi-file transition, then refuse unrelated edits.
     candidate = state / 'cycle' / 'best'
     manual = SimpleNamespace(id='mixed', skill=skill, target=None, candidate=candidate, wiki=wiki,

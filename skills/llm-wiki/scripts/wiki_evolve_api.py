@@ -103,10 +103,6 @@ def execute(request, send=post):
         if finish:
             require(len(calls) == 1, 'Final result mixed with unfinished tool calls')
             output = finish[0]['input']
-            if request['role'] == 'proposer':
-                files = output.pop('files')
-                require(len({f['path'] for f in files}) == len(files), 'Duplicate proposed paths')
-                output['changes'] = {f['path']: f['content'] for f in files}
             return dict(output, usage=usage, cost=float(spent), events=observed, tool_calls=len(observed) // 2,
                         skill_sha256=request.get('skill_sha256'), actual_models=[result['model']], agent_version='messages-2023-06-01')
         messages.append({'role': 'assistant', 'content': blocks})

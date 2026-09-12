@@ -537,6 +537,12 @@ def run(args, state):
                 copy_tree(best, candidate)
                 try:
                     changes = proposal.get('changes')
+                    if 'files' in proposal:
+                        files = proposal['files']
+                        require(isinstance(files, list) and all(isinstance(f, dict) and isinstance(f.get('path'), str) for f in files),
+                                'Proposed files must contain string paths')
+                        require(len({f['path'] for f in files}) == len(files), 'Duplicate proposed file paths')
+                        changes = {f['path']: f['content'] for f in files}
                     require(isinstance(changes, dict) and changes, 'Proposer must return nonempty file changes')
                     require(isinstance(proposal.get('reason'), str) and proposal['reason'].strip(), 'Proposal reason required')
                     evidence = proposal.get('evidence')
@@ -563,6 +569,7 @@ def run(args, state):
                     # reason to lose the remaining cycle or skip the frozen test.
                     entry = {'iteration': iteration, 'status': 'rejected', 'invalid_reason': str(exc),
                              'reason': proposal.get('reason', 'Invalid proposal'), 'changes': proposal.get('changes', {}),
+                             'files': proposal.get('files'),
                              'evidence': proposal.get('evidence', []), 'fingerprint': fingerprint(candidate),
                              'baseline': fingerprint(best), 'run': args.id}
                     copy_tree(candidate, archive / f'invalid-candidate-{iteration}')

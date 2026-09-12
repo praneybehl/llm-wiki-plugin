@@ -150,6 +150,7 @@ class Calls:
             if role == 'proposer':
                 self.last_proposal = output
             require(type(output.get('tool_calls')) is int and output['tool_calls'] >= 0, 'Tool count required')
+            require(role != 'judge' or output['tool_calls'] == 0, 'Judge used tools; blinded comparison invalid')
             require(isinstance(output.get('events'), list), 'Observable event trace required')
             usage = output.get('usage', {})
             for key in ('input_tokens', 'output_tokens'):

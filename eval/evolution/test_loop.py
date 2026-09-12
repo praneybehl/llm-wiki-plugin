@@ -44,6 +44,7 @@ if role=='inference':
     if good and r.get('allow_write'):
         (Path(r['wiki_root'])/'result.json').write_text('{"value":42}')
 elif role=='judge':
+    o.update(tool_calls=0,events=[])
     assert 'skill_files' not in r and 'label' not in r
     o.update(passed=r['answer']=='42',reason='checked numerical value',evidence=[{'source':'source.md','quote':'42'}])
 elif role=='maintainer':
@@ -62,6 +63,8 @@ if 'duplicate-files' in sys.argv and role=='proposer':
     del o['changes']
 if 'invalid-skill' in sys.argv and role=='proposer':
     o['changes']['SKILL.md']=None
+if 'judge-tool' in sys.argv and role=='judge':
+    o.update(tool_calls=1,events=[{'type':'tool_use','name':'Read'}])
 if 'bad-quote' in sys.argv and role=='judge':
     o['evidence']=[{'source':'source.md','quote':'invented quotation'}]
 if 'outside-write' in sys.argv and role=='inference':
@@ -123,14 +126,14 @@ print(json.dumps(o))
     assert lifecycle.tree(args.skill) == {}
     args.id = 'reused-test'
     fails(lambda: loop.run(args, state), 'already exposed')
-    for mode, message in [('bad-quote', 'failed calibration'), ('outside-write', 'outside the task wiki')]:
+    for mode, message in [('bad-quote', 'failed calibration'), ('judge-tool', 'Judge used tools'), ('outside-write', 'outside the task wiki')]:
         args.id, args.skill = mode, skill
         suite['tasks'][2]['question'] += ' ' + mode
         suite_path.write_text(json.dumps(suite))
         for role in ('inference', 'maintainer', 'proposer', 'judge'):
             config[role]['argv'] = [sys.executable, str(runner), mode]
         config_path.write_text(json.dumps(config))
-        if mode == 'bad-quote':
+        if mode in ('bad-quote', 'judge-tool'):
             fails(lambda: loop.run(args, state), message)
             assert not (state / mode / 'selection.json').exists()
         else:

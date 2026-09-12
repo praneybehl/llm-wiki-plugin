@@ -55,23 +55,52 @@ Version 2 suites require separate `train`, `validation` and `test` tasks and pos
 
 The inference runner receives only the task, factual wiki, write permissions and complete skill content. It receives no rubric, split, expected answer, variant label or learning history. The adapter injects the complete skill and returns its hash; this verifies provisioning, not that the model obeyed every instruction. The prompt supplies execution boundaries and output format, without teaching the target procedure.
 
-The independent judge sees the question, rubric, answer and source text, without the skill or variant identity. It checks meaning and source support and returns a verdict with exact source quotations. The harness verifies those quotations exist, validates citations and abstention, and checks requested artifacts. This reduces keyword-matching errors; a calibrated model judge can still make mistakes. Review material failures and report sample size, models and repeated results alongside any claimed benefit.
+The independent judge sees the question, rubric, answer and source text, without the skill or variant identity. It checks meaning and source support and returns a verdict with exact source quotations. The harness verifies those quotations exist, validates citations and abstention, and checks requested artifacts. The judge also receives measured command output and hash-based integrity observations. In ingestion tasks, include the raw input in `sources` so faithful summarization can be checked against the capture itself. This reduces keyword-matching errors; a calibrated model judge can still make mistakes. Review material failures and report sample size, models and repeated results alongside any claimed benefit.
 
-Task output paths are relative to the supplied wiki root. Tasks may declare `allow_write` patterns and exact `artifacts` checks (`text`, parsed `json`, or `absent`). This supports ingestion, editing and generated outputs in fresh workspace copies. Undeclared changes fail the run. Original source files remain protected unless explicitly permitted by the task. Bash-capable adapters can exercise existing search scripts, including hybrid search when the copied skill and runtime dependencies are present.
+Task output paths are relative to the supplied wiki root. Tasks may declare `allow_write` patterns and `artifacts` checks: exact `text`/`json`, required text fragments (`contains`), recursive object/list membership (`json_subset`/`jsonl_subset`), or `absent`. Use `required_commands` to require fragments in actual shell-tool inputs, rather than accepting a claimed execution or a command quoted in source prose. This supports ingestion, editing and generated outputs in fresh workspace copies. Undeclared changes fail the run. Original source files remain protected unless explicitly permitted by the task. Regenerable `.wiki-cache/` writes are permitted in the isolated copy. Bash-capable adapters can exercise existing search scripts, including hybrid search when the copied skill and runtime dependencies are present.
+
+For workflow trials, set top-level `runtime_python` to an absolute interpreter with the pinned dependencies already installed, and run `setup_wiki.py` before inference to prepare the local model. Both variants receive the same interpreter. The runner disables ONNX telemetry and bytecode side effects. Agents are told to use the prepared runtime without installing packages or copying host caches.
 
 The repository fixture `eval/evolution/pilot/suite-v2.json` contains 23 fictional Lark tasks, including artifact creation. It is a public demonstration, not representative project knowledge or evidence of generalization. Replace it with a representative private corpus and independent tasks before making product decisions. Existing retrieval benchmarks remain separate.
 
+The additional `eval/evolution/workflows/` suite freezes 16 tasks against public repository contracts, including ingestion, source/concept provenance, index/log updates, graph compilation and actual hybrid-search output. Its source manifest identifies the public commit and hashes. The corresponding study protocol and results distinguish failed executions, infrastructure blockers and measured outcomes.
+
+Final reports include paired accuracy differences, task-cluster bootstrap intervals and paired randomization tests. Repeats are clustered by task, not counted as independent samples. The confidence threshold is adjusted across the primary and transfer comparisons. `benefit_demonstrated` requires an actual skill change and positive final evidence; passing implementation tests, a tied baseline or additional repeats cannot set it. These measurements describe the sampled tasks, not a universal performance guarantee.
+
 ## Agent adapters and budgets
 
-The shared adapter supports installed, authenticated Claude Code and Codex CLIs:
+The shared adapter accepts `claude`, `codex`, `cursor`, `gemini`, `opencode`, `pi`, `omp`, `hermes`, and `openclaw`. Each handles the four role contracts. Install and authenticate the corresponding host first; protocol tests do not substitute for a live account check.
 
 ```json
 {"argv":["python3","/absolute/skill/scripts/wiki_evolve_agent.py","codex"],"model":"EXACT_MODEL_ID"}
 ```
 
-Use `claude` as the final argument for Claude Code. Both handle all four roles, structured results, observable tool events and token usage. Claude reports inference USD; Codex CLI supplies tokens but no measured USD, so its cost is `null`, never a fabricated zero. The old `wiki_evolve_claude.py` entry point remains compatible and now uses the neutral shared adapter. Other agents can implement the same stdin/stdout JSON contract.
+| Adapter | Execution and model selection | Accounting |
+| --- | --- | --- |
+| Claude Code | `claude` stream JSON and native structured output | Reported tokens and USD |
+| Codex | `codex exec` JSON events and output schema | Tokens; USD unavailable |
+| Cursor | `cursor-agent` stream JSON; do not substitute an unrelated `agent` executable | Tokens/USD may be unavailable |
+| Gemini CLI | Headless stream JSON, explicit model, disabled discovered skills | Reported tokens; USD unavailable |
+| OpenCode | `opencode run --pure --format json`, explicit `provider/model` | Reported tokens and model cost |
+| Pi / OMP | Ephemeral JSON mode, restricted tool list, no discovered skills/extensions | Reported usage and model cost |
+| Hermes | Fresh ACP session with an authenticated host profile; explicit `provider:model` must resolve before inference | Completion token usage when exposed; USD unavailable |
+| OpenClaw | ACP bridge to a configured local gateway; fresh session and verified canonical `provider/model` via session RPC | Approximate context pressure is not treated as billed tokens; unavailable values remain null |
 
-One ledger counts inference, maintainer, proposer, judge calibration, validation, final testing and transfer calls. `max_calls` prevents further runner launches, `max_seconds` limits total runtime, and `timeout` limits each process group. Claude receives the remaining `max_usd` as its native budget limit. A USD-limited run fails closed if a runner cannot report cost or exceeds the limit. Codex requires `max_usd: null` and explicit call/time limits, suitable for an authorized subscription trial. A provider may bill an in-flight request beyond its CLI threshold; this is not an exact prepaid spending guarantee. Set account-side spending controls when a strict financial ceiling is required.
+A Hermes runner may set `"options":{"home":"/absolute/hermes-eval-profile"}` to use an existing profile with controlled settings; credentials are never copied or relocated by the adapter. An OpenClaw runner may set `"options":{"profile":"wiki-eval"}` to select an existing isolated gateway profile. The gateway must access the supplied local workspace, expose tool I/O, and permit the required operations under its own policy. ACP permission requests approve only scoped reads; mutation/exec requires a preconfigured bounded host policy. Model-setting failure stops before the task prompt. Hosts retain their own system policies; their absence cannot be inferred from a successful adapter response.
+
+Every observable tool event is appended and fsynced to `trace-NNNNN.jsonl` as it arrives. Timeout/crash records reference the surviving trace hash. Private reasoning and prompt echoes are excluded. Missing usage is `null`, never fabricated as zero; selection with an unavailable cost metric fails closed. The legacy `wiki_evolve_claude.py` entry point remains available.
+
+One ledger counts every role, calibration, validation, final test and transfer runner. `max_calls` stops additional runner launches, `max_seconds` bounds total runtime, and `timeout` kills each process group at its deadline, including detached descendants discovered before the parent exits. The host must permit process inspection for descendant cleanup. These are runner/process limits, not a count of a CLI's hidden internal model requests. CLI trials require `max_usd: null`: a CLI's after-the-request cost report or native threshold cannot establish a hard dollar ceiling.
+
+For a pre-request dollar ceiling, configure **every role and transfer runner** to use the bundled API runner:
+
+```json
+{"argv":["python3","/absolute/skill/scripts/wiki_evolve_api.py"],"model":"claude-sonnet-5"}
+```
+
+Set `budget.max_usd` and provide `ANTHROPIC_API_KEY` in the environment. Before each Messages request, the runner reserves the entire documented input-context limit plus its maximum output at reviewed first-party prices. A request that cannot be reserved is never sent. A completed response settles actual usage; a missing response retains the reservation and aborts the trial without retry. Decimal accounting prevents cumulative float admission errors. The conservative reservation requires at least $2.08192 remaining for Sonnet 5, even when the likely request cost is much smaller.
+
+The ceiling covers this runner's standard first-party inference at the pinned rates, excluding tax and unrelated account activity. It disables caching, server tools, premium routing and arbitrary shell execution; its inference tools read/list/write permitted wiki files. Use CLI runners for shell-based workflow evaluation. The reviewed price table expires on 2026-10-13 and rejects execution until reviewed again; unsupported models fail before inference. [Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing) documents the pricing and context assumptions. No API key or paid live API trial is bundled with the plugin.
 
 The adapters reduce ambient instructions and use native restricted/sandbox modes. Host-managed policy can still apply. Workspace copies, hashes and write checks are not a security sandbox for an arbitrary executable; runners are trusted local code. External model calls transmit the supplied context to the selected provider. Keep private sources, captures and credentials out of published fixtures.
 
@@ -82,6 +111,15 @@ Raw training observations are saved immutably under `raw/experiences/`. Source a
 Each run archive contains frozen configuration/corpus and evolution runtime scripts with hashes, observable call records, rollout artifacts, candidate snapshots, iteration decisions, selection and final results. Back up `.evolution/`; it is durable evidence, unlike `.wiki-cache/`. Ordinary search, lint, stats, graph tools and the Paperclip reader exclude this archive. Searchable lessons stay in normal wiki pages.
 
 Apply and rollback support additions, edits and deletions across one skill. They check the entire installed skill and refuse concurrent edits. A transition journal permits recovery from an interrupted multi-file write; the operation is recoverable, not atomic to unrelated readers. Stop concurrent use of the target skill during transition. Rerun the same apply or rollback after interruption. Inspect stale wiki and skill locks before removing an empty lock left by a dead process. Never edit evidence or snapshots to force a passing result.
+
+A completed run can be exported as one portable bundle:
+
+```bash
+python <skill-root>/scripts/wiki_evolve.py --wiki /path/to/wiki export query-cycle-01 --destination /path/to/new-bundle
+python <skill-root>/scripts/wiki_evolve.py verify-bundle /path/to/new-bundle
+```
+
+The bundle contains `skill/`, `evidence/` and a SHA-256 manifest covering every file. `PURPOSE.md`, pattern mappings, observable execution records, rejected attempts and frozen source context travel together. Only `bundle/skill` belongs in a later inference workspace; the audit archive includes exposed tests and must not be injected as skill instructions. Verification checks the manifest, not a digital signature or proof that an original observation was correct.
 
 ## Manual experience and proposals
 

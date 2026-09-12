@@ -1,0 +1,20 @@
+{
+  "registered_at": "2026-09-13",
+  "baseline_public_commit": "06369b2eb0617bf7b07b2b8a5c07f4aca1fb1bf0",
+  "iterations": 2,
+  "repeats": 2,
+  "tasks": {
+    "train": 4,
+    "validation": 4,
+    "test": 8
+  },
+  "primary_metric": "paired held-out task accuracy",
+  "unit": "task, with repeated executions clustered",
+  "confidence": "97.5% task-cluster bootstrap per agent; Bonferroni across two agents",
+  "positive_evidence": "selected skill changed, positive interval lower bound and paired randomization p < .025",
+  "selection": "strict validation improvement, no critical regressions, tool ratio <=1.5",
+  "cost_policy": "existing subscriptions only; no API inference; measured tokens and reported CLI costs, aggregate USD unknown",
+  "failure_policy": "retain every execution; do not optimize on final failures or replace final tasks; infrastructure failure invalidates study",
+  "preflight": "Training tasks only. Both agents executed ingestion, graph extraction and hybrid retrieval. Earlier runs exposed runtime provisioning, ONNX telemetry sidecar and missing judge observations; these infrastructure issues were fixed before this protocol freeze. The first study was interrupted during validation and never exposed final tasks.",
+  "calibration_revision": "Positive paraphrase explicitly answers the replacement question; the previous incomplete positive failed calibration before training/final testing."
+}

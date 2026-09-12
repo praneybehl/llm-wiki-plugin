@@ -2,7 +2,7 @@
 
 Turn PDFs, articles, transcripts, and notes into a shared wiki that your AI agents can search, cite, and keep up to date. Add a source once. Ask questions later. Keep the useful answers.
 
-Works with Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, and OMP. [Read the documentation](https://praneybehl.github.io/llm-wiki-plugin/).
+Works with Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, OMP, and Hermes. [Read the documentation](https://praneybehl.github.io/llm-wiki-plugin/).
 
 ## What is LLM Wiki?
 
@@ -15,9 +15,9 @@ Everything canonical stays in readable Markdown. Default semantic search is loca
 ## What's new in v3.2.0
 
 - **Learn from completed work.** `/wiki:learn` captures verified successes/failures and consolidates cited patterns, applicability and counterexamples.
-- **Turn evidence into tested procedures.** `/wiki:evolve` runs training, evidence consolidation, whole-skill proposals, validation, and independent final testing, retaining rejected attempts. Claude Code and Codex adapters support bounded runs and cross-agent transfer.
+- **Turn evidence into tested procedures.** `/wiki:evolve` runs training, evidence consolidation, whole-skill proposals, validation, and independent final testing, retaining rejected attempts. Adapters for nine supported agent hosts provide bounded runs, durable tool traces and cross-agent transfer; see the [execution requirements](https://praneybehl.github.io/llm-wiki-plugin/evolution.html).
 - **Explicit apply and rollback.** Only a reviewed, passing change can be applied; whole-skill snapshot checks prevent overwriting intervening edits.
-- **Runnable evaluation examples.** Separate training, validation and final-test tasks cover source-grounded answers and file artifacts, with calibrated judging and Claude Code/Codex runners. Fictional fixtures stay outside the installed skill.
+- **Runnable evaluation examples.** Separate training, validation and final-test tasks cover source-grounded answers and file artifacts, with calibrated judging, paired task-level analysis, and ingestion/graph/hybrid-search checks. Fictional fixtures stay outside the installed skill.
 - **Compatible upgrade.** Existing Markdown and commands remain valid. `/wiki:upgrade` adds optional templates and archive guidance idempotently.
 
 See [Learning and skill evolution](https://praneybehl.github.io/llm-wiki-plugin/evolution.html) for the full workflow, evaluation limits and inference costs. This release adds tooling; it does not claim measured model gains.

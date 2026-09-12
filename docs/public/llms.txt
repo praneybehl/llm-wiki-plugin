@@ -11,7 +11,7 @@ The canonical project is https://github.com/praneybehl/llm-wiki-plugin. The docu
 - [Commands](https://praneybehl.github.io/llm-wiki-plugin/commands.html): Reference for `/wiki:init`, `/wiki:ingest`, `/wiki:query`, `/wiki:lint`, `/wiki:stats`, `/wiki:graph`, `/wiki:upgrade`, `/wiki:learn`, and `/wiki:evolve`.
 - [Workflows](https://praneybehl.github.io/llm-wiki-plugin/workflows.html): Step-by-step ingest, query, and maintenance behavior.
 
-- [Learning and skill evolution](https://praneybehl.github.io/llm-wiki-plugin/evolution.html): Bounded training, persistent evidence consolidation, whole-skill proposals, validation selection, independent final tests and cross-agent transfer. Includes Claude Code/Codex adapters, calibrated judging, artifact checks, budgets and recovery.
+- [Learning and skill evolution](https://praneybehl.github.io/llm-wiki-plugin/evolution.html): Bounded training, persistent evidence consolidation, whole-skill proposals, validation selection, independent final tests and cross-agent transfer. Includes nine host adapters, durable interrupted traces, calibrated judging, ingestion/graph/hybrid-search checks, paired task-level analysis, pre-request API spending reservations and recovery.
 
 ## Retrieval and structure
 

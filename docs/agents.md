@@ -7,7 +7,7 @@ description: Which coding agents support the llm-wiki skill, how to install for 
 
 # Agents
 
-The `llm-wiki` skill uses the standard [agentskills.io](https://agentskills.io) format, so it runs in every agent below. All ten operational tools are available through the installed skill: init/runtime setup, hybrid or lexical search, structural lint, stats, graph lint, graph extraction, and graph query. Dependency-bearing scripts use pinned PEP 723 environments through `uv run --script`.
+The `llm-wiki` skill uses the standard [agentskills.io](https://agentskills.io) format, so it runs in every agent below. The wiki operations are available through the installed skill: init/runtime setup, hybrid or lexical search, structural lint, stats, graph lint, graph extraction, and graph query. Dependency-bearing scripts use pinned PEP 723 environments through `uv run --script`.
 
 ## Support matrix
 
@@ -21,6 +21,7 @@ The `llm-wiki` skill uses the standard [agentskills.io](https://agentskills.io) 
 | OpenClaw | `openclaw` | auto-exposed as a user command | ✅ |
 | Pi Agent | `pi` | `/skill:llm-wiki` or natural language | ✅ |
 | OMP ("Oh My Pi") | manual (see below) | natural language (skills auto-surface via `skill://`) | ✅ |
+| Hermes Agent | manual (see below) | natural language | ✅ |
 
 OpenCode also reads `.claude/skills/` and `~/.claude/skills/`, so a Claude Code install works there without a second install.
 
@@ -80,4 +81,4 @@ Slash commands are Claude Code–only. Everywhere else, invoke the skill by natu
 
 ## Experience and procedure improvements
 
-All listed skill-compatible agents can run `/wiki:learn` and `/wiki:evolve` workflows through natural language using the installed `references/evolution-workflow.md` and `scripts/wiki_evolve.py`. Only Claude Code has the literal slash commands. Capture and lifecycle tooling use Python stdlib. The optional Claude evaluation adapter needs an authenticated Claude CLI; other models implement the documented JSON runner contract. No new agent integration is required to capture lessons. See [Learning and skill evolution](/evolution).
+All listed skill-compatible agents can run `/wiki:learn` and `/wiki:evolve` workflows through natural language using the installed `references/evolution-workflow.md` and `scripts/wiki_evolve.py`. Only Claude Code has the literal slash commands. Capture and lifecycle tooling use Python stdlib. The shared evaluation adapter includes all nine hosts. Their installed versions, authentication, permitted tools and reported accounting differ; see the evolution execution requirements and live-study report. No new agent integration is required to capture lessons. See [Learning and skill evolution](/evolution).

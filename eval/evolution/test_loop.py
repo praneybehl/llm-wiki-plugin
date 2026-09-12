@@ -71,7 +71,7 @@ print(json.dumps(o))
                                  sources=['source.md'], citations=['source.md'], passed=passed)
                             for answer, passed in [('42', True), ('0', False)]]
     config = {'iterations': 2, 'repeats': 1, 'budget': {'max_calls': 40, 'max_seconds': 30,
-              'timeout': 5, 'max_usd': 1},
+              'timeout': 5, 'max_usd': None},
               **{role: {'argv': [sys.executable, str(runner)], 'model': 'offline-test'}
                  for role in ('inference', 'maintainer', 'proposer', 'judge')}}
     suite_path, config_path = root / 'suite.json', root / 'config.json'
@@ -113,8 +113,7 @@ print(json.dumps(o))
     assert lifecycle.tree(args.skill) == {}
     args.id = 'reused-test'
     fails(lambda: loop.run(args, state), 'already exposed')
-    for mode, message in [('bad-quote', 'failed calibration'), ('outside-write', 'outside the task wiki'),
-                          ('missing-cost', 'omitted cost')]:
+    for mode, message in [('bad-quote', 'failed calibration'), ('outside-write', 'outside the task wiki')]:
         args.id, args.skill = mode, skill
         suite['tasks'][2]['question'] += ' ' + mode
         suite_path.write_text(json.dumps(suite))
@@ -151,4 +150,12 @@ print(json.dumps(o))
     assert parsed['tool_calls'] == 1 and parsed['cost'] is None
     assert 'private' not in json.dumps(parsed)
     assert parsed['events'][0]['item']['aggregated_output'] == '42'
+    bundle = root/'portable'
+    lifecycle.export_bundle(state/'cycle', bundle)
+    assert lifecycle.verify_bundle(bundle)['status'] == 'verified'
+    assert (bundle/'skill/PURPOSE.md').is_file() and (bundle/'evidence/patterns.json').is_file()
+    (bundle/'skill/SKILL.md').write_text('tampered')
+    fails(lambda: lifecycle.verify_bundle(bundle), 'Bundle evidence or skill changed')
+    (state/'cycle/corpus/source.md').write_text('tampered')
+    fails(lambda: lifecycle.export_bundle(state/'cycle', root/'bad-export'), 'Archived corpus changed')
 print('Complete evolution cycle, isolation, artifacts, budget, full-skill apply/rollback, new skill and adapter parsing: PASS')

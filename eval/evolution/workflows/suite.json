@@ -1,0 +1,530 @@
+{
+  "version": 2,
+  "corpus": "wiki",
+  "tasks": [
+    {
+      "id": "train-cache",
+      "split": "train",
+      "question": "Can a missing semantic cache be restored, and where does authoritative content live?",
+      "rubric": "Explain regenerable cache, canonical Markdown and local retrieval. Cite retrieval source.",
+      "sources": [
+        "sources/retrieval.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "train-pages",
+      "split": "train",
+      "question": "Which metadata is shared by all curated page types?",
+      "rubric": "List type,title,tags,created,updated with schema citation.",
+      "sources": [
+        "sources/schema.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "train-absent",
+      "split": "train",
+      "question": "What guaranteed percentage improvement does this project establish for every model?",
+      "rubric": "Abstain: the supplied sources establish no universal numerical improvement.",
+      "sources": [],
+      "abstain": true
+    },
+    {
+      "id": "train-link-ingest",
+      "split": "train",
+      "question": "Ingest raw/links.txt into sources/ingested-train-link-ingest.md. Create concepts/train-link-ingest.md explaining the applicable workflow and citing the new source. Update index.md and log.md. Preserve all existing source pages and raw files. Run the supplied wiki_graph_extract.py with --formats jsonl, then run wiki_search.py with --cache --json using hybrid retrieval for \"path-qualified wikilinks\" and save its actual stdout to outputs/train-link-ingest.json. Report the result and cite the new source. Use the existing schema and supplied skill scripts; dependencies and embeddings are available offline.",
+      "rubric": "The new source faithfully summarizes raw/links.txt, records its raw path and ingestion metadata, and the concept cites it. The index and log include the new pages. Graph extraction and hybrid search actually ran. Saved search output has mode hybrid. The final answer accurately describes the completed work, supported by the new source.",
+      "sources": [
+        "sources/links.md",
+        "raw/links.txt"
+      ],
+      "abstain": false,
+      "allow_write": [
+        "sources/ingested-train-link-ingest.md",
+        "concepts/train-link-ingest.md",
+        "index.md",
+        "log.md",
+        "graph/*.jsonl",
+        "outputs/train-link-ingest.json"
+      ],
+      "required_commands": [
+        [
+          "wiki_graph_extract.py",
+          "--formats",
+          "jsonl"
+        ],
+        [
+          "wiki_search.py",
+          "--json",
+          "--cache"
+        ]
+      ],
+      "artifacts": [
+        {
+          "path": "sources/ingested-train-link-ingest.md",
+          "kind": "contains",
+          "equals": [
+            "type: source",
+            "raw/links.txt",
+            "ingested:"
+          ]
+        },
+        {
+          "path": "concepts/train-link-ingest.md",
+          "kind": "contains",
+          "equals": [
+            "type: concept",
+            "ingested-train-link-ingest"
+          ]
+        },
+        {
+          "path": "index.md",
+          "kind": "contains",
+          "equals": [
+            "ingested-train-link-ingest",
+            "train-link-ingest"
+          ]
+        },
+        {
+          "path": "log.md",
+          "kind": "contains",
+          "equals": [
+            "train-link-ingest"
+          ]
+        },
+        {
+          "path": "graph/nodes.jsonl",
+          "kind": "jsonl_subset",
+          "equals": [
+            {
+              "path": "sources/ingested-train-link-ingest.md"
+            },
+            {
+              "path": "concepts/train-link-ingest.md"
+            }
+          ]
+        },
+        {
+          "path": "outputs/train-link-ingest.json",
+          "kind": "json_subset",
+          "equals": {
+            "mode": "hybrid"
+          }
+        }
+      ]
+    },
+    {
+      "id": "val-version",
+      "split": "validation",
+      "question": "Does an additive optional workflow require a major release, and which records must change?",
+      "rubric": "Choose minor, identify three JSON files/four version fields plus changelog; cite releases.",
+      "sources": [
+        "sources/releases.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "val-counts",
+      "split": "validation",
+      "question": "What does a ready runtime setup verify about sections and vectors?",
+      "rubric": "Explain vector consistency and relevant setup outputs without inventing counts.",
+      "sources": [
+        "sources/runtime.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "val-citation",
+      "split": "validation",
+      "question": "Should a link to raw/foo bind to a curated sources/foo page when raw/foo is absent?",
+      "rubric": "No: directory prefix constrains exact resolution; do not silently substitute another path.",
+      "sources": [
+        "sources/links.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "val-ingest-process",
+      "split": "validation",
+      "question": "Ingest raw/ingestion.txt into sources/ingested-val-ingest-process.md. Create concepts/val-ingest-process.md explaining the applicable workflow and citing the new source. Update index.md and log.md. Preserve all existing source pages and raw files. Run the supplied wiki_graph_extract.py with --formats jsonl, then run wiki_search.py with --cache --json using hybrid retrieval for \"immutable captured raw sources\" and save its actual stdout to outputs/val-ingest-process.json. Report the result and cite the new source. Use the existing schema and supplied skill scripts; dependencies and embeddings are available offline.",
+      "rubric": "The new source faithfully summarizes raw/ingestion.txt, records its raw path and ingestion metadata, and the concept cites it. The index and log include the new pages. Graph extraction and hybrid search actually ran. Saved search output has mode hybrid. The final answer accurately describes the completed work, supported by the new source.",
+      "sources": [
+        "sources/ingestion.md",
+        "raw/ingestion.txt"
+      ],
+      "abstain": false,
+      "allow_write": [
+        "sources/ingested-val-ingest-process.md",
+        "concepts/val-ingest-process.md",
+        "index.md",
+        "log.md",
+        "graph/*.jsonl",
+        "outputs/val-ingest-process.json"
+      ],
+      "required_commands": [
+        [
+          "wiki_graph_extract.py",
+          "--formats",
+          "jsonl"
+        ],
+        [
+          "wiki_search.py",
+          "--json",
+          "--cache"
+        ]
+      ],
+      "artifacts": [
+        {
+          "path": "sources/ingested-val-ingest-process.md",
+          "kind": "contains",
+          "equals": [
+            "type: source",
+            "raw/ingestion.txt",
+            "ingested:"
+          ]
+        },
+        {
+          "path": "concepts/val-ingest-process.md",
+          "kind": "contains",
+          "equals": [
+            "type: concept",
+            "ingested-val-ingest-process"
+          ]
+        },
+        {
+          "path": "index.md",
+          "kind": "contains",
+          "equals": [
+            "ingested-val-ingest-process",
+            "val-ingest-process"
+          ]
+        },
+        {
+          "path": "log.md",
+          "kind": "contains",
+          "equals": [
+            "val-ingest-process"
+          ]
+        },
+        {
+          "path": "graph/nodes.jsonl",
+          "kind": "jsonl_subset",
+          "equals": [
+            {
+              "path": "sources/ingested-val-ingest-process.md"
+            },
+            {
+              "path": "concepts/val-ingest-process.md"
+            }
+          ]
+        },
+        {
+          "path": "outputs/val-ingest-process.json",
+          "kind": "json_subset",
+          "equals": {
+            "mode": "hybrid"
+          }
+        }
+      ]
+    },
+    {
+      "id": "test-retrieval",
+      "split": "test",
+      "question": "Explain how lexical and semantic evidence become a ranked query result, and how a caller can inspect provenance.",
+      "rubric": "Mention BM25, local FastEmbed, reciprocal rank fusion and JSON retrieval provenance. Cite source.",
+      "sources": [
+        "sources/retrieval.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "test-source-policy",
+      "split": "test",
+      "question": "A new source disagrees with an existing concept. Should ingestion erase the original capture or silently replace the old claim?",
+      "rubric": "Preserve raw sources and explicitly retain conflict with evidence; do not silently erase history.",
+      "sources": [
+        "sources/ingestion.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "test-metadata",
+      "split": "test",
+      "question": "How do source and concept provenance fields differ, and when must a page be split?",
+      "rubric": "Source raw and ingestion metadata; concepts cite source summaries; 800-line hard cap.",
+      "sources": [
+        "sources/schema.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "test-price-unknown",
+      "split": "test",
+      "question": "What is the precise dollar cost of every local hybrid-search query?",
+      "rubric": "Abstain on exact dollars: no dollar tariff is given; local embeddings do not establish a precise total machine cost.",
+      "sources": [],
+      "abstain": true
+    },
+    {
+      "id": "test-release-ingest",
+      "split": "test",
+      "question": "Ingest raw/releases.txt into sources/ingested-test-release-ingest.md. Create concepts/test-release-ingest.md explaining the applicable workflow and citing the new source. Update index.md and log.md. Preserve all existing source pages and raw files. Run the supplied wiki_graph_extract.py with --formats jsonl, then run wiki_search.py with --cache --json using hybrid retrieval for \"minor release version changelog\" and save its actual stdout to outputs/test-release-ingest.json. Report the result and cite the new source. Use the existing schema and supplied skill scripts; dependencies and embeddings are available offline.",
+      "rubric": "The new source faithfully summarizes raw/releases.txt, records its raw path and ingestion metadata, and the concept cites it. The index and log include the new pages. Graph extraction and hybrid search actually ran. Saved search output has mode hybrid. The final answer accurately describes the completed work, supported by the new source.",
+      "sources": [
+        "sources/releases.md",
+        "raw/releases.txt"
+      ],
+      "abstain": false,
+      "allow_write": [
+        "sources/ingested-test-release-ingest.md",
+        "concepts/test-release-ingest.md",
+        "index.md",
+        "log.md",
+        "graph/*.jsonl",
+        "outputs/test-release-ingest.json"
+      ],
+      "required_commands": [
+        [
+          "wiki_graph_extract.py",
+          "--formats",
+          "jsonl"
+        ],
+        [
+          "wiki_search.py",
+          "--json",
+          "--cache"
+        ]
+      ],
+      "artifacts": [
+        {
+          "path": "sources/ingested-test-release-ingest.md",
+          "kind": "contains",
+          "equals": [
+            "type: source",
+            "raw/releases.txt",
+            "ingested:"
+          ]
+        },
+        {
+          "path": "concepts/test-release-ingest.md",
+          "kind": "contains",
+          "equals": [
+            "type: concept",
+            "ingested-test-release-ingest"
+          ]
+        },
+        {
+          "path": "index.md",
+          "kind": "contains",
+          "equals": [
+            "ingested-test-release-ingest",
+            "test-release-ingest"
+          ]
+        },
+        {
+          "path": "log.md",
+          "kind": "contains",
+          "equals": [
+            "test-release-ingest"
+          ]
+        },
+        {
+          "path": "graph/nodes.jsonl",
+          "kind": "jsonl_subset",
+          "equals": [
+            {
+              "path": "sources/ingested-test-release-ingest.md"
+            },
+            {
+              "path": "concepts/test-release-ingest.md"
+            }
+          ]
+        },
+        {
+          "path": "outputs/test-release-ingest.json",
+          "kind": "json_subset",
+          "equals": {
+            "mode": "hybrid"
+          }
+        }
+      ]
+    },
+    {
+      "id": "test-runtime-ingest",
+      "split": "test",
+      "question": "Ingest raw/runtime.txt into sources/ingested-test-runtime-ingest.md. Create concepts/test-runtime-ingest.md explaining the applicable workflow and citing the new source. Update index.md and log.md. Preserve all existing source pages and raw files. Run the supplied wiki_graph_extract.py with --formats jsonl, then run wiki_search.py with --cache --json using hybrid retrieval for \"vector consistency sections model\" and save its actual stdout to outputs/test-runtime-ingest.json. Report the result and cite the new source. Use the existing schema and supplied skill scripts; dependencies and embeddings are available offline.",
+      "rubric": "The new source faithfully summarizes raw/runtime.txt, records its raw path and ingestion metadata, and the concept cites it. The index and log include the new pages. Graph extraction and hybrid search actually ran. Saved search output has mode hybrid. The final answer accurately describes the completed work, supported by the new source.",
+      "sources": [
+        "sources/runtime.md",
+        "raw/runtime.txt"
+      ],
+      "abstain": false,
+      "allow_write": [
+        "sources/ingested-test-runtime-ingest.md",
+        "concepts/test-runtime-ingest.md",
+        "index.md",
+        "log.md",
+        "graph/*.jsonl",
+        "outputs/test-runtime-ingest.json"
+      ],
+      "required_commands": [
+        [
+          "wiki_graph_extract.py",
+          "--formats",
+          "jsonl"
+        ],
+        [
+          "wiki_search.py",
+          "--json",
+          "--cache"
+        ]
+      ],
+      "artifacts": [
+        {
+          "path": "sources/ingested-test-runtime-ingest.md",
+          "kind": "contains",
+          "equals": [
+            "type: source",
+            "raw/runtime.txt",
+            "ingested:"
+          ]
+        },
+        {
+          "path": "concepts/test-runtime-ingest.md",
+          "kind": "contains",
+          "equals": [
+            "type: concept",
+            "ingested-test-runtime-ingest"
+          ]
+        },
+        {
+          "path": "index.md",
+          "kind": "contains",
+          "equals": [
+            "ingested-test-runtime-ingest",
+            "test-runtime-ingest"
+          ]
+        },
+        {
+          "path": "log.md",
+          "kind": "contains",
+          "equals": [
+            "test-runtime-ingest"
+          ]
+        },
+        {
+          "path": "graph/nodes.jsonl",
+          "kind": "jsonl_subset",
+          "equals": [
+            {
+              "path": "sources/ingested-test-runtime-ingest.md"
+            },
+            {
+              "path": "concepts/test-runtime-ingest.md"
+            }
+          ]
+        },
+        {
+          "path": "outputs/test-runtime-ingest.json",
+          "kind": "json_subset",
+          "equals": {
+            "mode": "hybrid"
+          }
+        }
+      ]
+    },
+    {
+      "id": "test-edit-policy",
+      "split": "test",
+      "question": "Correct concepts/runtime-policy.md using the current sources/retrieval.md contract. Preserve its metadata and source link, explicitly identify the former cache-authoritative assertion as incorrect, and state the current authority and regeneration policy. Update log.md and cite the corrected concept and its supporting source.",
+      "rubric": "The saved concept explicitly corrects the stale claim: Markdown remains authoritative and the cache is regenerable. It preserves concept metadata and a source citation, retains an explicit correction/history note and updates the log. No raw or unrelated source is modified.",
+      "sources": [
+        "sources/retrieval.md"
+      ],
+      "abstain": false,
+      "allow_write": [
+        "concepts/runtime-policy.md",
+        "log.md"
+      ],
+      "artifacts": [
+        {
+          "path": "concepts/runtime-policy.md",
+          "kind": "contains",
+          "equals": [
+            "type: concept",
+            "sources/retrieval"
+          ]
+        },
+        {
+          "path": "log.md",
+          "kind": "contains",
+          "equals": [
+            "runtime-policy"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "test-runtime-audit",
+      "split": "test",
+      "question": "Run the supplied setup_wiki.py against this wiki using the prepared offline runtime. Save its actual JSON stdout to outputs/runtime-audit.json. Explain what was verified, including whether the reported vector count matches the indexed section count, and cite the runtime source.",
+      "rubric": "The actual setup command completed with status ready and the pinned dependency versions. The answer accurately describes local model and section/vector consistency without inventing a count.",
+      "sources": [
+        "sources/runtime.md"
+      ],
+      "abstain": false,
+      "allow_write": [
+        "outputs/runtime-audit.json"
+      ],
+      "required_commands": [
+        [
+          "setup_wiki.py",
+          "--wiki"
+        ]
+      ],
+      "artifacts": [
+        {
+          "path": "outputs/runtime-audit.json",
+          "kind": "json_subset",
+          "equals": {
+            "status": "ready",
+            "dependencies": {
+              "fastembed": "0.8.0",
+              "pyyaml": "6.0.3",
+              "sqlite-vec": "0.1.9"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "calibration": [
+    {
+      "question": "Can the cache replace the Markdown?",
+      "rubric": "Markdown is authoritative; cache is regenerable and cannot replace it.",
+      "answer": "No. Keep Markdown as the source of truth; a lost cache is only a rebuildable derivative.",
+      "sources": [
+        "sources/retrieval.md"
+      ],
+      "citations": [
+        "sources/retrieval.md"
+      ],
+      "abstain": false,
+      "passed": true
+    },
+    {
+      "question": "Can the cache replace the Markdown?",
+      "rubric": "Markdown is authoritative; cache is regenerable and cannot replace it.",
+      "answer": "Markdown is canonical, so delete the Markdown after saving the authoritative cache.",
+      "sources": [
+        "sources/retrieval.md"
+      ],
+      "citations": [
+        "sources/retrieval.md"
+      ],
+      "abstain": false,
+      "passed": false
+    }
+  ]
+}

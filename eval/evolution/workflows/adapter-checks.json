@@ -1,0 +1,93 @@
+{
+  "date": "2026-09-13",
+  "scope": "One-task adapter checks and training workflow preflights, not quality-improvement evidence.",
+  "checks": [
+    {
+      "host": "pi",
+      "status": "completed",
+      "model": "openai-codex/gpt-5.5",
+      "evidence_sha256": "b24e47a0d27a71c4002611f7693ffd9d27edba1e5ca7d7c35e44804cd3acee78",
+      "answer": "The approved retention period is 37 days.",
+      "citations": [
+        "source.md"
+      ],
+      "tool_calls": 1,
+      "usage": {
+        "input_tokens": 2721,
+        "output_tokens": 72
+      },
+      "agent_version": ""
+    },
+    {
+      "host": "omp",
+      "status": "completed",
+      "model": "openai-codex/gpt-5.5",
+      "evidence_sha256": "6e820b36d94f707367c99d4b112f17f69bed8eba94398a7e0d65bb3b1bd47da2",
+      "answer": "The approved retention period is 37 days.",
+      "citations": [
+        "source.md"
+      ],
+      "tool_calls": 1,
+      "usage": {
+        "input_tokens": 26165,
+        "output_tokens": 78
+      },
+      "agent_version": "omp/18.1.16"
+    },
+    {
+      "host": "cursor",
+      "status": "failed",
+      "model": "auto",
+      "evidence_sha256": "6c1a317fe42562039d213f11ff98932c9a0a9422dbf7a67bbaa8d25534348e6f",
+      "blocker": "Headless CLI requests interactive sign-in despite status reporting an account."
+    },
+    {
+      "host": "gemini",
+      "status": "failed",
+      "model": "gemini-2.5-flash",
+      "evidence_sha256": "0ddfecd34361b76dac424da6db66fb351dadcd4bf5c7fe35c4b0bcc12cdb7d69",
+      "blocker": "Provider rejects the installed Code Assist individual client; a supported credential/client is required."
+    },
+    {
+      "host": "opencode",
+      "status": "failed",
+      "model": "openai/gpt-5.4-mini",
+      "evidence_sha256": "409d42687d02e39574d43a9304ee845aec1fbd33dcb3e27b0147eebacd0e6fe4",
+      "blocker": "OAuth refresh returns HTTP 401."
+    },
+    {
+      "host": "hermes",
+      "status": "failed",
+      "model": "openai-codex:gpt-5.5",
+      "evidence_sha256": "8853dc2e82c6fbbc573f0feb6e2b4a33ddb8f42da70c5568b14936e575ae6909",
+      "blocker": "Installed host profile does not resolve the requested provider:model; adapter stops before inference."
+    },
+    {
+      "host": "codex",
+      "status": "workflow-execution-observed",
+      "scope": "Training preflight executed ingestion, graph compilation and hybrid retrieval. Original aggregate verdicts include infrastructure/judge failures; see README.",
+      "evidence": {
+        "call-result-a59f7696599849f888cf55fee0777d9d.json": "88fabc465e285f1b1d68bdf74dad8e884c451cd596eee387c34e09bfa90db07e"
+      }
+    },
+    {
+      "host": "claude",
+      "status": "workflow-execution-observed",
+      "scope": "Training preflight executed ingestion, graph compilation and hybrid retrieval. Original aggregate verdicts include infrastructure/judge failures; see README.",
+      "evidence": {
+        "call-result-4d4816e037fe4924a2f09e73d6bd33cd.json": "52f008a77c1eb72afd7a2712cd9646adc9e526dde7bd106bd75f3ff7891ed98a",
+        "call-result-781d2ea5be5a4d24b1e38f1f8952e523.json": "71f9957e95860bb6b1c17b09995676ce341ccdae7b096c0a817607d317ba08f5"
+      }
+    },
+    {
+      "host": "openclaw",
+      "status": "not-run",
+      "blocker": "CLI and configured gateway unavailable; ACP bridge covered by protocol test only."
+    },
+    {
+      "host": "bounded-api",
+      "status": "not-run",
+      "blocker": "No Anthropic API key or paid live API authorization; reservation and request contracts tested offline."
+    }
+  ]
+}

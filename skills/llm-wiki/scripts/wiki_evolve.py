@@ -292,10 +292,27 @@ def run_runner(argv, request, cwd, timeout):
     try:
         stdout, stderr = process.communicate(encode(request), timeout=timeout)
         if process.returncode:
-            raise ValueError(f'Runner exited {process.returncode}; no skill was applied')
+            raise ValueError(f'Runner exited {process.returncode}; no skill was applied. {stderr[-4000:]}')
         return json.loads(stdout)
     except BaseException:
         if os.name == 'posix':
+            # Native CLIs can detach shell tools into another process group.
+            # Snapshot descendants BEFORE killing their parent, or they become
+            # unidentifiable orphans. The host must permit process inspection.
+            try:
+                rows = subprocess.check_output(['ps', '-eo', 'pid=,ppid='], text=True, stderr=subprocess.DEVNULL)
+                parents = {int(pid): int(ppid) for pid, ppid in (line.split() for line in rows.splitlines())}
+                descendants, frontier = [], [process.pid]
+                while frontier:
+                    frontier = [pid for pid, parent in parents.items() if parent in frontier and pid not in descendants]
+                    descendants.extend(frontier)
+                for pid in reversed(descendants):
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+            except (OSError, subprocess.SubprocessError):
+                pass
             try:
                 os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
@@ -470,6 +487,36 @@ def history(state):
     return rows
 
 
+def export_bundle(exp, destination):
+    """Keep executable skill and portable audit evidence in separate directories."""
+    records = run_records(exp)
+    require((exp / 'selection.json').is_file() and records and records[-1].get('status') == 'completed',
+            'Export requires a completed loop run')
+    require(tree(exp/'corpus') == records[-1]['corpus'], 'Archived corpus changed')
+    require(tree(exp/'runtime') == read_json(exp/'runtime-hashes.json'), 'Archived runtime changed')
+    destination = destination.absolute()
+    require(not destination.exists() and not destination.is_symlink(), 'Export destination must be new')
+    require(not destination.resolve().is_relative_to(exp.resolve()), 'Export cannot be inside its archive')
+    require(tree(exp/'best') == read_json(exp/'selection.json')['skill'], 'Selected skill changed after selection')
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='.export-', dir=destination.parent) as tmp:
+        staging = Path(tmp)/'bundle'
+        copy_tree(exp/'best', staging/'skill')
+        copy_tree(exp, staging/'evidence')
+        hashes = {name: value['sha256'] for name, value in tree(staging).items()}
+        atomic(staging/'bundle.json', encode({'version':1,'skill':'skill','evidence':'evidence','sha256':hashes}).encode())
+        staging.rename(destination)
+    return {'bundle':str(destination),'files':len(hashes),'skill':str(destination/'skill')}
+
+
+def verify_bundle(path):
+    manifest = read_json(path/'bundle.json')
+    require(manifest.get('version') == 1, 'Unsupported bundle version')
+    hashes = {name:value['sha256'] for name,value in tree(path).items() if name != 'bundle.json'}
+    require(hashes == manifest.get('sha256'), 'Bundle evidence or skill changed')
+    return {'status':'verified','files':len(hashes)}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--wiki', type=Path, default=Path('wiki'))
@@ -495,9 +542,15 @@ def main():
     for action in ('apply', 'rollback', 'show'):
         sub.add_parser(action).add_argument('id')
     sub.add_parser('history')
+    p = sub.add_parser('export', help='Export a completed loop skill with its portable evidence archive')
+    p.add_argument('id')
+    p.add_argument('--destination', type=Path, required=True)
+    sub.add_parser('verify-bundle', help='Verify every exported evidence and skill file').add_argument('path', type=Path)
     args = parser.parse_args()
     try:
-        if args.action == 'capture':
+        if args.action == 'verify-bundle':
+            result = verify_bundle(args.path)
+        elif args.action == 'capture':
             result = capture(args)
         else:
             args.wiki = args.wiki.resolve()
@@ -510,6 +563,8 @@ def main():
                     exp = inside(state, slug(args.id))
                     if args.action == 'evaluate':
                         result = evaluate(args, exp)
+                    elif args.action == 'export':
+                        result = export_bundle(exp, args.destination)
                     elif args.action == 'show' and (exp / 'run-inputs.json').exists():
                         result = {'inputs': read_json(exp / 'run-inputs.json'), 'results': run_records(exp),
                                   'iterations': [read_json(p) for p in exp.glob('iteration-*.json')],

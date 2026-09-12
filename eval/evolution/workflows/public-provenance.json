@@ -1,0 +1,30 @@
+{
+  "repository": "https://github.com/praneybehl/llm-wiki-plugin",
+  "pushed_commit": "06369b2eb0617bf7b07b2b8a5c07f4aca1fb1bf0",
+  "sources": [
+    {
+      "source": "skills/llm-wiki/references/query-workflow.md",
+      "matches_pushed_commit": true
+    },
+    {
+      "source": "CONTRIBUTING.md",
+      "matches_pushed_commit": true
+    },
+    {
+      "source": "skills/llm-wiki/references/ingest-workflow.md",
+      "matches_pushed_commit": true
+    },
+    {
+      "source": "skills/llm-wiki/assets/SCHEMA.md.template",
+      "matches_pushed_commit": true
+    },
+    {
+      "source": "CHANGELOG.md",
+      "matches_pushed_commit": true
+    },
+    {
+      "source": "skills/llm-wiki/scripts/setup_wiki.py",
+      "matches_pushed_commit": true
+    }
+  ]
+}

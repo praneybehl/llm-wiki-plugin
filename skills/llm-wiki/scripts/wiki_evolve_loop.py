@@ -5,9 +5,11 @@ Run: python wiki_evolve_loop.py --wiki WIKI --id RUN --skill SKILL --suite SUITE
 All runners are trusted local executables. No installed skill is changed by a run.
 """
 import argparse
+from decimal import Decimal, ROUND_DOWN
 import fnmatch
 import json
 import re
+import random
 from pathlib import Path
 import shutil
 import sys
@@ -45,9 +47,15 @@ def contract(suite, corpus):
                     and '..' not in Path(pattern).parts, 'Unsafe write pattern')
         for check in task.get('artifacts', []):
             inside(corpus, check['path'])
-            require(check.get('kind') in ('text', 'json', 'absent'), 'Unknown artifact check')
+            require(check.get('kind') in ('text', 'json', 'contains', 'json_subset', 'jsonl_subset', 'absent'), 'Unknown artifact check')
             if check['kind'] != 'absent':
                 require('equals' in check, 'Artifact expected value required')
+            if check['kind'] == 'contains':
+                require(isinstance(check['equals'], list) and check['equals']
+                        and all(isinstance(s, str) and s for s in check['equals']), 'Required text fragments must be nonempty')
+        for command in task.get('required_commands', []):
+            require(isinstance(command, list) and command and all(isinstance(s, str) and s for s in command),
+                    'Required command fragments must be nonempty')
     require(splits == {'train', 'validation', 'test'}, 'All three independent splits required')
     calibration = suite.get('calibration')
     require(isinstance(calibration, list) and len(calibration) >= 2, 'Judge calibration needs positive and negative cases')
@@ -89,31 +97,44 @@ class Calls:
     def __init__(self, config, archive):
         self.config, self.archive = config, archive
         self.started = time.monotonic()
-        self.count, self.tokens, self.cost = 0, 0, 0.0
+        self.count, self.tokens, self.cost = 0, 0, Decimal(0)
         self.cost_known = True
+        self.tokens_known = True
         self.last_proposal = None
+        runtime = config.get('runtime_python')
+        if runtime is not None:
+            require(isinstance(runtime, str) and Path(runtime).is_absolute() and Path(runtime).is_file(),
+                    'runtime_python must name an existing absolute interpreter path')
         budget = config['budget']
         for key in ('max_calls', 'max_seconds', 'timeout'):
             require(finite(budget[key], key) > 0, f'{key} must be positive')
         require(type(budget['max_calls']) is int, 'Call limit must be an integer')
         if budget.get('max_usd') is not None:
             require(finite(budget['max_usd'], 'max_usd') > 0, 'Positive USD limit required')
-        for role in ('inference', 'maintainer', 'proposer', 'judge'):
-            item = config[role]
+        runners = [config[role] for role in ('inference', 'maintainer', 'proposer', 'judge')] + config.get('transfer', [])
+        for item in runners:
             require(isinstance(item.get('argv'), list) and item['argv']
                     and all(isinstance(v, str) and v for v in item['argv']), 'Runner argv required')
             require(isinstance(item.get('model'), str) and item['model'], 'Model required for each role')
+            if budget.get('max_usd') is not None:
+                api = Path(__file__).with_name('wiki_evolve_api.py').resolve()
+                require(len(item['argv']) == 2 and Path(item['argv'][1]).resolve() == api,
+                        'Hard USD budgets require wiki_evolve_api.py for every role and transfer runner')
+                from wiki_evolve_api import reservation
+                reservation(item['model'])
 
     def invoke(self, role, request, cwd):
         budget = self.config['budget']
         remaining = budget['max_seconds'] - (time.monotonic() - self.started)
         require(self.count < budget['max_calls'] and remaining > 0, 'Run call/time budget exhausted')
-        usd = budget.get('max_usd')
+        usd = Decimal(str(budget['max_usd'])) if budget.get('max_usd') is not None else None
         require(usd is None or (self.cost_known and self.cost < usd), 'Run USD budget exhausted or unavailable')
         self.count += 1
         item = self.config[role]
         request = dict(request, version=2, role=role, model=item['model'],
-                       max_usd=None if usd is None else usd-self.cost)
+                       max_usd=None if usd is None else float((usd-self.cost).quantize(Decimal('.000001'), rounding=ROUND_DOWN)),
+                       runner_options=item.get('options', {}),
+                       trace_path=str((self.archive / f'trace-{self.count:05d}.jsonl').resolve()))
         runner_files = {v: digest(Path(v).read_bytes()) for v in item['argv'] if Path(v).is_file()}
         record = {'number': self.count, 'role': role, 'request': request, 'runner': item,
                   'runner_files': runner_files}
@@ -127,29 +148,78 @@ class Calls:
             require(isinstance(output.get('events'), list), 'Observable event trace required')
             usage = output.get('usage', {})
             for key in ('input_tokens', 'output_tokens'):
-                require(type(usage.get(key)) is int and usage[key] >= 0, 'Measured token usage required')
-            self.tokens += usage['input_tokens'] + usage['output_tokens']
+                require(key in usage and (usage[key] is None or type(usage[key]) is int and usage[key] >= 0),
+                        'Token usage must be measured or explicitly null')
+            if any(usage[key] is None for key in ('input_tokens', 'output_tokens')):
+                self.tokens_known = False
+            self.tokens += sum(v for k, v in usage.items() if k in ('input_tokens', 'output_tokens') and v is not None)
             amount = output.get('cost')
             if amount is None:
                 self.cost_known = False
             else:
-                self.cost += finite(amount, 'Runner cost')
+                finite(amount, 'Runner cost')
+                self.cost += Decimal(str(amount))
             require(usd is None or (self.cost_known and self.cost <= usd), 'Runner exceeded USD budget or omitted cost')
             event(self.archive, 'call-result', dict(record, output=output))
             return output
         except BaseException as exc:
-            event(self.archive, 'call-error', dict(record, error=type(exc).__name__))
+            self.cost_known = self.tokens_known = False
+            trace = Path(request['trace_path'])
+            event(self.archive, 'call-error', dict(record, error=type(exc).__name__,
+                  trace_sha256=digest(trace.read_bytes()) if trace.exists() else None))
             raise
 
     def summary(self):
-        return {'calls': self.count, 'tokens': self.tokens,
-                'cost_usd': self.cost if self.cost_known else None,
+        return {'calls': self.count, 'tokens': self.tokens if self.tokens_known else None,
+                'cost_usd': float(self.cost) if self.cost_known else None,
                 'elapsed_seconds': time.monotonic()-self.started}
 
 
 def skill_text(root):
     # The entire procedure is injected, so skill retrieval cannot confound comparison.
     return {name: (root / name).read_text(encoding='utf-8') for name in tree(root)}
+
+
+def subset(expected, actual):
+    if isinstance(expected, dict):
+        return isinstance(actual, dict) and all(k in actual and subset(v, actual[k]) for k, v in expected.items())
+    if isinstance(expected, list):
+        return isinstance(actual, list) and all(any(subset(e, a) for a in actual) for e in expected)
+    return type(expected) is type(actual) and expected == actual
+
+
+def command_observations(events):
+    commands = {}
+    for number, e in enumerate(events):
+        identity = (e.get('item', {}).get('id') or e.get('id') or e.get('tool_use_id') or
+                    e.get('toolCallId') or e.get('tool_id') or e.get('call_id') or e.get('part', {}).get('callID') or str(number))
+        row = commands.setdefault(identity, {})
+        # Inspect actual tool inputs only, never echoed source prose or tool results.
+        for args in (e.get('item', {}), e.get('input', {}), e.get('args', {}), e.get('parameters', {}),
+                     e.get('rawInput', {}), e.get('part', {}).get('state', {}).get('input', {})):
+            if isinstance(args, dict) and isinstance(args.get('command'), str):
+                row['command'] = args['command']
+        for call in e.get('tool_call', {}).values():
+            if isinstance(call, dict) and isinstance(call.get('args', {}).get('command'), str):
+                row['command'] = call['args']['command']
+                if 'result' in call:
+                    row['output'] = call['result']
+        if 'aggregated_output' in e.get('item', {}):
+            row['output'] = e['item']['aggregated_output']
+        elif e.get('type') == 'tool_result':
+            row['output'] = e.get('content', e.get('output'))
+        elif e.get('type') == 'tool_execution_end':
+            row['output'] = e.get('result')
+        elif 'output' in e.get('part', {}).get('state', {}):
+            row['output'] = e['part']['state']['output']
+        elif 'rawOutput' in e:
+            row['output'] = e['rawOutput']
+    return [row for row in commands.values() if 'command' in row]
+
+
+def command_checks(task, events):
+    return [any(all(fragment in row['command'] for fragment in fragments) for row in command_observations(events))
+            for fragments in task.get('required_commands', [])]
 
 
 def artifact_checks(task, wiki):
@@ -162,9 +232,13 @@ def artifact_checks(task, wiki):
             passed = False
         elif check['kind'] == 'text':
             passed = path.read_text(encoding='utf-8') == check['equals']
+        elif check['kind'] == 'contains':
+            passed = all(s in path.read_text(encoding='utf-8') for s in check['equals'])
         else:
             try:
-                passed = read_json(path) == check['equals']
+                value = ([json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+                         if check['kind'] == 'jsonl_subset' else read_json(path))
+                passed = value == check['equals'] if check['kind'] == 'json' else subset(check['equals'], value)
             except ValueError:
                 passed = False
         results.append(passed)
@@ -182,12 +256,18 @@ def rollout(task, skill, corpus, calls, archive, label):
                    'skill_root': str(work / 'skill'), 'skill_files': supplied,
                    'skill_sha256': digest(encode(supplied).encode()),
                    'allow_write': task.get('allow_write', [])}
+        if calls.config.get('runtime_python'):
+            request['runtime_python'] = calls.config['runtime_python']
         output = calls.invoke('inference', request, work)
         require(output.get('skill_sha256') == request['skill_sha256'], 'Runner did not attest supplied skill injection')
         require(tree(work / 'skill') == frozen_skill, 'Inference modified skill')
         final_workspace = tree(work)
-        require(all(name.startswith('wiki/') or original_workspace.get(name) == final_workspace.get(name)
-                    for name in set(original_workspace) | set(final_workspace)), 'Inference wrote outside the task wiki')
+        outside = [name for name in set(original_workspace) | set(final_workspace)
+                   if not name.startswith('wiki/') and original_workspace.get(name) != final_workspace.get(name)]
+        if outside:
+            event(archive, 'workspace-violation', {'label': label, 'task': task['id'], 'paths': sorted(outside),
+                  'before': original_workspace, 'after': final_workspace})
+        require(not outside, 'Inference wrote outside the task wiki: ' + ', '.join(sorted(outside)))
         after = tree(work / 'wiki')
         changed = {p for p in set(before) | set(after) if before.get(p) != after.get(p)}
         allowed = task.get('allow_write', [])
@@ -206,6 +286,7 @@ def rollout(task, skill, corpus, calls, archive, label):
         if task['sources'] and not task['abstain']:
             valid = valid and bool(citations)
         artifacts = artifact_checks(task, work / 'wiki')
+        commands = command_checks(task, output['events'])
         observations = {}
         for check, passed_check in zip(task.get('artifacts', []), artifacts):
             path = inside(work / 'wiki', check['path'])
@@ -216,14 +297,18 @@ def rollout(task, skill, corpus, calls, archive, label):
         # The judge gets no model, variant, history, or skill instructions.
         judge = calls.invoke('judge', {'question': task['question'], 'rubric': task['rubric'],
                               'answer': output['answer'], 'abstain': output['abstain'],
-                              'citations': citations, 'sources': sources, 'artifacts': observations}, work)
+                              'citations': citations, 'sources': sources, 'artifacts': observations,
+                              'integrity': {'protected_files_unchanged': True, 'skill_unchanged': True,
+                                            'permitted_changes': sorted(changed)},
+                              'execution': [row for row in command_observations(output['events'])
+                                  if any(all(s in row['command'] for s in fragments) for fragments in task.get('required_commands', []))]}, work)
         grounded = grounded_verdict(judge, sources, not task['abstain'] and bool(sources))
-        passed = (valid and all(artifacts) and output['abstain'] == task['abstain']
+        passed = (valid and all(artifacts) and all(commands) and output['abstain'] == task['abstain']
                   and judge['passed'] and grounded)
         row = {'task': task['id'], 'split': task['split'], 'label': label, 'passed': bool(passed),
                'question': task['question'], 'output': output, 'judge': judge,
                'model': calls.config['inference']['model'], 'runner': calls.config['inference']['argv'],
-               'checks': {'citations': valid, 'artifacts': artifacts, 'grounding': bool(grounded)},
+               'checks': {'citations': valid, 'artifacts': artifacts, 'commands': commands, 'grounding': bool(grounded)},
                'changed': sorted(changed)}
         # Preserve artifacts as evidence, not just a success claim.
         artifact_dir = archive / ('artifacts-' + slug(label) + '-' + task['id'])
@@ -250,6 +335,39 @@ def compare(tasks, skills, corpus, calls, archive, label, repeats):
             scores[variant] += evaluate(tasks, skills[variant], corpus, calls, archive,
                                         f'{label}-{repeat}-{variant}', 1)
     return scores
+
+
+def paired_report(scores, alpha=.05):
+    """Task-cluster bootstrap and paired randomization; repeats are not new tasks."""
+    baseline, selected = scores['baseline'], scores['selected']
+    ids = sorted({r['task'] for r in baseline})
+    require(ids and {r['task'] for r in selected} == set(ids), 'Unpaired final tasks')
+    differences, metrics = [], {}
+    for tid in ids:
+        a, b = [r for r in baseline if r['task'] == tid], [r for r in selected if r['task'] == tid]
+        require(len(a) == len(b), 'Unpaired final repeats')
+        differences.append(sum(r['passed'] for r in b)/len(b) - sum(r['passed'] for r in a)/len(a))
+    mean = sum(differences)/len(ids)
+    rng = random.Random(0)
+    # ponytail: 10,000 task-cluster draws; use a preregistered hierarchical model
+    # if many independently trained skills must be compared together.
+    draws = sorted(sum(rng.choice(differences) for _ in ids)/len(ids) for _ in range(10000))
+    interval = [draws[int(alpha/2*len(draws))], draws[min(len(draws)-1, int((1-alpha/2)*len(draws)))]]
+    if len(ids) <= 16:
+        randomized = [sum(d * (1 if mask & (1 << i) else -1) for i, d in enumerate(differences))/len(ids)
+                      for mask in range(1 << len(ids))]
+        p = sum(abs(v) >= abs(mean)-1e-12 for v in randomized)/len(randomized)
+    else:
+        p = (1 + sum(abs(sum(d*rng.choice((-1,1)) for d in differences)/len(ids)) >= abs(mean)-1e-12
+                     for _ in range(10000)))/10001
+    for metric in ('tool_calls', 'cost'):
+        values = {name: [r['output'].get(metric) for r in rows] for name, rows in scores.items()}
+        metrics[metric] = {name: sum(vs)/len(vs) if all(v is not None for v in vs) else None
+                           for name, vs in values.items()}
+    return {'independent_tasks': len(ids), 'paired_executions': len(baseline), 'accuracy_delta': mean,
+            'confidence_level': 1-alpha, 'task_bootstrap_interval': interval, 'paired_randomization_p': p,
+            'alpha': alpha, 'positive_evidence': mean > 0 and interval[0] > 0 and p < alpha,
+            'mean_inference_metrics': metrics}
 
 
 def consolidate(rows, patterns, history, calls, workspace, iteration):
@@ -470,7 +588,8 @@ def run(args, state):
                     rows = compare(split['test'], {'baseline': initial, 'selected': best},
                                    archive / 'corpus', calls, archive, f'transfer-{number}', config['repeats'])
                     measured = {v: {'passed': sum(r['passed'] for r in rs), 'total': len(rs)} for v, rs in rows.items()}
-                    transfer.append({'runner': runner, 'test': measured})
+                    transfer.append({'runner': runner, 'test': measured,
+                                     'paired_analysis': paired_report(rows, .05/(1+len(config.get('transfer', []))))})
             finally:
                 calls.config['inference'] = original_inference
             require(tree(archive / 'corpus') == corpus_hash, 'Archived corpus changed')
@@ -478,6 +597,9 @@ def run(args, state):
                       'test': {v: {'passed': sum(r['passed'] for r in rows), 'total': len(rows)}
                                for v, rows in final.items()}, 'budget': calls.summary(),
                       'selected': tree(best), 'corpus': corpus_hash, 'transfer': transfer}
+            report['paired_analysis'] = paired_report(final, .05/(1+len(transfer)))
+            report['skill_changed'] = tree(best) != tree(initial)
+            report['benefit_demonstrated'] = report['skill_changed'] and report['paired_analysis']['positive_evidence']
             # Promotion uses the existing reviewed proposal/rollback workflow.
             if tree(best) != tree(initial):
                 evidence_dir = args.wiki / 'concepts'

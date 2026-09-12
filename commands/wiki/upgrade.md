@@ -32,3 +32,5 @@ Arguments (if any): $ARGUMENTS
 
    Show the proposed addition, get approval, then `str_replace` it in. Honour a "skip" without pushing.
 6. Do not run `wiki_graph_extract.py` automatically — it does nothing useful until at least one page has `graph:` metadata. Mention it as the next step when I'm ready.
+
+7. **v3.2.0:** init/upgrade adds `.experience-template.json`, `.pattern-template.md`, and `.evolution/README.md` without overwriting existing files. Offer the `## Skill evolution` schema section as an optional merge. Experience capture and evolution are opt-in; existing pages and commands need no migration. The experiment archive is durable, unlike `.wiki-cache/`. Point to `references/evolution-workflow.md` for `/wiki:learn`, `/wiki:evolve`, the pilot suite and explicit validation/apply/rollback flow.

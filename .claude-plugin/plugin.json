@@ -1,7 +1,7 @@
 {
   "name": "llm-wiki",
   "version": "3.1.1",
-  "description": "Build and maintain an LLM-curated personal knowledge base with default local FastEmbed + sqlite-vec search, BM25 fusion, structured evidence, incremental caching, and a compiled graph layer.",
+  "description": "Build a shared Markdown knowledge base with local hybrid search and an optional evidence-linked workflow to capture task lessons, evaluate skill improvements, and apply or roll back tested changes.",
   "author": {
     "name": "Praney Behl"
   },

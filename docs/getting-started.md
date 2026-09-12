@@ -150,3 +150,7 @@ The commands below use Claude Code's `/wiki:*` slash syntax. In other agents, ph
 ::: info
 You don't have to use the slash commands. The agent triggers the same skill on natural-language requests too. The commands are there when you want explicit invocation — see the [Commands reference](/commands).
 :::
+
+## Optional learning workflow
+
+After a verified task, use `/wiki:learn` (or “learn from this task”) to preserve the lesson. Use `/wiki:evolve` to develop a tested skill improvement. Initialization installs experience/pattern templates and archive guidance; existing wikis receive them via `/wiki:upgrade`. No model evaluation starts automatically. See [Learning and skill evolution](/evolution).

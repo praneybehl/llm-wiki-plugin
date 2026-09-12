@@ -28,11 +28,23 @@ Then in Claude Code, add the local path as a marketplace and install:
 
 After making changes, refresh with `/plugin marketplace update` and reinstall. There's no build step — the skill, commands, and scripts run as-is from the filesystem.
 
-The bundled Python scripts target Python 3.10+ and use only the standard library. Please don't add dependencies — the no-install property is load-bearing for adoption.
+The bundled Python scripts target Python 3.10+. Evolution, lexical search, lint, stats and graph queries use the standard library. Runtime setup, hybrid retrieval and graph compilation use existing pinned PEP 723 dependencies through uv. Prefer stdlib for new helpers; do not add dependencies for the evolution workflow.
 
 ## Testing changes
 
-There isn't a formal test suite, but every PR should be exercised against a real wiki before submission. The minimum smoke test:
+Run the relevant checked-in suites and exercise changed workflows against a disposable wiki before submission:
+
+```bash
+uv run --with fastembed==0.8.0 --with sqlite-vec==0.1.9 --with PyYAML==6.0.3 python -m unittest discover -s eval/retrieval -p 'test_*.py'
+python skills/llm-wiki/scripts/test_link_resolution.py
+python eval/evolution/test_evolution.py
+python eval/retrieval/run_eval.py --gate
+pnpm docs:build
+```
+
+The evolution suite uses deterministic runners to verify lifecycle behavior, not model improvement. Live-model trials require an explicitly selected runner/model and inference budget; record actual results separately. For changes affecting the Paperclip companion, run its full `pnpm prepublish:check`.
+
+The minimum manual smoke test:
 
 ```bash
 mkdir /tmp/test-wiki && cd /tmp/test-wiki
@@ -66,9 +78,9 @@ Each script has a docstring at the top with its purpose, usage, and an example i
 
 Output is human-readable by default with an optional `--json` flag for programmatic use (currently `wiki_lint.py` has this; others can add it as needed).
 
-Conservative by design: scripts report findings and never modify the wiki. The user (or Claude under the user's direction) applies fixes. This separation is what makes the lint pass trustworthy.
+Diagnostic scripts report findings without applying fixes. Init/setup and the explicitly invoked evolution lifecycle write their documented artifacts. Evolution candidates stay isolated until a passing, reviewed change is explicitly applied; snapshots and measurements must remain inspectable.
 
-Pure stdlib. No `pip install` ever, even for one nice helper.
+New lifecycle helpers use stdlib. Reuse the existing pinned runtime for dependency-bearing search and graph operations.
 
 ## Schema and breaking changes
 
@@ -86,10 +98,10 @@ If a change can be made backward-compatible (e.g. new frontmatter field is optio
 
 Before opening a PR, verify:
 
-- [ ] All four bundled scripts still run without error against a small test wiki.
+- [ ] Affected bundled scripts and existing regression suites pass against a small test wiki.
 - [ ] `python -c "import json; json.load(open('.claude-plugin/plugin.json')); json.load(open('.claude-plugin/marketplace.json'))"` succeeds.
 - [ ] The plugin still loads in Claude Code (`/plugin marketplace add <local-path>`, `/plugin install`, no errors).
-- [ ] `CHANGELOG.md` has an entry under `[Unreleased]` describing the change.
+- [ ] `CHANGELOG.md` describes the change under `[Unreleased]`, or the selected release heading when the version is prepared in this PR.
 - [ ] If you changed the skill description in `SKILL.md` frontmatter or `plugin.json`, the description is still under 1024 characters.
 - [ ] If you changed the SKILL.md description, the change clearly improves the trigger surface (more relevant phrasings, fewer false negatives) — descriptions are the primary mechanism that makes Claude reach for the skill, so wording matters.
 

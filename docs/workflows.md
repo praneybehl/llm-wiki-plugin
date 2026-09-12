@@ -106,3 +106,7 @@ A periodic health check — best run on a cadence, not on every operation. It sp
 ::: info Cadence
 A reasonable default: structural lint after every 5 ingests, semantic lint weekly or every 20 ingests, gap-finding monthly. If the lint report grows faster than you can triage, that's a signal to lint more often or revise the schema.
 :::
+
+## Learn and evolve
+
+Completed tasks can become immutable experience sources and reusable concept patterns through `/wiki:learn`. `/wiki:evolve` connects those patterns to a proposed skill edit, compares isolated baseline/candidate snapshots, retains failed experiments and explicitly applies or rolls back an authorized change. Ordinary factual wiki access stays available. See [Learning and skill evolution](/evolution) for the complete workflow, executable pilot and evaluation boundaries.

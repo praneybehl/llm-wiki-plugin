@@ -68,7 +68,7 @@ function structuredData(
           name: 'LLM Wiki',
           applicationCategory: 'DeveloperApplication',
           operatingSystem: 'Cross-platform',
-          softwareVersion: '3.0.0',
+          softwareVersion: '3.2.0',
           description,
           url,
           codeRepository: repo,
@@ -86,7 +86,7 @@ function structuredData(
           mainEntityOfPage: url,
           image: socialImage,
           datePublished: '2026-07-20',
-          dateModified: new Date(lastUpdated).toISOString(),
+          ...(Number.isFinite(lastUpdated) ? { dateModified: new Date(lastUpdated).toISOString() } : {}),
           isPartOf: { '@id': website['@id'] },
           author: { '@id': author['@id'] },
           inLanguage: 'en-US',
@@ -213,9 +213,9 @@ export default withMermaid(
           activeMatch: '^/(integrations|agents)',
         },
         {
-          text: 'v3.0.0',
+          text: 'v3.2.0',
           items: [
-            { text: 'Upgrade to v3', link: '/upgrade' },
+            { text: 'Upgrade to v3.2', link: '/upgrade' },
             { text: 'Changelog', link: `${repo}/blob/main/CHANGELOG.md` },
             { text: 'Releases', link: `${repo}/releases` },
           ],
@@ -235,6 +235,7 @@ export default withMermaid(
           items: [
             { text: 'Commands', link: '/commands' },
             { text: 'Workflows', link: '/workflows' },
+            { text: 'Learning & skill evolution', link: '/evolution' },
             { text: 'Search & retrieval', link: '/search' },
             { text: 'Graph layer', link: '/graph' },
           ],
@@ -248,7 +249,7 @@ export default withMermaid(
         },
         {
           text: 'Release',
-          items: [{ text: 'Upgrade to v3', link: '/upgrade' }],
+          items: [{ text: 'Upgrade to v3.2', link: '/upgrade' }],
         },
       ],
 

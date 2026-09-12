@@ -49,7 +49,7 @@ function realpathContained(realRoot: string, target: string): string | null {
 }
 
 const SKIP_TOP_LEVEL_FILES = new Set(["SCHEMA.md", "log.md", "README.md"]);
-const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", "raw"]);
+const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", "raw", ".evolution"]);
 
 export interface StatsResult {
   totalPages: number;

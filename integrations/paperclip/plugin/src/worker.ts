@@ -310,6 +310,7 @@ function resolvePageFile(root: string, slug: string): string | null {
       return;
     }
     for (const name of entries) {
+      if (dir === root && name === ".evolution") continue;
       const full = path.join(dir, name);
       let lst;
       try {

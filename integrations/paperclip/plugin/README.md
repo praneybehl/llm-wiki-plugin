@@ -4,6 +4,10 @@ A [Paperclip](https://github.com/paperclipai/paperclip) plugin that surfaces the
 
 This is the **human-side** companion to the [`llm-wiki` skill](https://github.com/praneybehl/llm-wiki-plugin), which makes Paperclip's agents wiki-aware on heartbeat. The plugin doesn't replace the skill — it surfaces what the skill already maintains, where the operator already works.
 
+## Skill evolution compatibility
+
+The v0.5.3 companion keeps `wiki/.evolution/` experiment snapshots out of browse, search and health results. Normal source/concept/synthesis pages containing curated lessons remain visible. Capture, evaluation and skill promotion run through the agent-side LLM Wiki skill; this companion stays read-only.
+
 ## Status
 
 **Pre-release (npm v0.5.2).** The Paperclip plugin runtime and SDK are themselves described by their maintainers as *"still early"* — pin the SDK version exactly (calver, e.g. `2026.428.0`) rather than a range. Expect breaking changes between SDK releases and re-validate against the live SDK source on each upgrade.

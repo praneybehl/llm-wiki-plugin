@@ -1,0 +1,12 @@
+{
+  "id": "query-stale-decision-2026-09-12",
+  "task": "Answer the current trial duration",
+  "outcome": "failure",
+  "actions": ["Read the historical pricing page", "Answered 14 days without reading its superseding source"],
+  "verification": "Current dated source specifies 30 days; cite its actual path or test artifact here",
+  "model": "exact model/version",
+  "tools": "agent and tool versions",
+  "scope": "Current-decision questions with explicit supersession links",
+  "hypothesis": "The query procedure did not lead the agent to resolve superseded decisions",
+  "counterexamples": "Historical questions should continue using the historical source"
+}

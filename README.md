@@ -12,14 +12,15 @@ When you add a source, the agent turns it into linked Markdown pages. Later, it 
 
 Everything canonical stays in readable Markdown. Default semantic search is local—no hosted vector database or embedding service.
 
-## What's new in v3.0.0
+## What's new in v3.2.0
 
-- **Local semantic search by default.** FastEmbed runs `BAAI/bge-small-en-v1.5` on-device; sqlite-vec stores derived vectors in each wiki's cache.
-- **Hybrid precision and recall.** BM25 exact-term ranks and semantic ranks are fused with RRF.
-- **Incremental indexing.** Content hashes limit re-embedding to new or changed sections and remove deleted sections.
-- **Zero provider surface.** No OpenAI-compatible endpoint, API key, remote text transfer, provider consent, or per-query charge.
-- **Safe lexical escape hatch.** `--no-embed` stays pure-Python BM25; local backend failures fall back to it automatically.
-- **No content migration.** Existing Markdown remains valid and old `embeddings.jsonl` caches are simply ignored.
+- **Learn from completed work.** `/wiki:learn` captures verified successes/failures and consolidates cited patterns, applicability and counterexamples.
+- **Turn evidence into tested procedures.** `/wiki:evolve` stages a single-file skill edit, compares baseline/candidate snapshots, and retains rejected proposals and measurements.
+- **Explicit apply and rollback.** Only a reviewed, passing change can be applied; whole-skill snapshot checks prevent overwriting intervening edits.
+- **A runnable query pilot.** Twenty fictional tasks cover citations, superseded decisions, contradictions and abstention, with a provider-neutral runner contract and optional Claude CLI adapter.
+- **Compatible upgrade.** Existing Markdown and commands remain valid. `/wiki:upgrade` adds optional templates and archive guidance idempotently.
+
+See [Learning and skill evolution](https://praneybehl.github.io/llm-wiki-plugin/evolution.html) for the full workflow, evaluation limits and inference costs. This release adds tooling; it does not claim measured model gains.
 
 ## Why use it?
 
@@ -39,7 +40,7 @@ Plugin/skill installation copies all agent-facing commands and bundled tools. Wi
 
 ### Claude Code — full plugin
 
-The native path: the skill, the seven `/wiki:*` slash commands, and the marketplace manifest all ship in one install.
+The native path: the skill, the nine `/wiki:*` slash commands, and the marketplace manifest all ship in one install.
 
 ```
 /plugin marketplace add praneybehl/llm-wiki-plugin
@@ -84,7 +85,7 @@ ln -s "$(pwd)/llm-wiki-plugin/skills/llm-wiki" ~/.omp/agent/skills/llm-wiki
 
 A few things to know when using the skill outside Claude Code:
 
-- **Slash commands are Claude Code-only.** The seven `/wiki:*` commands live in `commands/wiki/` as Claude Code plugin manifests. In other agents, invoke the skill by natural language ("add this paper to the wiki", "what does the wiki say about X", "lint the wiki") — the SKILL.md handles the rest.
+- **Slash commands are Claude Code-only.** The nine `/wiki:*` commands live in `commands/wiki/` as Claude Code plugin manifests. In other agents, invoke the skill by natural language ("add this paper to the wiki", "what does the wiki say about X", "lint the wiki") — the SKILL.md handles the rest.
 - **All bundled tools are agent-accessible.** Every listed agent can invoke `setup_wiki.py`, hybrid/lexical search, lint, stats, graph lint/extract/query, and initialization through the installed skill. Dependency-bearing scripts carry pinned PEP 723 metadata and run with `uv run --script`; initialization and upgrade verify the full runtime before reporting readiness.
 - **The wiki itself is agent-agnostic.** It's just a directory of markdown files. You can ingest with one agent and query with another; nothing in `wiki/` ties it to a specific runtime.
 
@@ -153,6 +154,8 @@ This catches orphan pages, broken wikilinks, oversized pages, missing frontmatte
 | `/wiki:lint` | Structural and semantic health check; also runs graph lint when `wiki/graph/ontology.yaml` exists. |
 | `/wiki:stats` | Show wiki size, link density, and which scaling threshold the wiki is at. |
 | `/wiki:graph <action>` | `extract` / `lint` / `neighbors` / `edges` / `path` / `facts` against the compiled graph layer. |
+| `/wiki:learn <task artifacts>` | Capture verified experience and consolidate reusable, evidence-linked patterns. |
+| `/wiki:evolve <goal or action>` | Propose, evaluate, inspect, apply or roll back a skill improvement; retain all trial results. |
 | `/wiki:upgrade` | Upgrade an existing wiki to the current plugin version (idempotent file ops + walked SCHEMA.md merge). |
 
 You don't have to use the commands — Claude triggers the underlying skill on natural-language requests too ("add this paper to my wiki", "what does the wiki say about diffusion", "lint the wiki"). The commands are there when you want explicit invocation.
@@ -168,6 +171,10 @@ The wiki has three layers and three operations.
 There is also an **optional fourth layer**: the graph at `wiki/graph/`. Pages can declare typed `graph:` metadata in frontmatter (e.g. `founded`, `proposed`, `depends_on`) with an explicit source-page slug and evidence quote. A bundled extractor compiles every page into `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, and `graph.graphml`. **Markdown stays canonical** — the graph can be deleted and rebuilt at any time. Use `/wiki:graph` for relational queries that the index alone can't answer cheaply ("what's connected to X", "who proposed Y", "shortest path A → B").
 
 For the full architecture write-up including page types, frontmatter conventions, the rationale behind each design choice, and the workflow procedures, see the reference docs inside the skill at `skills/llm-wiki/references/`. The graph layer is documented in `skills/llm-wiki/references/graph-workflow.md`.
+
+## Learning from experience
+
+The optional evolution workflow connects immutable task evidence to ordinary source/concept patterns, then to measured skill changes. Candidate skills are isolated during evaluation. The durable `.evolution/` archive is excluded from normal wiki retrieval; cited lessons and summaries remain searchable. Use `wiki_evolve.py --help` or the [agent workflow](skills/llm-wiki/references/evolution-workflow.md). Model runners may incur remote inference costs; capture and the harness itself are stdlib-only.
 
 ## How it scales
 
@@ -230,7 +237,7 @@ Documentation:
 
 Once the wiki is set up, you can read and edit pages with any markdown viewer. [Obsidian](https://obsidian.md) is a particularly good fit because of its graph view, `[[wikilinks]]` syntax, and Web Clipper extension, but it isn't required — the wiki is just a directory of markdown files in your project.
 
-The tools require Python 3.10+ and `uv`. Initialization and upgrade invoke `setup_wiki.py`, whose PEP 723 environment pins FastEmbed 0.8.0, sqlite-vec 0.1.9, and PyYAML 6.0.3; it caches the model and synchronizes the complete wiki index. Search, graph lint, and graph extraction also carry their own pinned script metadata. Lexical `wiki_search.py --no-embed`, `wiki_lint.py`, `wiki_stats.py`, and graph queries remain directly runnable with stdlib Python. All eight scripts live in `skills/llm-wiki/scripts/` after install.
+The tools require Python 3.10+ and `uv`. Initialization and upgrade invoke `setup_wiki.py`, whose PEP 723 environment pins FastEmbed 0.8.0, sqlite-vec 0.1.9, and PyYAML 6.0.3; it caches the model and synchronizes the complete wiki index. Search, graph lint, and graph extraction also carry their own pinned script metadata. Lexical `wiki_search.py --no-embed`, `wiki_lint.py`, `wiki_stats.py`, and graph queries remain directly runnable with stdlib Python. All ten operational scripts live in `skills/llm-wiki/scripts/` after install.
 
 ## Credits
 

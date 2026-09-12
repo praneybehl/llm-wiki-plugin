@@ -1,0 +1,267 @@
+{
+  "version": 1,
+  "corpus": "wiki",
+  "max_cost_ratio": 1.25,
+  "max_tool_ratio": 1.25,
+  "tasks": [
+    {
+      "id": "owner",
+      "split": "validation",
+      "question": "Who owns Lark?",
+      "answer_all": [
+        "Mira"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/product.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "formats",
+      "split": "validation",
+      "question": "Which export formats does Lark support?",
+      "answer_all": [
+        "Markdown",
+        "CSV"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/product.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "current-price",
+      "split": "validation",
+      "question": "What is the current monthly Team price per seat?",
+      "answer_all": [
+        "$18"
+      ],
+      "answer_none": [
+        "$12"
+      ],
+      "citations": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "current-trial",
+      "split": "validation",
+      "question": "How long is the current trial?",
+      "answer_all": [
+        "30 days"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "old-price",
+      "split": "validation",
+      "question": "What was the July 2026 Team price?",
+      "answer_all": [
+        "$12"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/pricing-old.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "contract",
+      "split": "validation",
+      "question": "Do existing contracts automatically move to the current Team price?",
+      "answer_all": [
+        "signed prices"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "encrypt",
+      "split": "validation",
+      "question": "Which encryption algorithm protects stored documents?",
+      "answer_all": [
+        "AES-256"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/security.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "training",
+      "split": "validation",
+      "question": "Are customer uploads used for model training?",
+      "answer_all": [
+        "not"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/security.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "conflict",
+      "split": "validation",
+      "question": "How many pilot customers were there on August 15? Explain any disagreement.",
+      "answer_all": [
+        "6",
+        "8"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/launch.md",
+        "sources/sales-report.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "release",
+      "split": "validation",
+      "question": "Who owns the release, and which tests must pass?",
+      "answer_all": [
+        "Mira",
+        "import",
+        "export"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/launch.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "residency",
+      "split": "validation",
+      "question": "Which country stores customer documents?",
+      "answer_all": [],
+      "answer_none": [],
+      "citations": [],
+      "abstain": true
+    },
+    {
+      "id": "certification",
+      "split": "validation",
+      "question": "Is Lark SOC 2 certified?",
+      "answer_all": [],
+      "answer_none": [],
+      "citations": [],
+      "abstain": true
+    },
+    {
+      "id": "platforms",
+      "split": "holdout",
+      "question": "Which desktop platforms are currently supported?",
+      "answer_all": [
+        "Linux",
+        "macOS"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/product.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "currency",
+      "split": "holdout",
+      "question": "What currency is the Team price denominated in?",
+      "answer_all": [
+        "USD"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "trial-change",
+      "split": "holdout",
+      "question": "What did the trial duration change from and to?",
+      "answer_all": [
+        "14",
+        "30"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/pricing-old.md",
+        "sources/pricing-current.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "retention",
+      "split": "holdout",
+      "question": "Compare retention for customer documents and release artifacts.",
+      "answer_all": [
+        "90",
+        "180"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/security.md",
+        "sources/operations.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "rollback",
+      "split": "holdout",
+      "question": "What must happen after a failed release?",
+      "answer_all": [
+        "previous artifact",
+        "import"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/operations.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "contacts",
+      "split": "holdout",
+      "question": "Give both the security and onboarding contact addresses.",
+      "answer_all": [
+        "security@lark.example",
+        "help@lark.example"
+      ],
+      "answer_none": [],
+      "citations": [
+        "sources/security.md",
+        "sources/operations.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "uptime",
+      "split": "holdout",
+      "question": "What service-level uptime percentage does Lark guarantee?",
+      "answer_all": [],
+      "answer_none": [],
+      "citations": [],
+      "abstain": true
+    },
+    {
+      "id": "revenue",
+      "split": "holdout",
+      "question": "What was Lark revenue in August 2026?",
+      "answer_all": [],
+      "answer_none": [],
+      "citations": [],
+      "abstain": true
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+---
+type: concept
+kind: experience-pattern
+title: "Replace with one reusable pattern"
+tags: [agent-experience]
+sources: []
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+status: hypothesis
+---
+
+State the observed problem or successful strategy and its applicability.
+
+## Evidence
+
+Link source pages for observed actions and verified outcomes. Include both successes and failures when available. Distinguish observation from explanation.
+
+## Cause and procedure
+
+State the root-cause hypothesis, supporting evidence, and the smallest proposed procedure. Link any relevant skill and experiment ID. Do not present an untested fix as established.
+
+## Boundaries and counterexamples
+
+Record applicable models/tools, cases where the advice does not apply, and conflicting evidence. Mark superseded conclusions explicitly while preserving the evidence.

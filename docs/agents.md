@@ -7,7 +7,7 @@ description: Which coding agents support the llm-wiki skill, how to install for 
 
 # Agents
 
-The `llm-wiki` skill uses the standard [agentskills.io](https://agentskills.io) format, so it runs in every agent below. All eight bundled tools are available through the installed skill: init/runtime setup, hybrid or lexical search, structural lint, stats, graph lint, graph extraction, and graph query. Dependency-bearing scripts use pinned PEP 723 environments through `uv run --script`.
+The `llm-wiki` skill uses the standard [agentskills.io](https://agentskills.io) format, so it runs in every agent below. All ten operational tools are available through the installed skill: init/runtime setup, hybrid or lexical search, structural lint, stats, graph lint, graph extraction, and graph query. Dependency-bearing scripts use pinned PEP 723 environments through `uv run --script`.
 
 ## Support matrix
 
@@ -77,3 +77,7 @@ Running multiple agents? Prefer `AGENTS.md` as the canonical file where supporte
 ::: info
 Slash commands are Claude Code–only. Everywhere else, invoke the skill by natural language: "add this paper to the wiki", "what does the wiki say about X", "lint the wiki". The wiki itself is agent-agnostic — ingest with one agent, query with another.
 :::
+
+## Experience and procedure improvements
+
+All listed skill-compatible agents can run `/wiki:learn` and `/wiki:evolve` workflows through natural language using the installed `references/evolution-workflow.md` and `scripts/wiki_evolve.py`. Only Claude Code has the literal slash commands. Capture and lifecycle tooling use Python stdlib. The optional Claude evaluation adapter needs an authenticated Claude CLI; other models implement the documented JSON runner contract. No new agent integration is required to capture lessons. See [Learning and skill evolution](/evolution).

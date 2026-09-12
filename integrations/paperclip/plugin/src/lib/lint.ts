@@ -59,7 +59,7 @@ const SKIP_TOP_LEVEL_FILES = new Set([
   "log.md",
   "README.md",
 ]);
-const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", "raw"]);
+const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", "raw", ".evolution"]);
 
 export interface LintOptions {
   softCap?: number;

@@ -4,14 +4,14 @@
     "name": "Praney Behl"
   },
   "metadata": {
-    "description": "LLM Wiki v3: durable agent knowledge bases with default local semantic retrieval, BM25 fusion, structured evidence, incremental caching, and a compiled graph.",
+    "description": "Durable agent knowledge with local hybrid retrieval and optional experience-driven, evaluated skill improvements.",
     "version": "3.1.1"
   },
   "plugins": [
     {
       "name": "llm-wiki",
       "source": "./",
-      "description": "Build and maintain an LLM-curated personal knowledge base with default local FastEmbed + sqlite-vec search, BM25 fusion, structured JSON evidence, incremental caching, and a compiled graph layer. Includes the llm-wiki skill and seven /wiki:* commands.",
+      "description": "Build a shared Markdown wiki with local hybrid search, cited evidence and a compiled graph. Capture task experience and evaluate skill improvements with explicit apply/rollback. Includes the llm-wiki skill and nine /wiki:* commands.",
       "version": "3.1.1",
       "author": {
         "name": "Praney Behl"
@@ -20,7 +20,13 @@
       "repository": "https://github.com/praneybehl/llm-wiki-plugin",
       "license": "MIT",
       "category": "productivity",
-      "keywords": ["knowledge-base", "wiki", "notes", "research", "second-brain"]
+      "keywords": [
+        "knowledge-base",
+        "wiki",
+        "notes",
+        "research",
+        "second-brain"
+      ]
     }
   ]
 }

@@ -9,7 +9,7 @@ import type {
   Project,
 } from "@paperclipai/plugin-sdk";
 import { resolve, join } from "node:path";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import plugin from "../src/worker.js";
 import manifestSrc from "../src/manifest.js";
@@ -834,3 +834,20 @@ void tmpdir;
 void mkdtempSync;
 void rmSync;
 void join;
+
+
+it("does not resolve experiment snapshots through readPage", async () => {
+  const workspace = mkdtempSync(join(tmpdir(), "evolution-reader-"));
+  try {
+    const folder = join(workspace, "wiki", ".evolution", "trial", "candidate");
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(join(folder, "private-procedure.md"), "experiment-only content");
+    const harness = await makeWorker({ workspacePath: workspace });
+    const result = await harness.getData<{ error?: string }>("readPage", {
+      companyId: COMPANY_ID, projectId: PROJECT_ID, slug: "private-procedure",
+    });
+    expect(result.error).toBeTruthy();
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});

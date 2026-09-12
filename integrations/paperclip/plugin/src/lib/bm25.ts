@@ -32,7 +32,7 @@ const K1 = 1.5;
 const B = 0.75;
 
 const SKIP_TOP_LEVEL_FILES = new Set(["SCHEMA.md", "index.md", "log.md"]);
-const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", "raw", ".wiki-cache"]);
+const SKIP_TOP_LEVEL_DIRS = new Set(["indexes", "graph", "raw", ".wiki-cache", ".evolution"]);
 
 export interface WikiPage {
   path: string;

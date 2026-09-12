@@ -30,8 +30,8 @@ Use it when knowledge should outlive one conversation: long-running research, cu
 
 *Add sources once, retrieve cited evidence later, and save useful learning back so the next session starts with more than the last one did.*
 
-::: tip New in v3.0.0
-Meaning-based search is now local and default through FastEmbed + sqlite-vec, while direct `python wiki_search.py "<query>" --no-embed` keeps dependency-free BM25. See [Search & retrieval](/search) and [Upgrade to v3](/upgrade).
+::: tip New in v3.2.0
+Capture verified task experience, consolidate reusable lessons and evaluate evidence-linked skill changes with explicit apply/rollback. Existing local search and wiki pages remain compatible. See [Learning and skill evolution](/evolution) and [Upgrade](/upgrade).
 :::
 
 ## How it works

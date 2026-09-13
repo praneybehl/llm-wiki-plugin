@@ -110,3 +110,7 @@ Install the plugin or skill for your agent, run `/wiki:init`, ingest a source wi
 ---
 
 LLM Wiki plugin, MIT licensed. [Source on GitHub](https://github.com/praneybehl/llm-wiki-plugin). Based on [Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), with section retrieval informed by Cerebras's [How We Built Our Knowledge Base](https://www.cerebras.ai/blog/how-we-built-our-knowledge-base) and the local FastEmbed + sqlite-vec architecture validated against [Basic Memory](https://github.com/basicmachines-co/basic-memory).
+
+## Learning from task experience
+
+The optional evolution workflow adapts [WikiSkill](https://arxiv.org/html/2608.27454v1) into persistent experience capture, pattern consolidation and tested skill changes. See [the adaptation map and measured limits](./evolution.md#research-basis-and-adaptation). The current study demonstrated no quality gain.

@@ -13,6 +13,8 @@ The canonical project is https://github.com/praneybehl/llm-wiki-plugin. The docu
 
 - [Learning and skill evolution](https://praneybehl.github.io/llm-wiki-plugin/evolution.html): Bounded training, persistent evidence consolidation, whole-skill proposals, validation selection, independent final tests and cross-agent transfer. Includes nine host adapters, durable interrupted traces, calibrated judging, ingestion/graph/hybrid-search checks, paired task-level analysis, pre-request API spending reservations and recovery.
 
+- [WikiSkill research basis](https://arxiv.org/html/2608.27454v1): The source paper for the optional evolution workflow; the evolution guide maps adopted ideas, project-specific choices and measured limitations.
+
 ## Retrieval and structure
 
 - [Search and retrieval](https://praneybehl.github.io/llm-wiki-plugin/search.html): Mandatory init/upgrade setup for local FastEmbed + sqlite-vec semantic search fused with section-level BM25, structured JSON evidence, and incrementally synchronized caches.

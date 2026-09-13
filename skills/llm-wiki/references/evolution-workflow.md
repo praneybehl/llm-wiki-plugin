@@ -2,6 +2,23 @@
 
 The optional evolution loop learns from observable task outcomes, consolidates patterns in your wiki, proposes changes to one complete skill, and selects improvements using validation. It freezes the selected skill before running an independent final test. Your installed skill changes only when you apply the resulting proposal.
 
+## Research basis and adaptation
+
+The evolution design is adapted from [WikiSkill: Compiling Agent Experience into Persistent Knowledge for Skill Evolution](https://arxiv.org/html/2608.27454v1) by Liyan Tang and colleagues (Google Research and Virginia Tech, 2026). The [methodology](https://arxiv.org/html/2608.27454v1#S3) motivates the following connections:
+
+| Paper idea | Implementation in LLM Wiki |
+| --- | --- |
+| Separate experience, accumulated knowledge and skills | Immutable training captures, existing source/concept pages, and a separate skill directory |
+| Repeated execution, consolidation and proposal | Bounded inference, maintainer and proposer calls in `wiki_evolve_loop.py` |
+| Preserve lessons when a proposal fails | Persistent patterns and acceptance history; rejected and duplicate proposals remain inspectable |
+| Create or refine skills with provenance | Whole/new-skill proposals across text files, with `PURPOSE.md` evidence mappings |
+| Validation gating and independent testing | Strict validation improvement selects a candidate; selection freezes before final tests and optional agent/model transfer |
+| Supply skills directly during evaluation | Complete skill injection with hashes, keeping triggering failures outside the measured comparison |
+
+Our adaptation keeps the factual task wiki available to inference while withholding the optimizer's learning history. It operates on one skill per run, uses structured proposals from supplied evidence rather than the paper's tool-driven proposer, and retains public tool observations rather than hidden reasoning. Native progressive skill discovery is not measured. Nine host adapters, ingestion/graph/hybrid-search assertions, explicit installed-skill approval, portable evidence bundles and pre-request API spending reservations are project implementation choices.
+
+This is an adaptation, not a reproduction of the paper's benchmark study. Our [published workflow study](https://github.com/praneybehl/llm-wiki-plugin/blob/codex/wiki-skill-evolution/eval/evolution/workflows/README.md) rejected both proposed changes and demonstrated no quality gain: Codex scored 3/8 versus 2/8 and Claude 3/8 versus 3/8 with an unchanged skill. The report preserves the original evaluator limitations and subsequent corrections. Five hosts still require account/client/gateway setup, and the API budget runner lacks a live-key trial.
+
 ```mermaid
 flowchart LR
   train[Training tasks] --> raw[Immutable observable experience]
@@ -133,4 +150,4 @@ python <skill-root>/scripts/wiki_evolve.py --wiki /path/to/wiki propose \
 
 The legacy `wiki_evolve.py evaluate` command and version 1 `suite.json` remain available as deterministic regression checks. Both its validation and historically named “holdout” sets participate in its gate; neither is an independent final test. Use the version 2 loop for optimization and generalization measurement.
 
-The design adapts the experience/wiki/skill layers and validation-driven evolution in [WikiSkill](https://arxiv.org/html/2608.27454v1). It does not claim to reproduce the paper's benchmark results. Version 3.2.0 is additive under this project's SemVer policy; existing wikis can continue unchanged or use `/wiki:upgrade` to add optional templates. Applying a skill proposal does not publish a plugin release.
+Version 3.2.0 is additive under this project's SemVer policy; existing wikis can continue unchanged or use `/wiki:upgrade` to add optional templates. Applying a skill proposal does not publish a plugin release.

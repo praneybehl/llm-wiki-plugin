@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Credit the WikiSkill paper in the README and documentation, mapping the adopted methodology to implementation choices and published validation limits.
 - Main plugin/skill version is 3.2.0: additive and backward-compatible, so no Markdown or CLI migration is required. Experience capture, skill editing and paid inference are never started by upgrade.
 - Keep `.evolution/` snapshots out of normal search, lint, statistics and graph extraction. Preserve searchable lessons and trial summaries in existing wiki page types.
 - Prepare Paperclip companion `paperclip-plugin-llm-wiki` v0.5.3 with matching archive exclusions in search, health and page reading. Publication follows merge; this PR does not publish either release.

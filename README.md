@@ -22,6 +22,8 @@ Everything canonical stays in readable Markdown. Default semantic search is loca
 
 See [Learning and skill evolution](https://praneybehl.github.io/llm-wiki-plugin/evolution.html) for the full workflow, evaluation limits and inference costs. This release adds tooling; it does not claim measured model gains.
 
+The evolution workflow adapts [WikiSkill: Compiling Agent Experience into Persistent Knowledge for Skill Evolution](https://arxiv.org/html/2608.27454v1) (Google Research and Virginia Tech, 2026): persistent experience-to-pattern learning, repeated skill proposals, retained failures, validation-only selection and independent final testing. See [what we adapted and changed](docs/evolution.md#research-basis-and-adaptation) and the [measured results](eval/evolution/workflows/README.md). Our study rejected both proposals; no quality improvement was demonstrated.
+
 ## Why use it?
 
 - **Stop repeating project context.** Your agent can read the knowledge you already collected.
@@ -218,7 +220,7 @@ For teams that run their work in [Paperclip](https://github.com/paperclipai/pape
 | Dashboard health widget | Page count, lint status (pass / warn / fail), link density, sharding-threshold messages |
 | `wiki.query` agent tool | BM25 search via tool call — for HTTP-only adapters that don't run the skill directly |
 
-Install (once v0.1 ships to npm):
+Install the companion:
 
 ```bash
 pnpm paperclipai plugin install paperclip-plugin-llm-wiki
@@ -237,9 +239,11 @@ Documentation:
 
 Once the wiki is set up, you can read and edit pages with any markdown viewer. [Obsidian](https://obsidian.md) is a particularly good fit because of its graph view, `[[wikilinks]]` syntax, and Web Clipper extension, but it isn't required — the wiki is just a directory of markdown files in your project.
 
-The tools require Python 3.10+ and `uv`. Initialization and upgrade invoke `setup_wiki.py`, whose PEP 723 environment pins FastEmbed 0.8.0, sqlite-vec 0.1.9, and PyYAML 6.0.3; it caches the model and synchronizes the complete wiki index. Search, graph lint, and graph extraction also carry their own pinned script metadata. Lexical `wiki_search.py --no-embed`, `wiki_lint.py`, `wiki_stats.py`, and graph queries remain directly runnable with stdlib Python. All ten operational scripts live in `skills/llm-wiki/scripts/` after install.
+The tools require Python 3.10+ and `uv`. Initialization and upgrade invoke `setup_wiki.py`, whose PEP 723 environment pins FastEmbed 0.8.0, sqlite-vec 0.1.9, and PyYAML 6.0.3; it caches the model and synchronizes the complete wiki index. Search, graph lint, and graph extraction also carry their own pinned script metadata. Lexical `wiki_search.py --no-embed`, `wiki_lint.py`, `wiki_stats.py`, and graph queries remain directly runnable with stdlib Python. The bundled scripts live in `skills/llm-wiki/scripts/` after install.
 
 ## Credits
+
+The optional skill-evolution workflow is adapted from the [WikiSkill paper](https://arxiv.org/html/2608.27454v1). The [adaptation map](docs/evolution.md#research-basis-and-adaptation) distinguishes the research ideas, our implementation choices and validation limits.
 
 The pattern is from Andrej Karpathy's [llm-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), April 2026. This plugin is one implementation of the pattern; others worth looking at include [vanillaflava/llm-wiki-claude-skills](https://github.com/vanillaflava/llm-wiki-claude-skills), [skyllwt/OmegaWiki](https://github.com/skyllwt/OmegaWiki), and [axoviq-ai/synthadoc](https://github.com/axoviq-ai/synthadoc).
 

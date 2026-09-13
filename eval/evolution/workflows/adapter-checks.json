@@ -89,5 +89,148 @@
       "status": "not-run",
       "blocker": "No Anthropic API key or paid live API authorization; reservation and request contracts tested offline."
     }
+  ],
+  "workflow_preflights": [
+    {
+      "host": "pi",
+      "task": "train-link-ingest",
+      "runtime_commit": "1eded4bbc37ca54e0a52faba1db59f0dc474da82",
+      "model": "openai-codex/gpt-5.5",
+      "agent_version": "0.78.0",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/train-link-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/train-link-ingest.json",
+            "sources/ingested-train-link-ingest.md"
+          ]
+        }
+      },
+      "judge_reason": "The deliverables and executions are evidenced, and the saved search has mode hybrid, but the new source is not fully faithful: it first claims path-qualified links resolve across wiki_stats.py, while the raw changelog explicitly says wiki_stats.py is an exception that does not verify correctness. This internal contradiction fails the all-requirements rubric.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-train-link-ingest.md",
+          "quote": "- Path-qualified wikilinks now resolve across `wiki_lint.py`, `wiki_graph_extract.py`, `wiki_search.py`, and `wiki_stats.py`, preventing false broken-link reports, missed graph `mentions` edges, missed backlinks, and split top-linked counts."
+        },
+        {
+          "source": "sources/ingested-train-link-ingest.md",
+          "quote": "- `wiki_stats.py` is the exception: it counts popularity by reducing links to stems and does not verify correctness."
+        },
+        {
+          "source": "raw/links.txt",
+          "quote": "`wiki_stats` is a documented exception: it counts popularity rather than adjudicating correctness, so it reduces to the stem and does not verify resolution."
+        }
+      ],
+      "tool_calls": 14,
+      "usage": {
+        "input_tokens": 1054478,
+        "output_tokens": 2520
+      },
+      "reported_cost": 1.041814,
+      "archive_files_sha256": {
+        "call-result-d45cf7cf635146fdad505a8bf03db12a.json": "6cc3b56874560f66becf139dd6c92ae8d0bb6e4293f8883ab72c025f229fdf38",
+        "call-result-ff20c89864cd4dde8571ea44077e0a23.json": "e57b8ea21a077638caa561ac8f3cea600f1f7e790e2774c66b5278b41996769a",
+        "call-start-19b86157e641445d8e5d0f3b23c53ac0.json": "de1f5cda028388870dc4e13a05c73fc9d3e5728fee4ec190e45dc71b5dbdfb4a",
+        "call-start-ee9b3f50e43d4329b8dc36a6e97f11d6.json": "ccf1e02167f5b419cb3fa4275458ea129b1765e2556a3d39bdbbd44052f34c03",
+        "result.json": "f45d107b781de5ec60720207ac93c24628d0c518518b16489ded9f2e79ddb966",
+        "rollout-1c9b039f4ae943da9ee65064a29a8d0b.json": "9379ced28c5fa3e638593792cd20ff6bb5eb72b1e8e57b7d6f5821bf638f1301",
+        "trace-00001.jsonl": "078f04f4b7e91d34db67d32b4a403facf5a797734731457a17f26936eb154862"
+      },
+      "review_note": "The source explicitly states the wiki_stats exception later in the same list. The judge considered its earlier generalization contradictory; this interpretation is debatable. The original rejected verdict is preserved."
+    },
+    {
+      "host": "omp",
+      "task": "train-link-ingest",
+      "runtime_commit": "1eded4bbc37ca54e0a52faba1db59f0dc474da82",
+      "model": "openai-codex/gpt-5.5",
+      "agent_version": "omp/18.1.16",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/train-link-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/train-link-ingest.json",
+            "sources/ingested-train-link-ingest.md"
+          ]
+        }
+      },
+      "judge_reason": "All rubric requirements are satisfied. The ingested source preserves the raw path and ingestion metadata, faithfully summarizes the material path-qualified-link behavior, and the concept page cites it. Artifacts show index/log updates and preserved protected files. The measured execution record confirms graph extraction ran with --formats jsonl and produced 9 nodes and 13 edges. The saved search artifact contains hybrid mode and ranks sources/ingested-train-link-ingest.md first. The answer accurately reports these results.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-train-link-ingest.md",
+          "quote": "raw: raw/links.txt\ningested: 2026-09-13\nconcepts: [train-link-ingest]"
+        },
+        {
+          "source": "raw/links.txt",
+          "quote": "A directory prefix is treated as a **constraint**, not decoration \u2014 a qualified link resolves only if that exact path exists, with no fall back to a bare-stem match"
+        },
+        {
+          "source": "concepts/train-link-ingest.md",
+          "quote": "After creating or updating pages on this topic, rebuild derived graph JSONL and run cached hybrid search so both compiled links and retrieval output reflect the new Markdown."
+        },
+        {
+          "source": "outputs/train-link-ingest.json",
+          "quote": "\"mode\": \"hybrid\", \"results\": [{\"slug\": \"ingested-train-link-ingest\", \"rel_path\": \"sources/ingested-train-link-ingest.md\""
+        }
+      ],
+      "tool_calls": 34,
+      "usage": {
+        "input_tokens": 1660069,
+        "output_tokens": 12310
+      },
+      "reported_cost": 1.863629,
+      "archive_files_sha256": {
+        "call-result-51737b52ac84400bab19d76ff62002d4.json": "0234c022264a8ab597f24eb7efe20479799df9d997d80df0cc04266ccdfeb4e0",
+        "call-result-c91a389e3bf747629aeb056b29e0dcaf.json": "f83f3475200844a40d6302a74a15055845ba23c56088924720b1515fabd278fe",
+        "call-start-6f915a693d374b29b18f34b6d8b17dee.json": "d4838237e1ed101788040806f98d0ce2f514ddca25ff1c971c864a2e5e6c7832",
+        "call-start-c5bf252a3c9043559fcc52cccc8a3686.json": "5e0a29dfc7932f151f7c34603b8bf7de86ff6897ec02925e0b1ea99714a1918f",
+        "result.json": "fc266cc525f9722dc572855a6c3ca6b9ba25b18a9e0a304685c3f1c9d7c208d2",
+        "rollout-718e73a82bd84fc5be369824b32b0dbe.json": "5e790766f69f53ae9ee8728c0786186ef30441b2e16908b49df4260f66d34b1f",
+        "trace-00001.jsonl": "d6ba73c23eede5df305fc7f2253d7e207949e2369173785caa9c144ec5743ebd"
+      }
+    }
   ]
 }

@@ -6,7 +6,24 @@ This suite exercises repository workflows, including ingestion, source/concept p
 
 Implementation checks and live model evidence are distinct. `adapter-checks.json` records account checks and their limits. Protocol tests exercise all nine native runner paths with recorded-format messages; they do not prove that an unavailable account or gateway works. Reported CLI dollar values can be model-price estimates under a subscription, not additional billed charges. Codex does not report USD, so a mixed study's aggregate dollar cost remains unknown.
 
+## Measured result (2026-09-13)
+
+The frozen study completed 117 runner calls and 56 executions in 68.5 minutes. Both proposals were rejected: validation was 3/4 versus 2/4 in iteration one and 2/4 versus 1/4 in iteration two. The selected skill is byte-identical to the baseline, so no evolution benefit was demonstrated and no installed skill changed.
+
+| Final comparison | Baseline | Selected | Paired change, 97.5% task-bootstrap interval |
+| --- | --- | --- | --- |
+| Codex | 3/8 | 2/8 | -12.5 percentage points, [-62.5, +37.5] |
+| Claude | 3/8 | 3/8 | 0 percentage points, [-37.5, +37.5] |
+
+These differences measure execution variability with the same skill. Both paired randomization p-values are 1.0. The metric is an end-to-end pass rate covering semantic grading, exact evidence, artifacts and write boundaries, not a pure measure of answer accuracy. Seven final executions had an affirmative semantic verdict but failed the frozen quotation contract; some cited observed artifacts that were not valid evidence targets. The corrected runtime accepts exact artifact quotations and supplies every changed text artifact while keeping factual sources distinct. The original scores were not recomputed or used for further selection.
+
+[`live-results.json`](./live-results.json) includes every verdict, overlapping failure counts, uncertainty, actual reported model IDs, usage and archive hashes. All judge, maintainer and proposer calls used zero tools. Aggregate USD is unknown because Codex does not report it; Claude's reported model costs under the existing subscription are not evidence of additional billing. The frozen skill/evidence export passed verification across 662 files; its manifest hash is recorded in the report. Full private traces, earlier stopped attempts and the export are retained in the owner's wiki raw evidence archive.
+
+The additional Pi/OMP preflights below exercise the corrected runtime. They do not turn this negative study into evidence of quality improvement. Five native hosts and the bounded API runner still lack complete live validation because of the recorded account/client/gateway/key requirements.
+
 ## Reproduce
+
+For the published measurement, extract `skills/llm-wiki/scripts/wiki_evolve*.py` from commit `e3f2babcc44c7a7c01fee0c5fdc21b9a7e02eb5e` into a separate checkout and apply `frozen-runtime.patch` with `git apply`. The patch removes later error-message logging; all six resulting scripts were verified byte-for-byte against the frozen run. This reconstructs the measured runtime; hosted model outputs remain stochastic. The current runtime additionally corrects artifact evidence handling; running it measures the corrected implementation and must be reported separately from the original measurement.
 
 1. Install and authenticate the selected native CLIs. Copy `../pilot/config.example.json`; use absolute runner paths and exact supported model IDs. Set two iterations, one repeat, `max_calls: 160`, `max_seconds: 7200`, `timeout: 480` and `max_usd: null`. Add a Claude transfer runner to reproduce the second-agent comparison.
 2. Prepare a Python interpreter with FastEmbed 0.8.0, sqlite-vec 0.1.9 and PyYAML 6.0.3. Set its absolute path as top-level `runtime_python`. Run the supplied `setup_wiki.py` against the fixture corpus once to cache the model and verify hybrid readiness. Subsequent runs can use `HF_HUB_OFFLINE=1` and `ORT_DISABLE_TELEMETRY=1`.
@@ -29,11 +46,15 @@ All preflights used training tasks; no final questions were used to repair infra
 
 A live failure can expose an adapter, environment, judge or skill problem. Passing implementation tests alone closes none of those empirical questions. The study result must identify accepted/rejected proposals, final outcomes, transfer outcomes and uncertainty before claiming benefit.
 
+## Additional adapter workflow checks
+
+Pi and OMP each executed the `train-link-ingest` workflow through runtime `1eded4b`, after the artifact-evidence correction. Both passed all six artifact assertions, both actual-command checks, citations, evidence grounding and protected-file checks. OMP passed the semantic verdict; Pi was rejected for an alleged internal contradiction about the stats exception. That interpretation is debatable because the source explicitly states the exception later in the same list; the original verdict is preserved. `adapter-checks.json` records both outcomes, versions, usage and evidence hashes. These training preflights do not change the frozen study or establish improvement.
+
 ## Remediation coverage
 
 | Original gap | Implemented behavior | Remaining empirical limit |
 | --- | --- | --- |
-| Cross-agent evaluation | Nine native adapters and subprocess protocol tests; explicit host/model selection | Five hosts need account/gateway setup; Pi/OMP checks cover one read task |
+| Cross-agent evaluation | Nine native adapters and subprocess protocol tests; explicit host/model selection | Five hosts need account/gateway setup; available hosts have workflow preflights, not universal transfer validation |
 | Answer quality | Blinded semantic judge, calibration, exact evidence quotations, citations, abstention and artifact observations | A model judge is fallible; malformed quotations fail rather than silently passing |
 | Clean comparison | Identical neutral runner boundaries, full skill injection with a hash, no rubric or variant label in inference | Provisioning proves content was supplied, not that a model followed it; progressive native skill discovery is not measured |
 | Actual wiki workflow | Permitted mutations, protected-file hashes, actual command I/O, graph and hybrid-search artifacts, shared prepared runtime | Workflow completion and answer-quality improvement are measured separately; host-wide filesystem isolation depends on the native runner |

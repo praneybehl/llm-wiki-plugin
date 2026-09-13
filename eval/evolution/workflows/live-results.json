@@ -1,0 +1,3523 @@
+{
+  "date": "2026-09-13",
+  "status": "completed",
+  "protocol_sha256": "a33bac4106e7e4f2c4264d9ce03ee0d1ca8986abffbdbb1eda6e4196d98f0cb8",
+  "runtime_base_commit": "e3f2babcc44c7a7c01fee0c5fdc21b9a7e02eb5e",
+  "runtime_patch_sha256": "b4e2124f340924d4a44d7c7117ff2801751100588ddfea06a3a659c7761c16ef",
+  "baseline_commit": "06369b2eb0617bf7b07b2b8a5c07f4aca1fb1bf0",
+  "runtime_hashes": {
+    "wiki_evolve.py": {
+      "sha256": "4681f327a98af9a5d2f309cc07cdc53a94eab0a141a6642b9d025c540cb4cf2f",
+      "mode": 420
+    },
+    "wiki_evolve_agent.py": {
+      "sha256": "f61bc3c876994cffffbb3aaec977333cfd7cfc97ab33f6ccce8885538ae9fafd",
+      "mode": 420
+    },
+    "wiki_evolve_api.py": {
+      "sha256": "075993a5a87afee2c4dc868f97a4cc6f47011bcaeeac61b22ee9f53528d96738",
+      "mode": 420
+    },
+    "wiki_evolve_claude.py": {
+      "sha256": "f2b1bc2e76086bd243734c5f3ec85502f71e8c0471446259893ce55429452ac8",
+      "mode": 420
+    },
+    "wiki_evolve_loop.py": {
+      "sha256": "782e83cef5c8cd6e090b488a2c9faf697375a4dd61b6fcc06ab8872cc8c930dc",
+      "mode": 420
+    },
+    "wiki_evolve_stream.py": {
+      "sha256": "707c2766e789625a7673cc65ccfa78b048d2424492488149a37c6a19b415e411",
+      "mode": 420
+    }
+  },
+  "models": {
+    "codex gpt-5.6-luna": {
+      "versions": [
+        "codex-cli 0.153.4"
+      ],
+      "reported_models": [],
+      "calls": 101
+    },
+    "claude sonnet": {
+      "versions": [
+        "2.1.263 (Claude Code)"
+      ],
+      "reported_models": [
+        "claude-haiku-4-5-20251001",
+        "claude-sonnet-5"
+      ],
+      "calls": 16
+    }
+  },
+  "budget": {
+    "calls": 117,
+    "tokens": 44631121,
+    "cost_usd": null,
+    "elapsed_seconds": 4109.564228374977
+  },
+  "role_tool_calls": {
+    "inference": 385,
+    "judge": 0,
+    "maintainer": 0,
+    "proposer": 0
+  },
+  "judge_tool_calls": 0,
+  "skill_changed": false,
+  "benefit_demonstrated": false,
+  "iterations": [
+    {
+      "iteration": 0,
+      "reason": "Adds an evidence-ledger and post-operation verification gate to the query workflow. This directly addresses the rejected train-cache experience: the answer's cache semantics were correct, but its unsupported claim that `.wiki-cache` was absent caused failure. It also generalizes the verified ingest recovery pattern by requiring requested artifacts and command results to be checked after recovery. The change is limited to the query procedure, preserves existing skill structure, and does not repeat a prior rejected proposal because no prior proposal history was supplied.",
+      "evidence": [
+        "ground-claims-in-supplied-evidence",
+        "verify-ingest-artifacts-after-recovery"
+      ],
+      "fingerprint": "130d700f843fa2a87be5c92ae4b85cf1f504e236a8810cc425a761fc405f9ec7",
+      "validation": {
+        "best": 3,
+        "candidate": 2
+      },
+      "metrics": {
+        "tool_calls": {
+          "best": 14,
+          "candidate": 21,
+          "limit": 1.5,
+          "passed": true
+        },
+        "cost": {
+          "best": null,
+          "candidate": null,
+          "limit": null,
+          "passed": true
+        }
+      },
+      "regressions": [],
+      "status": "rejected",
+      "changed_files": [
+        "references/query-workflow.md"
+      ]
+    },
+    {
+      "iteration": 1,
+      "reason": "Add an ingest-specific evidence and recovery checkpoint. The successful train-link-ingest experience showed that destination preparation plus direct post-operation checks verified pages, graph JSONL, hybrid-search mode, saved stdout, retrieval, and preservation. The failed train-cache experience also shows why source descriptions must not be used as proof of current workspace state. The earlier rejected proposal changed the query workflow broadly and was rejected on validation, so this proposal does not repeat it: it targets only the ingest procedure and adds a concrete artifact ledger and final verification gate for multi-artifact operations.",
+      "evidence": [
+        "ground-claims-in-supplied-evidence",
+        "verify-ingest-artifacts-after-recovery"
+      ],
+      "fingerprint": "a789409f000355043331b5872e00fd200ece7655baa1da27426a8ffd12fa6168",
+      "validation": {
+        "best": 2,
+        "candidate": 1
+      },
+      "metrics": {
+        "tool_calls": {
+          "best": 23,
+          "candidate": 14,
+          "limit": 1.5,
+          "passed": true
+        },
+        "cost": {
+          "best": null,
+          "candidate": null,
+          "limit": null,
+          "passed": true
+        }
+      },
+      "regressions": [],
+      "status": "rejected",
+      "changed_files": [
+        "references/ingest-workflow.md"
+      ]
+    }
+  ],
+  "test": {
+    "baseline": {
+      "passed": 3,
+      "total": 8
+    },
+    "selected": {
+      "passed": 2,
+      "total": 8
+    }
+  },
+  "paired_analysis": {
+    "independent_tasks": 8,
+    "paired_executions": 8,
+    "accuracy_delta": -0.125,
+    "confidence_level": 0.975,
+    "task_bootstrap_interval": [
+      -0.625,
+      0.375
+    ],
+    "paired_randomization_p": 1.0,
+    "alpha": 0.025,
+    "positive_evidence": false,
+    "mean_inference_metrics": {
+      "tool_calls": {
+        "baseline": 7.0,
+        "selected": 5.5
+      },
+      "cost": {
+        "baseline": null,
+        "selected": null
+      }
+    }
+  },
+  "transfer": [
+    {
+      "test": {
+        "baseline": {
+          "passed": 3,
+          "total": 8
+        },
+        "selected": {
+          "passed": 3,
+          "total": 8
+        }
+      },
+      "paired_analysis": {
+        "independent_tasks": 8,
+        "paired_executions": 8,
+        "accuracy_delta": 0.0,
+        "confidence_level": 0.975,
+        "task_bootstrap_interval": [
+          -0.375,
+          0.375
+        ],
+        "paired_randomization_p": 1.0,
+        "alpha": 0.025,
+        "positive_evidence": false,
+        "mean_inference_metrics": {
+          "tool_calls": {
+            "baseline": 9.375,
+            "selected": 10.125
+          },
+          "cost": {
+            "baseline": 0.93208995,
+            "selected": 0.9169339000000001
+          }
+        }
+      },
+      "host": "claude",
+      "requested_model": "sonnet"
+    }
+  ],
+  "rollouts": [
+    {
+      "label": "train-0-0",
+      "task": "train-cache",
+      "split": "train",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The core explanation is supported, but the answer adds the material claim that this workspace currently has no `.wiki-cache`, which is not verified by any supplied artifact observation or execution record. Therefore not all claims are adequately supported.",
+      "judge_evidence": [
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "The first semantic run downloads the pinned model; section vectors live in `wiki/.wiki-cache/embeddings.sqlite` and only changed sections are re-embedded."
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "Canonical Markdown remains authoritative; the semantic cache is regenerable."
+        },
+        {
+          "source": "raw/schema.txt",
+          "quote": "`wiki/.wiki-cache/` holds regenerable retrieval artifacts: `search-index.json` (parse cache) and `embeddings.sqlite` (section metadata + sqlite-vec vectors). Safe to delete; never edit by hand; gitignored."
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "\"\"\"Download the pinned model and synchronize every current wiki section.\"\"\""
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids):\n        raise RuntimeError(\n            f\"semantic index is inconsistent: {len(locator_ids)} sections, {vector_count} vectors\"\n        )"
+        }
+      ],
+      "tool_calls": 4,
+      "usage": {
+        "input_tokens": 487343,
+        "output_tokens": 1197
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "train-0-0",
+      "task": "train-pages",
+      "split": "train",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer lists exactly the five metadata fields required by the rubric and cites the schema. Its additional statement about source pages using raw and ingested is also supported by both supplied sources.",
+      "judge_evidence": [
+        {
+          "source": "sources/schema.md",
+          "quote": "All pages need type, title, tags, created and updated. Source pages record their raw source; non-source pages cite source summaries."
+        },
+        {
+          "source": "SCHEMA.md",
+          "quote": "Every curated page needs type, title, tags, created and updated frontmatter. Source pages need raw and ingested; concept pages need sources citing source slugs."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 383596,
+        "output_tokens": 759
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "train-0-0",
+      "task": "train-absent",
+      "split": "train",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": false
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer correctly abstains from asserting any universal numerical improvement and accurately states that no model-improvement claim is made without a measured trial.",
+      "judge_evidence": [
+        {
+          "source": "raw/links.txt",
+          "quote": "No model improvement is claimed without a measured trial."
+        }
+      ],
+      "tool_calls": 4,
+      "usage": {
+        "input_tokens": 483748,
+        "output_tokens": 1060
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "train-0-0",
+      "task": "train-link-ingest",
+      "split": "train",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/train-link-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/train-link-ingest.json",
+            "sources/ingested-train-link-ingest.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are satisfied. The artifacts confirm the source and concept were created, index.md and log.md were updated, protected files were unchanged, graph extraction produced 9 nodes and 14 edges, and the saved search output contains mode \"hybrid\" with 7 results including the new source. The execution records also confirm the graph and hybrid-search commands ran, and lint reported zero broken links and frontmatter issues with 5 orphans. The final answer is accurate and appropriately notes the pre-existing orphans.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-train-link-ingest.md",
+          "quote": "raw: raw/links.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "sources/ingested-train-link-ingest.md",
+          "quote": "Path-qualified links such as `entities/kalman-filter` (when written as a wikilink) must resolve against the exact wiki-relative path, while bare links resolve by filename stem."
+        },
+        {
+          "source": "raw/links.txt",
+          "quote": "A directory prefix is treated as a **constraint**, not decoration \u2014 a qualified link resolves only if that exact path exists, with no fall back to a bare-stem match"
+        },
+        {
+          "source": "concepts/train-link-ingest.md",
+          "quote": "as documented in [[ingested-train-link-ingest]]"
+        },
+        {
+          "source": "outputs/train-link-ingest.json",
+          "quote": "\"mode\": \"hybrid\""
+        },
+        {
+          "source": "outputs/train-link-ingest.json",
+          "quote": "\"results\": [{\"slug\": \"train-link-ingest\""
+        },
+        {
+          "source": "sources/ingested-train-link-ingest.md",
+          "quote": "The behavior is covered by a stdlib-only regression script with 48 cases across lint, graph, search, and statistics resolvers."
+        }
+      ],
+      "tool_calls": 19,
+      "usage": {
+        "input_tokens": 1500438,
+        "output_tokens": 6087
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-0-0-best-0",
+      "task": "val-version",
+      "split": "validation",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer correctly selects a minor release for an additive optional workflow, identifies all three JSON files and four version fields, requires the CHANGELOG heading/link update, and accurately qualifies when upgrade and major-release handling apply. Both cited sources support these claims.",
+      "judge_evidence": [
+        {
+          "source": "sources/releases.md",
+          "quote": "Additive optional features use a minor version increment. The main release updates package.json, plugin.json, both marketplace version fields and CHANGELOG.md together."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "- **Minor** (`0.3.0` \u2192 `0.4.0`): additive features (new commands, new optional frontmatter, new scripts) that pre-existing wikis can ignore."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "The main release version is declared in four JSON fields and one CHANGELOG heading. **Bump them together**."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "- **Major** (`1.0.0` \u2192 `2.0.0`): breaking changes to wiki structure, frontmatter schema, or script CLI flags that existing wikis cannot accommodate without manual migration."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "**If the release adds files or schema sections** users on older wikis would otherwise miss, extend `scripts/init_wiki.py`:"
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "Update the `/wiki:upgrade` slash command if the manual steps change."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 389322,
+        "output_tokens": 1339
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-0-0-best-0",
+      "task": "val-counts",
+      "split": "validation",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer correctly explains that setup synchronizes current Markdown sections, verifies section/vector count consistency, and reports a ready status without inventing counts.",
+      "judge_evidence": [
+        {
+          "source": "raw/runtime.txt",
+          "quote": "locator_ids = wiki_search.sync_vector_index(connection, sqlite_vec, model, sections)"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids):"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "\"status\": \"ready\","
+        },
+        {
+          "source": "sources/runtime.md",
+          "quote": "Runtime setup checks FastEmbed, sqlite-vec and PyYAML, indexes current Markdown sections and checks vector consistency."
+        }
+      ],
+      "tool_calls": 2,
+      "usage": {
+        "input_tokens": 287114,
+        "output_tokens": 582
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-0-0-best-0",
+      "task": "val-citation",
+      "split": "validation",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer matches the rubric: raw/foo is unresolved when that exact path is absent, must not fall back to sources/foo, and bare foo may resolve by slug.",
+      "judge_evidence": [
+        {
+          "source": "raw/links.txt",
+          "quote": "A directory prefix is treated as a **constraint**, not decoration \u2014 a qualified link resolves only if that exact path exists, with no fall back to a bare-stem match, because falling back would let [[raw/foo]] bind to sources/foo.md"
+        },
+        {
+          "source": "sources/links.md",
+          "quote": "Path-qualified wikilinks resolve only to that exact path. An unresolved raw/foo must not fall back to sources/foo. Bare stem links can resolve without a directory prefix."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 394424,
+        "output_tokens": 993
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-0-0-best-0",
+      "task": "val-ingest-process",
+      "split": "validation",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/val-ingest-process.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/val-ingest-process.json",
+            "sources/ingested-val-ingest-process.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are met. The source page faithfully captures the workflow, includes raw path and ingestion metadata, and the concept page cites it. Artifact observations confirm the index, log, preservation, and saved output. Execution records confirm graph extraction produced 9 nodes and 16 edges and that hybrid search ran; the saved JSON records mode hybrid, 10 results, and the new source ranked first.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-val-ingest-process.md",
+          "quote": "raw: raw/ingestion.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "sources/ingested-val-ingest-process.md",
+          "quote": "The procedure starts by checking `SCHEMA.md`, then placing or confirming the slugged raw source and reading it in one pass when short or in chunks when long."
+        },
+        {
+          "source": "sources/ingested-val-ingest-process.md",
+          "quote": "The source also requires that raw files remain unchanged"
+        },
+        {
+          "source": "concepts/val-ingest-process.md",
+          "quote": "This workflow is documented by [[ingested-val-ingest-process]]"
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "Step 8: Update the index"
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "## Step 9: Append to the log"
+        }
+      ],
+      "tool_calls": 6,
+      "usage": {
+        "input_tokens": 701704,
+        "output_tokens": 3801
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-0-0-candidate-0",
+      "task": "val-version",
+      "split": "validation",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer satisfies every rubric requirement: it selects a minor release, identifies the three JSON files and all four version fields, includes CHANGELOG.md, and correctly states that SKILL.md has no version field. The cited records support the claims.",
+      "judge_evidence": [
+        {
+          "source": "raw/releases.txt",
+          "quote": "Minor (`0.3.0` \u2192 `0.4.0`): additive features (new commands, new optional frontmatter, new scripts) that pre-existing wikis can ignore."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "The main release version is declared in four JSON fields and one CHANGELOG heading. **Bump them together**."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "| `package.json` | `version` |"
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "| `.claude-plugin/plugin.json` | `version` |"
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "| `.claude-plugin/marketplace.json` | `metadata.version` |"
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "| `.claude-plugin/marketplace.json` | `plugins[0].version` |"
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "| `CHANGELOG.md` | `## [X.Y.Z] \u2014 YYYY-MM-DD` heading + the `[X.Y.Z]: \u2026/releases/tag/vX.Y.Z` link line |"
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "`skills/llm-wiki/SKILL.md` does **not** carry a version field."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 387865,
+        "output_tokens": 1374
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-0-0-candidate-0",
+      "task": "val-counts",
+      "split": "validation",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer accurately explains vector consistency and the relevant ready/error outputs without inventing counts. It is supported by the supplied runtime source.",
+      "judge_evidence": [
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids):\n        raise RuntimeError(\n            f\"semantic index is inconsistent: {len(locator_ids)} sections, {vector_count} vectors\"\n        )"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "return {\n        \"status\": \"ready\","
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "\"sections\": len(locator_ids),\n        \"vectors\": vector_count,"
+        },
+        {
+          "source": "sources/runtime.md",
+          "quote": "Runtime setup checks FastEmbed, sqlite-vec and PyYAML, indexes current Markdown sections and checks vector consistency. A ready result reports model, pages, sections and vectors."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 380366,
+        "output_tokens": 723
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-0-0-candidate-0",
+      "task": "val-citation",
+      "split": "validation",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The core answer satisfies the rubric, but the added claim that the regression test passed all 48 cases is unsupported: the supplied sources only state that a 48-case test was added, and no execution record verifies it passed.",
+      "judge_evidence": [
+        {
+          "source": "sources/links.md",
+          "quote": "Path-qualified wikilinks resolve only to that exact path. An unresolved raw/foo must not fall back to sources/foo. Bare stem links can resolve without a directory prefix."
+        },
+        {
+          "source": "raw/links.txt",
+          "quote": "A directory prefix is treated as a **constraint**, not decoration \u2014 a qualified link resolves only if that exact path exists, with no fall back to a bare-stem match"
+        },
+        {
+          "source": "raw/links.txt",
+          "quote": "Adds `skills/llm-wiki/scripts/test_link_resolution.py` \u2014 stdlib-only, no test framework, run directly. 48 cases across all four resolvers, including guard cases that fail if the path constraint is relaxed."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 397346,
+        "output_tokens": 1288
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-0-0-candidate-0",
+      "task": "val-ingest-process",
+      "split": "validation",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/val-ingest-process.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/val-ingest-process.json",
+            "sources/ingested-val-ingest-process.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are satisfied. The source page includes faithful workflow coverage, raw-path and ingestion metadata, and the concept cites it. Index/log entries exist, graph extraction is evidenced by the measured execution record and generated JSONL artifacts, and the saved search JSON contains mode hybrid with 10 results and the stated top result. Integrity confirms protected files were unchanged.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-val-ingest-process.md",
+          "quote": "raw: raw/ingestion.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "sources/ingested-val-ingest-process.md",
+          "quote": "It requires reading the schema and index first, treating raw files as immutable evidence, creating a source-summary page, adding or updating concept pages with wikilinks, and recording the operation in the index and log."
+        },
+        {
+          "source": "concepts/val-ingest-process.md",
+          "quote": "sources: [ingested-val-ingest-process]"
+        },
+        {
+          "source": "index.md",
+          "quote": "- [[sources/ingested-val-ingest-process]]: validation ingest workflow and artifact-verification contract\n- [[concepts/val-ingest-process]]: applicable schema-first ingest workflow and verification gate"
+        },
+        {
+          "source": "log.md",
+          "quote": "## [2026-09-13] ingest | Ingest workflow for the validation process"
+        },
+        {
+          "source": "graph/edges.jsonl",
+          "quote": "\"object\": \"raw:raw/ingestion.txt\", \"page\": \"sources/ingested-val-ingest-process.md\", \"predicate\": \"summarizes_raw\""
+        },
+        {
+          "source": "outputs/val-ingest-process.json",
+          "quote": "\"query\": \"immutable captured raw sources\", \"wiki\": \".\", \"granularity\": \"section\", \"mode\": \"hybrid\", \"results\": [{\"slug\": \"ingested-val-ingest-process\", \"rel_path\": \"sources/ingested-val-ingest-process.md\""
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "The body should be the LLM's summary of the source \u2014 the key claims, the methodology if relevant, the conclusions, the open questions."
+        }
+      ],
+      "tool_calls": 12,
+      "usage": {
+        "input_tokens": 1485818,
+        "output_tokens": 6573
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "train-1-0",
+      "task": "train-cache",
+      "split": "train",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The core claims are mostly supported, but the answer overstates the setup behavior and adds an unsupported contradiction. Rebuilding the parse cache requires the setup command's `--cache` option; rerunning setup alone does not necessarily do so. The supplied sources also do not establish that a `runtime-policy` page exists, is stale, or is contradicted. The answer further calls immutable raw sources the \u201cauditable ground truth,\u201d while the sources specifically identify Markdown as canonical and raw files as underlying evidence, not as the authoritative content location.",
+      "judge_evidence": [
+        {
+          "source": "raw/schema.txt",
+          "quote": "`wiki/.wiki-cache/` holds regenerable retrieval artifacts: `search-index.json` (parse cache) and `embeddings.sqlite` (section metadata + sqlite-vec vectors). Safe to delete; never edit by hand; gitignored."
+        },
+        {
+          "source": "raw/schema.txt",
+          "quote": "The graph can be deleted at any time and rebuilt without losing knowledge \u2014 markdown is canonical."
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "The first semantic run downloads the pinned model; section vectors live in `wiki/.wiki-cache/embeddings.sqlite` and only changed sections are re-embedded."
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "Download the pinned model and synchronize every current wiki section."
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "`--cache`, nargs=\"?\", const=\"AUTO\", default=None, help=\"Build the incremental parse cache too (default path: wiki/.wiki-cache/search-index.json).\""
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "If the wiki contains contradicting claims, surface the contradiction explicitly rather than picking one and presenting it as settled."
+        }
+      ],
+      "tool_calls": 4,
+      "usage": {
+        "input_tokens": 481876,
+        "output_tokens": 1138
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "train-1-0",
+      "task": "train-pages",
+      "split": "train",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer correctly lists all five metadata fields required for every curated page type and cites the supplied schema sources. It is numerically and semantically accurate, with no missing qualification or contradiction.",
+      "judge_evidence": [
+        {
+          "source": "sources/schema.md",
+          "quote": "All pages need type, title, tags, created and updated."
+        },
+        {
+          "source": "SCHEMA.md",
+          "quote": "Every curated page needs type, title, tags, created and updated frontmatter."
+        }
+      ],
+      "tool_calls": 2,
+      "usage": {
+        "input_tokens": 290733,
+        "output_tokens": 728
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "train-1-0",
+      "task": "train-absent",
+      "split": "train",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": false
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer correctly states that no universal numerical improvement is established and appropriately limits improvement claims to measured trials. This matches the rubric and supplied sources.",
+      "judge_evidence": [
+        {
+          "source": "raw/links.txt",
+          "quote": "No model improvement is claimed without a measured trial."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "The evolution suite uses deterministic runners to verify lifecycle behavior, not model improvement. Live-model trials require an explicitly selected runner/model and inference budget; record actual results separately."
+        }
+      ],
+      "tool_calls": 10,
+      "usage": {
+        "input_tokens": 490721,
+        "output_tokens": 1655
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "train-1-0",
+      "task": "train-link-ingest",
+      "split": "train",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/train-link-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/train-link-ingest.json",
+            "sources/ingested-train-link-ingest.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are met. The new source includes faithful claims from raw/links.txt, records raw and ingestion metadata, and the concept cites it. The index and log contain the new pages. Measured execution records show graph extraction and hybrid search ran; graph artifacts contain 9 nodes and 16 edges, and the saved JSON has mode hybrid with both new pages retrieved. Integrity verification confirms protected source and raw files were unchanged.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-train-link-ingest.md",
+          "quote": "raw: raw/links.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "sources/ingested-train-link-ingest.md",
+          "quote": "A directory prefix is a constraint, not decoration. A qualified link resolves only when that exact wiki-relative path exists; `[[raw/foo]]` must not fall back to `sources/foo.md` merely because the filename stem matches."
+        },
+        {
+          "source": "concepts/train-link-ingest.md",
+          "quote": "sources: [ingested-train-link-ingest]"
+        },
+        {
+          "source": "index.md",
+          "quote": "- [[sources/ingested-train-link-ingest]]: changelog evidence for exact-path wikilink resolution\n- [[concepts/train-link-ingest]]: workflow for ingesting and retrieving path-qualified wikilinks"
+        },
+        {
+          "source": "log.md",
+          "quote": "- Created `sources/ingested-train-link-ingest.md` and `concepts/train-link-ingest.md` from `raw/links.txt`; updated `index.md`."
+        },
+        {
+          "source": "graph/nodes.jsonl",
+          "quote": "\"id\": \"concept:train-link-ingest\", \"path\": \"concepts/train-link-ingest.md\""
+        },
+        {
+          "source": "graph/edges.jsonl",
+          "quote": "\"predicate\": \"sourced_from\", \"source\": \"ingested-train-link-ingest\", \"subject\": \"concept:train-link-ingest\""
+        },
+        {
+          "source": "outputs/train-link-ingest.json",
+          "quote": "\"query\": \"path-qualified wikilinks\", \"mode\": \"hybrid\""
+        },
+        {
+          "source": "outputs/train-link-ingest.json",
+          "quote": "\"rel_path\": \"concepts/train-link-ingest.md\""
+        },
+        {
+          "source": "outputs/train-link-ingest.json",
+          "quote": "\"rel_path\": \"sources/ingested-train-link-ingest.md\""
+        }
+      ],
+      "tool_calls": 11,
+      "usage": {
+        "input_tokens": 1082297,
+        "output_tokens": 5742
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-1-0-best-0",
+      "task": "val-version",
+      "split": "validation",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer selects a minor release, identifies all three JSON files and four version fields, includes CHANGELOG.md, and cites both supplied release sources. Its conditional init_wiki.py qualification is also supported by the detailed release checklist.",
+      "judge_evidence": [
+        {
+          "source": "sources/releases.md",
+          "quote": "Additive optional features use a minor version increment. The main release updates package.json, plugin.json, both marketplace version fields and CHANGELOG.md together."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "The main release version is declared in four JSON fields and one CHANGELOG heading. Bump them together."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "If the release adds files or schema sections users on older wikis would otherwise miss, extend scripts/init_wiki.py"
+        }
+      ],
+      "tool_calls": 7,
+      "usage": {
+        "input_tokens": 392873,
+        "output_tokens": 1190
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-1-0-best-0",
+      "task": "val-counts",
+      "split": "validation",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer accurately explains that setup synchronizes current Markdown sections, verifies section/vector count consistency, raises an inconsistency error when counts differ, and reports ready with both counts when consistent. It invents no numeric values.",
+      "judge_evidence": [
+        {
+          "source": "raw/runtime.txt",
+          "quote": "\"\"\"Download the pinned model and synchronize every current wiki section.\"\"\""
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids):\n        raise RuntimeError(\n            f\"semantic index is inconsistent: {len(locator_ids)} sections, {vector_count} vectors\"\n        )"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "\"status\": \"ready\",\n        \"wiki\": str(wiki_root),"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "\"sections\": len(locator_ids),\n        \"vectors\": vector_count,"
+        },
+        {
+          "source": "sources/runtime.md",
+          "quote": "Runtime setup checks FastEmbed, sqlite-vec and PyYAML, indexes current Markdown sections and checks vector consistency. A ready result reports model, pages, sections and vectors."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 382587,
+        "output_tokens": 1072
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-1-0-best-0",
+      "task": "val-citation",
+      "split": "validation",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer matches the rubric: a path-qualified raw/foo link requires that exact path and must not fall back to sources/foo; it also correctly states that bare foo links may resolve by stem.",
+      "judge_evidence": [
+        {
+          "source": "raw/links.txt",
+          "quote": "A directory prefix is treated as a **constraint**, not decoration \u2014 a qualified link resolves only if that exact path exists, with no fall back to a bare-stem match"
+        },
+        {
+          "source": "raw/links.txt",
+          "quote": "falling back would let `[[raw/foo]]` bind to `sources/foo.md`"
+        },
+        {
+          "source": "sources/links.md",
+          "quote": "Path-qualified wikilinks resolve only to that exact path. An unresolved raw/foo must not fall back to sources/foo. Bare stem links can resolve without a directory prefix."
+        }
+      ],
+      "tool_calls": 4,
+      "usage": {
+        "input_tokens": 499206,
+        "output_tokens": 1305
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-1-0-best-0",
+      "task": "val-ingest-process",
+      "split": "validation",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/val-ingest-process.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/val-ingest-process.json",
+            "sources/ingested-val-ingest-process.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are met. The source page records the raw path and ingestion date, faithfully summarizes the workflow, and the concept cites the new source. The index and log include both new pages. Measured execution records confirm graph extraction and hybrid search ran; the saved JSON reports mode hybrid and contains 10 results. The final answer's graph counts match the extracted artifacts.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-val-ingest-process.md",
+          "quote": "raw: raw/ingestion.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "sources/ingested-val-ingest-process.md",
+          "quote": "The source defines a disciplined ingest process for turning an immutable raw source into durable, linked Markdown knowledge. It requires schema-first work, source reading, an impact survey, a source-summary page, surgical updates, new concept or entity pages where warranted, index and log maintenance, and preservation of raw files."
+        },
+        {
+          "source": "concepts/val-ingest-process.md",
+          "quote": "sources: [ingested-val-ingest-process]"
+        },
+        {
+          "source": "index.md",
+          "quote": "[[sources/ingested-val-ingest-process]]: schema-first workflow for ingesting immutable raw sources into linked wiki pages\n- [[concepts/val-ingest-process]]: applicable ingest procedure and provenance safeguards for this wiki"
+        },
+        {
+          "source": "log.md",
+          "quote": "2026-09-13: ingest | LLM Wiki ingest workflow; created sources/ingested-val-ingest-process.md and concepts/val-ingest-process.md, updated index.md."
+        },
+        {
+          "source": "graph/nodes.jsonl",
+          "quote": "\"id\": \"concept:ingested-val-ingest-process\""
+        },
+        {
+          "source": "graph/edges.jsonl",
+          "quote": "\"object\": \"raw:raw/ingestion.txt\", \"page\": \"sources/ingested-val-ingest-process.md\", \"predicate\": \"summarizes_raw\""
+        },
+        {
+          "source": "outputs/val-ingest-process.json",
+          "quote": "\"query\": \"immutable captured raw sources\", \"mode\": \"hybrid\", \"results\": ["
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "Before anything else, read `wiki/SCHEMA.md`."
+        }
+      ],
+      "tool_calls": 9,
+      "usage": {
+        "input_tokens": 1066471,
+        "output_tokens": 4217
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-1-0-candidate-0",
+      "task": "val-version",
+      "split": "validation",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer correctly chooses a minor release, identifies the three JSON files and all four required version fields, and includes the CHANGELOG records. Its qualifications and optional upgrade details are supported by the supplied releases sources.",
+      "judge_evidence": [
+        {
+          "source": "sources/releases.md",
+          "quote": "Additive optional features use a minor version increment. The main release updates package.json, plugin.json, both marketplace version fields and CHANGELOG.md together."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "The main release version is declared in four JSON fields and one CHANGELOG heading. Bump them together."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "Minor (`0.3.0` \u2192 `0.4.0`): additive features (new commands, new optional frontmatter, new scripts) that pre-existing wikis can ignore."
+        },
+        {
+          "source": "raw/releases.txt",
+          "quote": "If the release adds files or schema sections users on older wikis would otherwise miss, extend `scripts/init_wiki.py`:"
+        }
+      ],
+      "tool_calls": 2,
+      "usage": {
+        "input_tokens": 289977,
+        "output_tokens": 1028
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-1-0-candidate-0",
+      "task": "val-counts",
+      "split": "validation",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer correctly explains that current Markdown sections are indexed, that section and semantic-vector counts must match, and that a mismatch causes setup to fail readiness. It invents no counts.",
+      "judge_evidence": [
+        {
+          "source": "raw/runtime.txt",
+          "quote": "\"\"\"Download the pinned model and synchronize every current wiki section.\"\"\""
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids):"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "raise RuntimeError("
+        },
+        {
+          "source": "sources/runtime.md",
+          "quote": "Runtime setup checks FastEmbed, sqlite-vec and PyYAML, indexes current Markdown sections and checks vector consistency."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 384190,
+        "output_tokens": 1025
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-1-0-candidate-0",
+      "task": "val-citation",
+      "split": "validation",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer matches the rubric: a path-qualified raw/foo link requires that exact path, cannot fall back to sources/foo, and bare foo links may resolve by stem. Both cited sources explicitly support these claims.",
+      "judge_evidence": [
+        {
+          "source": "sources/links.md",
+          "quote": "Path-qualified wikilinks resolve only to that exact path. An unresolved raw/foo must not fall back to sources/foo. Bare stem links can resolve without a directory prefix."
+        },
+        {
+          "source": "raw/links.txt",
+          "quote": "A directory prefix is treated as a **constraint**, not decoration \u2014 a qualified link resolves only if that exact path exists, with no fall back to a bare-stem match, because falling back would let [[raw/foo]] bind to sources/foo.md"
+        }
+      ],
+      "tool_calls": 2,
+      "usage": {
+        "input_tokens": 290639,
+        "output_tokens": 614
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "validation-1-0-candidate-0",
+      "task": "val-ingest-process",
+      "split": "validation",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/val-ingest-process.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/val-ingest-process.json",
+            "sources/ingested-val-ingest-process.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The ingest, page updates, preservation checks, graph-extraction command, and hybrid-search output are supported. However, the final answer asserts that graph/nodes.jsonl and graph/edges.jsonl were valid and contained exactly 9 nodes and 16 edges, while the supplied execution output does not report graph validity or those counts, and no edges artifact content is supplied. Because the rubric requires the final answer to be accurate and all material claims supported, this is not a pass.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-val-ingest-process.md",
+          "quote": "The final pass checks that every requested file exists, new pages have valid frontmatter and inbound links, raw files and existing source pages are unchanged, generated JSONL parses, saved stdout is byte-identical to actual stdout, and search JSON reports the requested query and hybrid mode."
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "Run `uv run --script scripts/wiki_graph_extract.py wiki/` to regenerate `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml`."
+        },
+        {
+          "source": "sources/ingested-val-ingest-process.md",
+          "quote": "The ingest creates a source-summary page, updates touched pages surgically, creates and links first-class concepts when needed, updates the index and log, and refreshes the graph when applicable."
+        }
+      ],
+      "tool_calls": 7,
+      "usage": {
+        "input_tokens": 808823,
+        "output_tokens": 4583
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-baseline-0",
+      "task": "test-retrieval",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The answer satisfies the core rubric terms, but it adds several material provenance claims not supported by the supplied sources, including `rel_path`, `section_index`, `score`, retriever names, page metadata fields, and the claim that `sources` points to source-summary pages. The sources support hybrid fusion and JSON provenance, but not that full field-level contract.",
+      "judge_evidence": [
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Local FastEmbed and BM25 are fused with reciprocal rank fusion. Canonical Markdown remains authoritative; the semantic cache is regenerable. Search JSON reports mode and retrieval provenance."
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "This returns section-level hybrid results by default: local FastEmbed semantic ranking and BM25 are fused with RRF, and each JSON row carries its `heading_path`, snippet, and retrieval provenance."
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "For dependency-free lexical BM25, run `python scripts/wiki_search.py \"your query terms\" --no-embed`"
+        }
+      ],
+      "tool_calls": 4,
+      "usage": {
+        "input_tokens": 483072,
+        "output_tokens": 1638
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-baseline-0",
+      "task": "test-source-policy",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer satisfies the rubric: it preserves the immutable raw capture, retains the older claim, adds the new source, explicitly documents the contradiction with both sources cited, and rejects silently overwriting history. Its cache/Markdown qualification is also supported by the retrieval source.",
+      "judge_evidence": [
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "A new source contradicts an existing claim \u2192 flag prominently: add a \"## Contradictions\" section if it doesn't exist, and document the contradiction with both sources cited. Do not silently overwrite the older claim."
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "If updating a page would push it over the 800-line hard cap, that's the signal to split the page (extract the new dimension into its own page, link from the parent). Do that as part of the ingest, not as a deferred lint task."
+        },
+        {
+          "source": "sources/ingestion.md",
+          "quote": "Ingestion reads existing schema and index, preserves captured raw files, creates a source summary, updates relevant knowledge pages, and updates the index and log. Contradictions must remain explicit."
+        },
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Canonical Markdown remains authoritative; the semantic cache is regenerable."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 390257,
+        "output_tokens": 1009
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-baseline-0",
+      "task": "test-metadata",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer accurately distinguishes source-page provenance (`raw` and `ingested`) from concept-page provenance (`sources` pointing to source summaries), correctly states the 800-line hard cap, and accurately describes the 400-line soft cap and ingest-time splitting guidance. Its additional qualifications are supported by the supplied schema and ingest workflow.",
+      "judge_evidence": [
+        {
+          "source": "raw/schema.txt",
+          "quote": "- `source` pages: `authors`, `url` (if applicable), `raw`, `ingested`"
+        },
+        {
+          "source": "raw/schema.txt",
+          "quote": "- Non-source pages: `sources` listing the source-summary pages drawn from"
+        },
+        {
+          "source": "sources/schema.md",
+          "quote": "Source pages record their raw source; non-source pages cite source summaries. The hard page cap is 800 lines."
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "Frontmatter list values are bare slugs \u2014 the `[[wikilink]]` syntax goes in the body, not in YAML."
+        },
+        {
+          "source": "raw/schema.txt",
+          "quote": "- Soft cap: 400 lines / ~2,000 words. Consider splitting beyond this.\n- Hard cap: 800 lines. Must split."
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "If updating a page would push it over the 800-line hard cap, that's the signal to split the page (extract the new dimension into its own page, link from the parent). Do that as part of the ingest, not as a deferred lint task."
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "If the source is so dense that a single summary page can't capture it, split: one page per major section, each linking to the others, with a parent page that gives the overview."
+        }
+      ],
+      "tool_calls": 4,
+      "usage": {
+        "input_tokens": 483896,
+        "output_tokens": 1147
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-baseline-0",
+      "task": "test-price-unknown",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer correctly abstains from giving an exact dollar figure. The supplied sources specify a local hybrid-search implementation and that query text stays on the machine, but provide no dollar tariff or quantified per-query machine cost. The qualification that exact all-in cost cannot be determined is therefore supported.",
+      "judge_evidence": [
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "This returns section-level hybrid results by default: local FastEmbed semantic ranking and BM25 are fused with RRF"
+        },
+        {
+          "source": "raw/schema.txt",
+          "quote": "Semantic backend: local FastEmbed + sqlite-vec (`BAAI/bge-small-en-v1.5`, 384 dimensions). No wiki or query text leaves the machine."
+        }
+      ],
+      "tool_calls": 7,
+      "usage": {
+        "input_tokens": 826406,
+        "output_tokens": 2988
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-baseline-0",
+      "task": "test-release-ingest",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/test-release-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/test-release-ingest.json",
+            "sources/ingested-test-release-ingest.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The answer is mostly supported, but it claims graph counts of 9 nodes and 16 edges without supplied evidence verifying those counts. The execution record proves graph extraction ran, but does not report those counts, and the supplied graph artifact only shows node content. Therefore not all material claims are verified.",
+      "judge_evidence": [
+        {
+          "source": "outputs/test-release-ingest.json",
+          "quote": "\"mode\": \"hybrid\", \"results\": [{\"slug\": \"releases\""
+        },
+        {
+          "source": "outputs/test-release-ingest.json",
+          "quote": "{\"slug\": \"ingested-test-release-ingest\", \"rel_path\": \"sources/ingested-test-release-ingest.md\""
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "raw: raw/releases.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "concepts/test-release-ingest.md",
+          "quote": "sources: [ingested-test-release-ingest]"
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "- Additive optional features use a minor version increment.\n- A release updates `package.json`, `.claude-plugin/plugin.json`, both marketplace version fields, and `CHANGELOG.md` together.\n- Publishing follows merge."
+        }
+      ],
+      "tool_calls": 16,
+      "usage": {
+        "input_tokens": 839196,
+        "output_tokens": 3686
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-baseline-0",
+      "task": "test-runtime-ingest",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/test-runtime-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/test-runtime-ingest.json",
+            "sources/ingested-test-runtime-ingest.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are satisfied. The new source includes ingestion metadata and a faithful runtime workflow summary, the concept cites it, index.md and log.md record the additions, graph extraction has measured output, and the saved search JSON is hybrid mode with 5 results including both new pages. The final answer accurately reports these completed actions.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-test-runtime-ingest.md",
+          "quote": "raw: raw/runtime.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "sources/ingested-test-runtime-ingest.md",
+          "quote": "The operational sequence is: collect the current Markdown pages and sections; load the local embedding model and sqlite-vec backend; open or initialize the vector index; synchronize new, changed, and removed sections; count the resulting semantic vectors; and fail if the section/vector counts differ."
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids):\n        raise RuntimeError(\n            f\"semantic index is inconsistent: {len(locator_ids)} sections, {vector_count} vectors\"\n        )"
+        },
+        {
+          "source": "concepts/test-runtime-ingest.md",
+          "quote": "sources: [ingested-test-runtime-ingest]"
+        },
+        {
+          "source": "index.md",
+          "quote": "- [[sources/ingested-test-runtime-ingest]]: local runtime setup and vector-consistency verification contract\n- [[concepts/test-runtime-ingest]]: workflow for synchronizing and validating derived semantic retrieval state"
+        },
+        {
+          "source": "log.md",
+          "quote": "- 2026-09-13: ingest | LLM Wiki runtime verification contract; created sources/ingested-test-runtime-ingest.md and concepts/test-runtime-ingest.md; updated index.md."
+        },
+        {
+          "source": "outputs/test-runtime-ingest.json",
+          "quote": "\"query\": \"vector consistency sections model\", \"wiki\": \"wiki\", \"granularity\": \"section\", \"mode\": \"hybrid\", \"results\": ["
+        },
+        {
+          "source": "outputs/test-runtime-ingest.json",
+          "quote": "\"rel_path\": \"sources/ingested-test-runtime-ingest.md\""
+        },
+        {
+          "source": "outputs/test-runtime-ingest.json",
+          "quote": "\"rel_path\": \"concepts/test-runtime-ingest.md\""
+        },
+        {
+          "source": "graph/nodes.jsonl",
+          "quote": "\"path\": \"sources/ingested-test-runtime-ingest.md\""
+        },
+        {
+          "source": "graph/edges.jsonl",
+          "quote": "\"extraction_method\": \"frontmatter_sources\", \"object\": \"concept:ingested-test-runtime-ingest\", \"page\": \"concepts/test-runtime-ingest.md\", \"predicate\": \"sourced_from\""
+        }
+      ],
+      "tool_calls": 8,
+      "usage": {
+        "input_tokens": 890517,
+        "output_tokens": 3910
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-baseline-0",
+      "task": "test-edit-policy",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true
+        ],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/runtime-policy.md",
+            "log.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are satisfied: the saved concept explicitly rejects the stale cache-authoritative claim, states Markdown authority and cache regeneration, preserves metadata and the source link, retains the correction note, updates log.md, and the integrity record confirms no raw or unrelated files were modified.",
+      "judge_evidence": [
+        {
+          "source": "concepts/runtime-policy.md",
+          "quote": "The former assertion that the semantic cache is authoritative and that Markdown can be discarded after indexing is incorrect. Canonical Markdown remains the authority. The semantic cache is a regenerable retrieval artifact, so it may be rebuilt from the Markdown when needed. [[sources/retrieval]]"
+        },
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Canonical Markdown remains authoritative; the semantic cache is regenerable."
+        }
+      ],
+      "tool_calls": 4,
+      "usage": {
+        "input_tokens": 506430,
+        "output_tokens": 2011
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-baseline-0",
+      "task": "test-runtime-audit",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": false,
+        "artifacts": [
+          false
+        ],
+        "commands": [
+          true
+        ],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": false,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "Task write boundary violated: outputs/runtime-audit.json",
+      "judge_evidence": [],
+      "tool_calls": 10,
+      "usage": {
+        "input_tokens": 597953,
+        "output_tokens": 2512
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-selected-0",
+      "task": "test-retrieval",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer satisfies every rubric requirement and its material claims are supported by the supplied retrieval and runtime sources. It correctly explains BM25 lexical ranking, local FastEmbed semantic ranking, reciprocal rank fusion, JSON provenance fields, lexical fallback behavior, authoritative Markdown, and vector-consistency verification.",
+      "judge_evidence": [
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Local FastEmbed and BM25 are fused with reciprocal rank fusion. Canonical Markdown remains authoritative; the semantic cache is regenerable. Search JSON reports mode and retrieval provenance."
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "This returns section-level hybrid results by default: local FastEmbed semantic ranking and BM25 are fused with RRF, and each JSON row carries its `heading_path`, snippet, and retrieval provenance."
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "For dependency-free lexical BM25, run `python scripts/wiki_search.py \"your query terms\" --no-embed`"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids):\n        raise RuntimeError(\n            f\"semantic index is inconsistent: {len(locator_ids)} sections, {vector_count} vectors\"\n        )"
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 385132,
+        "output_tokens": 1719
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-selected-0",
+      "task": "test-source-policy",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer satisfies the rubric: it preserves the original raw capture, rejects silent replacement, requires explicit documentation of the contradiction with both sources, and keeps both claims visible. Its Markdown/cache statement is also supported by the retrieval source.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingestion.md",
+          "quote": "Ingestion reads existing schema and index, preserves captured raw files, creates a source summary, updates relevant knowledge pages, and updates the index and log. Contradictions must remain explicit."
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "A new source contradicts an existing claim \u2192 flag prominently: add a \"## Contradictions\" section if it doesn't exist, and document the contradiction with both sources cited. Do not silently overwrite the older claim."
+        },
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Canonical Markdown remains authoritative; the semantic cache is regenerable."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 385520,
+        "output_tokens": 851
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-selected-0",
+      "task": "test-metadata",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer accurately distinguishes source-page provenance fields from non-source concept citations and correctly states the soft and hard page-size thresholds and source-summary splitting guidance. All material claims are supported by the supplied sources.",
+      "judge_evidence": [
+        {
+          "source": "sources/schema.md",
+          "quote": "Source pages record their raw source; non-source pages cite source summaries. The hard page cap is 800 lines."
+        },
+        {
+          "source": "raw/schema.txt",
+          "quote": "Soft cap: 400 lines / ~2,000 words. Consider splitting beyond this. Hard cap: 800 lines. Must split."
+        },
+        {
+          "source": "raw/schema.txt",
+          "quote": "source pages: `authors`, `url` (if applicable), `raw`, `ingested`"
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "Frontmatter should include at minimum: ... authors: [\"Author Name\"] ... url: \"https://...\" # if applicable ... raw: \"raw/<source-slug>.<ext>\" ... ingested: 2026-04-15"
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "New pages need: ... Frontmatter with `type`, `tags`, `sources: [[[<source-slug>]]]`, `created`, `updated`."
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "Keep the page atomic \u2014 under the 400-line soft cap. If the source is so dense that a single summary page can't capture it, split: one page per major section, each linking to the others, with a parent page that gives the overview."
+        }
+      ],
+      "tool_calls": 3,
+      "usage": {
+        "input_tokens": 385664,
+        "output_tokens": 1023
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-selected-0",
+      "task": "test-price-unknown",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": false
+      },
+      "judge_passed": false,
+      "judge_reason": "The answer correctly notes that electricity and hardware amortization are unspecified, but it still asserts an exact $0.00 cost. The rubric requires abstaining on exact dollars because the sources provide no dollar tariff and local execution does not establish total machine cost. The sources support local processing, not a zero externally billed price.",
+      "judge_evidence": [
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "No wiki or query text leaves the machine."
+        },
+        {
+          "source": "raw/schema.txt",
+          "quote": "Semantic backend: local FastEmbed + sqlite-vec (BAAI/bge-small-en-v1.5, 384 dimensions). No wiki or query text leaves the machine."
+        }
+      ],
+      "tool_calls": 4,
+      "usage": {
+        "input_tokens": 499838,
+        "output_tokens": 1235
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-selected-0",
+      "task": "test-release-ingest",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/test-release-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/test-release-ingest.json",
+            "sources/ingested-test-release-ingest.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "Most workflow requirements are supported, but the answer asserts 16 graph edges without a supplied artifact observation or execution output verifying that count. The execution record only shows the graph command ran; it does not report edge counts, and graph/edges.jsonl is not an allowed evidence source.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "raw: raw/releases.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "concepts/test-release-ingest.md",
+          "quote": "sources: [ingested-test-release-ingest]"
+        },
+        {
+          "source": "outputs/test-release-ingest.json",
+          "quote": "\"query\": \"minor release version changelog\", \"wiki\": \"wiki\", \"granularity\": \"section\", \"mode\": \"hybrid\""
+        },
+        {
+          "source": "outputs/test-release-ingest.json",
+          "quote": "\"rel_path\": \"concepts/test-release-ingest.md\""
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "A release must keep the documentation package, plugin manifest, marketplace metadata, marketplace plugin entry, and CHANGELOG heading synchronized."
+        }
+      ],
+      "tool_calls": 9,
+      "usage": {
+        "input_tokens": 838634,
+        "output_tokens": 3650
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-selected-0",
+      "task": "test-runtime-ingest",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/test-runtime-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/test-runtime-ingest.json",
+            "sources/ingested-test-runtime-ingest.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are satisfied. The source includes the raw path and ingestion metadata and faithfully summarizes the runtime contract; the concept cites the new source; index.md and log.md list the new pages; measured execution records show graph extraction and hybrid search ran, with graph counts of 9 nodes and 14 edges and search exit 0; the saved JSON has mode hybrid; and the integrity record confirms protected files were unchanged.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingested-test-runtime-ingest.md",
+          "quote": "raw: raw/runtime.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "sources/ingested-test-runtime-ingest.md",
+          "quote": "The setup procedure collects pages and sections, loads FastEmbed with the configured local model plus sqlite-vec, and synchronizes the vector index. It reports a ready state only after checking vector consistency."
+        },
+        {
+          "source": "concepts/test-runtime-ingest.md",
+          "quote": "sources: [ingested-test-runtime-ingest]"
+        },
+        {
+          "source": "index.md",
+          "quote": "[[sources/ingested-test-runtime-ingest]]: local runtime setup and vector-consistency contract for this ingest\n- [[concepts/test-runtime-ingest]]: applicable ingest, graph extraction, and cached hybrid-search workflow"
+        },
+        {
+          "source": "log.md",
+          "quote": "pages: sources/ingested-test-runtime-ingest.md, concepts/test-runtime-ingest.md"
+        },
+        {
+          "source": "outputs/test-runtime-ingest.json",
+          "quote": "\"query\": \"vector consistency sections model\", \"wiki\": \"<temporary-workspace>\", \"granularity\": \"section\", \"mode\": \"hybrid\""
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids):\n        raise RuntimeError(\n            f\"semantic index is inconsistent: {len(locator_ids)} sections, {vector_count} vectors\"\n        )"
+        }
+      ],
+      "tool_calls": 6,
+      "usage": {
+        "input_tokens": 730285,
+        "output_tokens": 4542
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-selected-0",
+      "task": "test-edit-policy",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true
+        ],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/runtime-policy.md",
+            "log.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are satisfied. The saved concept explicitly rejects the stale cache-authoritative claim, identifies Markdown as authoritative, states the cache is regenerable derived data, preserves its frontmatter and [[sources/retrieval]] citation, and includes the correction history. log.md records the update. Integrity observations confirm only the permitted concept and log files changed; protected/raw and unrelated files were unchanged.",
+      "judge_evidence": [
+        {
+          "source": "concepts/runtime-policy.md",
+          "quote": "The former assertion that the semantic cache is authoritative and that Markdown can be discarded after indexing is incorrect. Markdown remains the canonical, authoritative representation; the semantic cache is regenerable derived data."
+        },
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Canonical Markdown remains authoritative; the semantic cache is regenerable."
+        },
+        {
+          "source": "concepts/runtime-policy.md",
+          "quote": "Consult [[sources/retrieval]] for the supporting contract."
+        }
+      ],
+      "tool_calls": 11,
+      "usage": {
+        "input_tokens": 781359,
+        "output_tokens": 2212
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "test-0-selected-0",
+      "task": "test-runtime-audit",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true
+        ],
+        "commands": [
+          true
+        ],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "outputs/runtime-audit.json"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The setup result and pinned dependency versions are accurate, and the artifact confirms the JSON was saved. However, the answer adds unsupported claims that SQLite contains semantic_sections=14 and semantic_vectors=14, and that the parse cache contains 7 files. Those details are absent from the saved runtime JSON and supplied runtime source, so it does not satisfy the requirement to avoid inventing a count.",
+      "judge_evidence": [
+        {
+          "source": "outputs/runtime-audit.json",
+          "quote": "\"status\": \"ready\", \"dependencies\": { \"fastembed\": \"0.8.0\", \"pyyaml\": \"6.0.3\", \"sqlite-vec\": \"0.1.9\" }, \"model\": \"BAAI/bge-small-en-v1.5\", \"dimension\": 384, \"pages\": 7, \"sections\": 14, \"vectors\": 14"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids): raise RuntimeError(...)"
+        },
+        {
+          "source": "sources/runtime.md",
+          "quote": "Runtime setup checks FastEmbed, sqlite-vec and PyYAML, indexes current Markdown sections and checks vector consistency."
+        }
+      ],
+      "tool_calls": 5,
+      "usage": {
+        "input_tokens": 584012,
+        "output_tokens": 2873
+      },
+      "reported_cost": null
+    },
+    {
+      "label": "transfer-0-0-baseline-0",
+      "task": "test-retrieval",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer satisfies every rubric requirement: it mentions BM25, local FastEmbed, reciprocal rank fusion, and JSON retrieval provenance, with citations to the supplied sources. Its material claims are supported by the source text and contain no material numerical errors or contradictions.",
+      "judge_evidence": [
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Local FastEmbed and BM25 are fused with reciprocal rank fusion. Canonical Markdown remains authoritative; the semantic cache is regenerable. Search JSON reports mode and retrieval provenance."
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "This returns section-level hybrid results by default: local FastEmbed semantic ranking and BM25 are fused with RRF, and each JSON row carries its `heading_path`, snippet, and retrieval provenance."
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "The first semantic run downloads the pinned model; section vectors live in `wiki/.wiki-cache/embeddings.sqlite` and only changed sections are re-embedded. No wiki or query text leaves the machine."
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "For dependency-free lexical BM25, run `python scripts/wiki_search.py \"your query terms\" --no-embed`; use optional frontmatter filters (`--type concept`, `--tag llms`, `--since 2026-01-01`) or pass `--granularity page` for whole-page lexical ranking."
+        }
+      ],
+      "tool_calls": 5,
+      "usage": {
+        "input_tokens": 858964,
+        "output_tokens": 1562
+      },
+      "reported_cost": 0.837985
+    },
+    {
+      "label": "transfer-0-0-baseline-0",
+      "task": "test-source-policy",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer satisfies the rubric: it preserves both raw captures, rejects silent replacement, and explicitly documents and surfaces the contradiction. The supplied source directly supports preserving captured raw files and keeping contradictions explicit. The additional procedural detail is not fully present in the supplied summary, but it does not contradict the rubric or source.",
+      "judge_evidence": [
+        {
+          "source": "sources/ingestion.md",
+          "quote": "Ingestion reads existing schema and index, preserves captured raw files, creates a source summary, updates relevant knowledge pages, and updates the index and log. Contradictions must remain explicit."
+        }
+      ],
+      "tool_calls": 4,
+      "usage": {
+        "input_tokens": 570410,
+        "output_tokens": 1171
+      },
+      "reported_cost": 0.7313522
+    },
+    {
+      "label": "transfer-0-0-baseline-0",
+      "task": "test-metadata",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The core distinction and 800-line hard cap are supported, but the answer introduces an unsupported 400-line soft cap and attributes detailed frontmatter requirements to SCHEMA.md that the supplied SCHEMA.md does not contain. It also claims the source page excludes a `sources:` field, which is not established by the supplied sources.",
+      "judge_evidence": [
+        {
+          "source": "SCHEMA.md",
+          "quote": "Source pages need raw and ingested; concept pages need sources citing source slugs."
+        },
+        {
+          "source": "sources/schema.md",
+          "quote": "Source pages record their raw source; non-source pages cite source summaries. The hard page cap is 800 lines."
+        }
+      ],
+      "tool_calls": 6,
+      "usage": {
+        "input_tokens": 572181,
+        "output_tokens": 1836
+      },
+      "reported_cost": 0.7417471999999999
+    },
+    {
+      "label": "transfer-0-0-baseline-0",
+      "task": "test-price-unknown",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The answer correctly abstains on an exact dollar amount, but it makes unsupported material claims that there is no remote API call and no provider billing. The supplied retrieval source establishes local FastEmbed/BM25 retrieval, but does not explicitly establish those billing conclusions.",
+      "judge_evidence": [
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Local FastEmbed and BM25 are fused with reciprocal rank fusion."
+        },
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Canonical Markdown remains authoritative; the semantic cache is regenerable."
+        },
+        {
+          "source": "sources/runtime.md",
+          "quote": "Runtime setup checks FastEmbed, sqlite-vec and PyYAML, indexes current Markdown sections and checks vector consistency."
+        }
+      ],
+      "tool_calls": 10,
+      "usage": {
+        "input_tokens": 719510,
+        "output_tokens": 2070
+      },
+      "reported_cost": 0.7788576
+    },
+    {
+      "label": "transfer-0-0-baseline-0",
+      "task": "test-release-ingest",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/test-release-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/test-release-ingest.json",
+            "sources/ingested-test-release-ingest.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The answer contains a material numerical error: it calls the version-bearing locations four, but the supplied source specifies four JSON fields plus one CHANGELOG heading, totaling five locations. The listed items themselves expose this mismatch because both marketplace version fields are separate fields.",
+      "judge_evidence": [
+        {
+          "source": "raw/releases.txt",
+          "quote": "The main release version is declared in four JSON fields and one CHANGELOG heading. **Bump them together**."
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "The source states the release version is declared in four JSON/config fields plus one CHANGELOG heading, and that these must be bumped together: `package.json` (`version`), `.claude-plugin/plugin.json` (`version`, authoritative for Claude Code's resolution), `.claude-plugin/marketplace.json` (`metadata.version` and `plugins[0].version`), and the `CHANGELOG.md` `## [X.Y.Z] \u2014 YYYY-MM-DD` heading with its matching release-tag link line."
+        },
+        {
+          "source": "outputs/test-release-ingest.json",
+          "quote": "\"mode\": \"hybrid\""
+        }
+      ],
+      "tool_calls": 19,
+      "usage": {
+        "input_tokens": 2778525,
+        "output_tokens": 16213
+      },
+      "reported_cost": 1.4840056
+    },
+    {
+      "label": "transfer-0-0-baseline-0",
+      "task": "test-runtime-ingest",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/test-runtime-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/test-runtime-ingest.json",
+            "sources/ingested-test-runtime-ingest.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are satisfied. The new source has valid ingestion metadata and raw path, faithfully summarizes the runtime workflow, and is cited by the concept. The index and log were updated, protected files remained unchanged, graph extraction completed with measured counts, and the saved search output records mode \"hybrid\". The final answer accurately reports these actions and results.",
+      "judge_evidence": [
+        {
+          "source": "raw/runtime.txt",
+          "quote": "dependencies = [\n#   \"fastembed==0.8.0\",\n#   \"pyyaml==6.0.3\",\n#   \"sqlite-vec==0.1.9\",\n# ]"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "locator_ids = wiki_search.sync_vector_index(connection, sqlite_vec, model, sections)"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids):\n        raise RuntimeError("
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "\"status\": \"ready\""
+        },
+        {
+          "source": "sources/ingested-test-runtime-ingest.md",
+          "quote": "raw: raw/runtime.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "sources/ingested-test-runtime-ingest.md",
+          "quote": "The script installs pinned FastEmbed, sqlite-vec and PyYAML, collects every current wiki page and section, loads the local embedding backend, opens the vector index, and calls `sync_vector_index` to embed new or changed sections and drop stale ones."
+        },
+        {
+          "source": "concepts/test-runtime-ingest.md",
+          "quote": "sources: [ingested-test-runtime-ingest]"
+        },
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Local FastEmbed and BM25 are fused with reciprocal rank fusion. Canonical Markdown remains authoritative; the semantic cache is regenerable."
+        }
+      ],
+      "tool_calls": 18,
+      "usage": {
+        "input_tokens": 2305816,
+        "output_tokens": 8083
+      },
+      "reported_cost": 1.2037823999999997
+    },
+    {
+      "label": "transfer-0-0-baseline-0",
+      "task": "test-edit-policy",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true
+        ],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/runtime-policy.md",
+            "log.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The required correction, metadata, links, log update, and protected-file constraints are satisfied. However, the answer makes additional material claims about content hashing, incremental re-embedding, automatic deletion, and lossless rebuilding that are not supported by the supplied sources/retrieval.md text. The source only establishes that the semantic cache is regenerable.",
+      "judge_evidence": [
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Canonical Markdown remains authoritative; the semantic cache is regenerable."
+        },
+        {
+          "source": "concepts/runtime-policy.md",
+          "quote": "Regeneration policy: the vector index is content-hashed, so only new or changed sections are re-embedded, deleted sections are removed automatically, and the cache can be deleted and rebuilt from the Markdown at any time without loss of knowledge."
+        },
+        {
+          "source": "log.md",
+          "quote": "corrected [[concepts/runtime-policy]] \u2014 the former cache-authoritative assertion was flagged as incorrect and replaced with the current authority/regeneration policy per [[sources/retrieval]]."
+        }
+      ],
+      "tool_calls": 7,
+      "usage": {
+        "input_tokens": 872432,
+        "output_tokens": 2891
+      },
+      "reported_cost": 0.8164434000000002
+    },
+    {
+      "label": "transfer-0-0-baseline-0",
+      "task": "test-runtime-audit",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": false,
+        "artifacts": [
+          true
+        ],
+        "commands": [
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "outputs/runtime-audit.json"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer satisfies the rubric. The measured execution completed with EXIT:0 and status \"ready\", and the saved artifact records the pinned dependency versions, model, 14 sections, and 14 vectors. It accurately states that vectors match indexed sections (14 == 14) without inventing a count. The cited runtime source supports that setup checks dependencies, indexes Markdown sections, checks vector consistency, and reports model/pages/sections/vectors.",
+      "judge_evidence": [
+        {
+          "source": "sources/runtime.md",
+          "quote": "Runtime setup checks FastEmbed, sqlite-vec and PyYAML, indexes current Markdown sections and checks vector consistency. A ready result reports model, pages, sections and vectors."
+        }
+      ],
+      "tool_calls": 6,
+      "usage": {
+        "input_tokens": 1013194,
+        "output_tokens": 4925
+      },
+      "reported_cost": 0.8625462000000002
+    },
+    {
+      "label": "transfer-0-0-selected-0",
+      "task": "test-retrieval",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer satisfies every rubric requirement: it mentions BM25 lexical scoring, local FastEmbed semantic ranking, reciprocal rank fusion (RRF), and JSON retrieval provenance. It accurately explains the ranking flow and how callers inspect provenance, and both cited sources support these claims.",
+      "judge_evidence": [
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Local FastEmbed and BM25 are fused with reciprocal rank fusion. Canonical Markdown remains authoritative; the semantic cache is regenerable. Search JSON reports mode and retrieval provenance."
+        },
+        {
+          "source": "raw/retrieval.txt",
+          "quote": "This returns section-level hybrid results by default: local FastEmbed semantic ranking and BM25 are fused with RRF, and each JSON row carries its `heading_path`, snippet, and retrieval provenance."
+        }
+      ],
+      "tool_calls": 6,
+      "usage": {
+        "input_tokens": 864053,
+        "output_tokens": 2726
+      },
+      "reported_cost": 0.8101936000000002
+    },
+    {
+      "label": "transfer-0-0-selected-0",
+      "task": "test-source-policy",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer correctly rejects both erasing the original capture and silently replacing the old claim. It requires preserving raw files and explicitly documenting contradictions with both sources cited, matching the rubric. No unsupported material claim undermines the conclusion.",
+      "judge_evidence": [
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "Ingestion reads existing schema and index, preserves captured raw files, creates a source summary, updates relevant knowledge pages, and updates the index and log."
+        },
+        {
+          "source": "raw/ingestion.txt",
+          "quote": "A new source contradicts an existing claim \u2192 flag prominently: add a \"## Contradictions\" section if it doesn't exist, and document the contradiction with both sources cited. Do not silently overwrite the older claim."
+        },
+        {
+          "source": "sources/ingestion.md",
+          "quote": "Contradictions must remain explicit."
+        }
+      ],
+      "tool_calls": 6,
+      "usage": {
+        "input_tokens": 719996,
+        "output_tokens": 1820
+      },
+      "reported_cost": 0.7744578000000001
+    },
+    {
+      "label": "transfer-0-0-selected-0",
+      "task": "test-metadata",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The answer satisfies all rubric requirements: it distinguishes source-page raw/ingestion provenance from non-source pages citing source summaries, and correctly states the 800-line hard cap and mandatory split beyond it. The additional soft-cap detail does not contradict the supplied source.",
+      "judge_evidence": [
+        {
+          "source": "sources/schema.md",
+          "quote": "Source pages record their raw source; non-source pages cite source summaries. The hard page cap is 800 lines."
+        },
+        {
+          "source": "sources/schema.md",
+          "quote": "raw: raw/schema.txt\ningested: 2026-09-13"
+        }
+      ],
+      "tool_calls": 4,
+      "usage": {
+        "input_tokens": 713833,
+        "output_tokens": 1486
+      },
+      "reported_cost": 0.7651450000000002
+    },
+    {
+      "label": "transfer-0-0-selected-0",
+      "task": "test-price-unknown",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [],
+        "commands": [],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": []
+        },
+        "abstention": false
+      },
+      "judge_passed": false,
+      "judge_reason": "The rubric requires abstaining because no dollar tariff or precise total machine cost is provided. The answer instead asserts $0.00 and infers no total cost from local execution. The supplied citation supports local hybrid-search implementation, but not a precise dollar cost or the claimed absence of all metered/network costs. It also relies on uncited material not present in the supplied source.",
+      "judge_evidence": [
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Local FastEmbed and BM25 are fused with reciprocal rank fusion."
+        }
+      ],
+      "tool_calls": 12,
+      "usage": {
+        "input_tokens": 873634,
+        "output_tokens": 2589
+      },
+      "reported_cost": 0.8283602000000001
+    },
+    {
+      "label": "transfer-0-0-selected-0",
+      "task": "test-release-ingest",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/test-release-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/test-release-ingest.json",
+            "sources/ingested-test-release-ingest.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": false,
+      "judge_reason": "The workflow artifacts and execution records satisfy the requested ingest, preservation, graph extraction, hybrid search, and saved-output requirements. However, the final answer contains a material numerical/ranking error: it says the two new pages were the top hits and ranked above the older releases page, but the saved output ranks the pre-existing `sources/releases.md` third at 0.0303, ahead of the new source page fourth at 0.0301. It also claims FastEmbed plus BM25 fused with RRF, while the supplied execution/output only establishes hybrid mode and the retriever labels, not the RRF mechanism.",
+      "judge_evidence": [
+        {
+          "source": "raw/releases.txt",
+          "quote": "### SemVer policy\n\n- **Major** (`1.0.0` \u2192 `2.0.0`): breaking changes to wiki structure, frontmatter schema, or script CLI flags that existing wikis cannot accommodate without manual migration.\n- **Minor** (`0.3.0` \u2192 `0.4.0`): additive features (new commands, new optional frontmatter, new scripts) that pre-existing wikis can ignore. Always pair with an `--upgrade`-style flow (or extend the existing one in `init_wiki.py`) so users on older wikis can pick up the new files idempotently without losing customisations.\n- **Patch** (`0.3.0` \u2192 `0.3.1`): bug fixes, doc-only changes, internal refactors with identical observable behaviour."
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "raw: raw/releases.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "The version is declared in four JSON/config fields plus one CHANGELOG heading, and all of them are bumped together: the `package.json` `version` field, the `.claude-plugin/plugin.json` `version` field ... the `.claude-plugin/marketplace.json` `metadata.version` and `plugins[0].version` fields, and the `CHANGELOG.md` `## [X.Y.Z] \u2014 YYYY-MM-DD` heading together with its matching release-tag link line at the bottom of the file."
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "- Minor (`0.3.0` \u2192 `0.4.0`): additive features \u2014 new commands, new optional frontmatter, new scripts \u2014 that pre-existing wikis can ignore. A minor release should always pair with an `--upgrade`-style flow ..."
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "Before a release, `[Unreleased]` entries in `CHANGELOG.md` move under a new `## [X.Y.Z] \u2014 YYYY-MM-DD` heading, with a corresponding `[X.Y.Z]: .../releases/tag/vX.Y.Z` link line added and the `[Unreleased]` compare link updated to start from the new tag."
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "- [[concepts/test-release-ingest]]"
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "## Where this fits\n\n- [[concepts/test-release-ingest]]"
+        },
+        {
+          "source": "concepts/test-release-ingest.md",
+          "quote": "sources: [ingested-test-release-ingest]"
+        },
+        {
+          "source": "concepts/test-release-ingest.md",
+          "quote": "as captured in [[sources/ingested-test-release-ingest]]."
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "CONTRIBUTING.md's \"Releasing (maintainers)\" section defines where the version number lives and how it moves through a release."
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "After manifest validation (`claude plugin validate .`) and a smoke test against a temp fixture, the release is committed in two parts \u2014 a `feat:` commit for the substantive change and a separate `release: vX.Y.Z` commit for the version bump and changelog \u2014 then pushed and tagged as `vX.Y.Z`."
+        },
+        {
+          "source": "concepts/test-release-ingest.md",
+          "quote": "A release is not just a version bump in one place \u2014 four JSON/config fields and one CHANGELOG heading must change together: `package.json` `version`, `.claude-plugin/plugin.json` `version` ... and both `.claude-plugin/marketplace.json` version fields (`metadata.version` and `plugins[0].version`)."
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "The version number is then bumped together in `package.json`, `plugin.json`, and both `marketplace.json` version fields."
+        },
+        {
+          "source": "sources/ingested-test-release-ingest.md",
+          "quote": "## SemVer policy"
+        }
+      ],
+      "tool_calls": 19,
+      "usage": {
+        "input_tokens": 2528241,
+        "output_tokens": 10670
+      },
+      "reported_cost": 1.3018646
+    },
+    {
+      "label": "transfer-0-0-selected-0",
+      "task": "test-runtime-ingest",
+      "split": "test",
+      "passed": true,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "commands": [
+          true,
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/test-runtime-ingest.md",
+            "graph/edges.jsonl",
+            "graph/nodes.jsonl",
+            "index.md",
+            "log.md",
+            "outputs/test-runtime-ingest.json",
+            "sources/ingested-test-runtime-ingest.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are satisfied. The ingest and concept pages are present and accurate, index/log updates and protected-file preservation are verified by artifacts and integrity records, graph extraction and hybrid search completed successfully, and the saved JSON explicitly reports mode hybrid. The final answer's reported graph counts and search results match the measured execution records.",
+      "judge_evidence": [
+        {
+          "source": "raw/runtime.txt",
+          "quote": "\"\"\"Install and verify LLM Wiki runtime dependencies, model, and local indexes.\"\"\""
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "pages = wiki_search.collect_pages(wiki_root, cache_path)\n    sections = wiki_search.collect_sections(pages)\n    model, sqlite_vec, dimension = wiki_search.load_local_embedding_backend()"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "if vector_count != len(locator_ids):\n        raise RuntimeError(\n            f\"semantic index is inconsistent: {len(locator_ids)} sections, {vector_count} vectors\"\n        )"
+        },
+        {
+          "source": "raw/runtime.txt",
+          "quote": "\"status\": \"ready\",\n        \"wiki\": str(wiki_root),\n        \"dependencies\": {\n            \"fastembed\": version(\"fastembed\"),\n            \"pyyaml\": version(\"pyyaml\"),\n            \"sqlite-vec\": version(\"sqlite-vec\"),\n        }"
+        },
+        {
+          "source": "sources/ingested-test-runtime-ingest.md",
+          "quote": "raw: raw/runtime.txt\ningested: 2026-09-13"
+        },
+        {
+          "source": "sources/ingested-test-runtime-ingest.md",
+          "quote": "It then re-counts the rows in `semantic_vectors` and raises `RuntimeError(\"semantic index is inconsistent: ...\")` if the vector count does not match the number of synced section locators"
+        },
+        {
+          "source": "sources/ingested-test-runtime-ingest.md",
+          "quote": "On success it reports a JSON object with `status: \"ready\"`, the pinned dependency versions (fastembed, pyyaml, sqlite-vec), the embedding model name and dimension, and counts of pages, sections, and vectors, plus the vector index path."
+        },
+        {
+          "source": "concepts/test-runtime-ingest.md",
+          "quote": "sources: [ingested-test-runtime-ingest]"
+        },
+        {
+          "source": "concepts/test-runtime-ingest.md",
+          "quote": "The applicable workflow is the wiki's runtime-preparation step run by `setup_wiki.py`"
+        },
+        {
+          "source": "concepts/test-runtime-ingest.md",
+          "quote": "if the vector count and section count diverge, `prepare()` raises rather than reporting readiness."
+        }
+      ],
+      "tool_calls": 21,
+      "usage": {
+        "input_tokens": 2300365,
+        "output_tokens": 8739
+      },
+      "reported_cost": 1.2084218
+    },
+    {
+      "label": "transfer-0-0-selected-0",
+      "task": "test-edit-policy",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": true,
+        "artifacts": [
+          true,
+          true
+        ],
+        "commands": [],
+        "grounding": false,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "concepts/runtime-policy.md",
+            "log.md"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "All rubric requirements are satisfied. The saved concept explicitly marks the stale assertion incorrect, states Markdown authority and cache regeneration, preserves metadata and the source link, and retains the correction history. The log records the update and cites both relevant pages. Artifact observations confirm the saved contents, while the integrity record confirms no raw or unrelated files changed.",
+      "judge_evidence": [
+        {
+          "source": "concepts/runtime-policy.md",
+          "quote": "That assertion is **incorrect** and is retained here only as a record of the error."
+        },
+        {
+          "source": "concepts/runtime-policy.md",
+          "quote": "canonical Markdown remains authoritative, and the semantic cache is regenerable, not a source of truth."
+        },
+        {
+          "source": "sources/retrieval.md",
+          "quote": "Canonical Markdown remains authoritative; the semantic cache is regenerable."
+        }
+      ],
+      "tool_calls": 7,
+      "usage": {
+        "input_tokens": 871088,
+        "output_tokens": 2353
+      },
+      "reported_cost": 0.8089526000000001
+    },
+    {
+      "label": "transfer-0-0-selected-0",
+      "task": "test-runtime-audit",
+      "split": "test",
+      "passed": false,
+      "checks": {
+        "citations": false,
+        "artifacts": [
+          true
+        ],
+        "commands": [
+          true
+        ],
+        "grounding": true,
+        "integrity": {
+          "protected_files_unchanged": true,
+          "skill_unchanged": true,
+          "workspace_unchanged": true,
+          "permitted_changes": [
+            "outputs/runtime-audit.json"
+          ]
+        },
+        "abstention": true
+      },
+      "judge_passed": true,
+      "judge_reason": "The setup completed with status ready and the pinned dependency versions. The saved artifact and measured execution output verify the model, dimension, and exact sections/vectors counts; 14 sections equals 14 vectors. The answer accurately reports these results and does not invent counts.",
+      "judge_evidence": [
+        {
+          "source": "sources/runtime.md",
+          "quote": "Runtime setup checks FastEmbed, sqlite-vec and PyYAML, indexes current Markdown sections and checks vector consistency. A ready result reports model, pages, sections and vectors."
+        }
+      ],
+      "tool_calls": 6,
+      "usage": {
+        "input_tokens": 1008548,
+        "output_tokens": 3327
+      },
+      "reported_cost": 0.8380756
+    }
+  ],
+  "archive_files_sha256": {
+    "call-result-03dc7a2ccb104b8b99f90c4f66494d05.json": "6a0e649a46598bd15148ba6a0b213ef687df3cbd0e84b77b25fde4ea646342c2",
+    "call-result-05b12cb7c55543aba2493a76513341c6.json": "6eb3ffff1d97dd5cbffeadaf0ef846a974b0ef10e8e7d8eb586a4a5139729a9a",
+    "call-result-063e0881b6ac4a458e214992ece0a01b.json": "029e865e9f0ec177d25cdd144a6df3c459f66e6ef04a3aca971a701a40f4599f",
+    "call-result-06d6defd641b4b219cd2d6ff6371e923.json": "ae88c864251ff1d0112eb9691540fda908845cbba210edcfda651f35129bf269",
+    "call-result-08250922696640b0bc6b1eb0438353bc.json": "55899352835d9244405d9eb3df59f0eabc263a192f731c13c9da282fd183ef97",
+    "call-result-09354d04125443e0a570a8f678e9993b.json": "673c333b0385dc3b97f546a21fa81a27736eab1b4428b2f0753e041de4888ef3",
+    "call-result-0b2cdb8e6c644ec196f2bfc75c40acd1.json": "8dc6b4fa7ee32f2c7efafa88c256ec9baa49237918ccc0389fcc441ffee42288",
+    "call-result-0e0367196b4e499b91ce8a91bd778aa7.json": "3a7887e3ee64b0516ca033c8b1010c53d5ac76be24619f0eac0f3bbb92269858",
+    "call-result-0ebd682ad24b44ed99c47382bd812c76.json": "a1773164b980b6d18389a21cac458e1b8aae754d5c797d5178ab69683c1578c4",
+    "call-result-10262b2641474abea5f2e529ef8bdcc0.json": "41faf6ea282e4cd99437cd4d5c50477c6de6f1b21e2e4775d299bce14dff687f",
+    "call-result-11f74683fb094c749ce7acb82bed2a6c.json": "feb4bd867d8ef839d029758a0c995a6f8631edcdd4040f71a6a61da6dd3a2569",
+    "call-result-14a06f3a5f7c4a2ca4ba5e67bebe2339.json": "6d24202416808ec7d9121449c1a5e4b4a72d50c37b3d72888263ecd989814ff9",
+    "call-result-14dcc1b4f7fb4d74a1a792a21094999b.json": "ba7677ec0fba39c18d14dfe0eb4c2633603148c1338a11eb9051520be9ec4809",
+    "call-result-161de691069e41b49efa8304d10575c5.json": "e86912eed79f57a44430c0ab540821ed9e2338339428aa3557d34a498d42441a",
+    "call-result-1883311ffbf0442c9d46796863269a6d.json": "9dcdbbb1739bc082cc1cfa3f0a8744af725ce08a8465fd6d6aa90e96178ea435",
+    "call-result-1b1690a2ad304af4929794fdbfe231b1.json": "66232304e4aa6cee8e701ce6d2651c705e30b9c7379c1f39dc044dc8728b62e8",
+    "call-result-1e908e92b2c54f9cb313d14f5db35eff.json": "df43841d3f21329289ebaabec5056f7ab3152d1197426eae007ead51d3af154b",
+    "call-result-231b4caea63b4b89878d821f7841d29e.json": "38d741b82745e533b047b27d5ded83a887295784bd827f9278731746f4806059",
+    "call-result-23876d336e414586aa7d5446b73c0959.json": "58ec109301d31f29dc055e6afb2ca7b43d6557ab473d091fc0da8a5ba65048fb",
+    "call-result-26a3c228a25845d6a9c02b6188382cc1.json": "30463c5ac313504cc61c38dc256255160d98f7a10e8a48f7da06bb66ca518d41",
+    "call-result-2a10f37bb9614140bb88ba77563a8152.json": "c2993cf3edf6bbac91d5d71691dd8c76924a501a27a9ac4d0320e23a073be498",
+    "call-result-2d6bb98365c840fc9a0fa0054515c77e.json": "6ec78d9965ba6de2ea349de7869d3768719acd4072915a64ea1ba06c202b9ea4",
+    "call-result-30e00ef6ee7e450db1af95d59361dfe2.json": "3cf5a1d5807ef243fcd4ca40c1782eab64e4edebc7ea4032e5875caea7e65456",
+    "call-result-348d366b9e9d4ea5a963b5eb88c49c6c.json": "95217789fbe5eb409eda178c06e4e0010d805a2b5b6f60c48ad80a07d69ce30e",
+    "call-result-34c783dac4b94f0ab02d0a98c4740bf2.json": "9f623f09d9ad14ac2afae97ecfbe321d95d6d61e26bc006e6058c015cd002902",
+    "call-result-36fee88c2bb54523800f88651d5f0444.json": "b84b46bcd7f29bca85055c63b35c6afd2d00c2746812407419a66449d81ab378",
+    "call-result-378b17406894478b879d2a75c27047cd.json": "0e33551658cfbc2d0c28f183901c70f9f94e226e9a84971cb777b322e534a97f",
+    "call-result-392b2583b39b4acead900f24bab601eb.json": "170b71fad2e3a123e340fc49f44bd4582cd98d141ae7f51fd195d16b439e799b",
+    "call-result-3ac8c60866054194a2acfdda5f5cd338.json": "fa4326eb178c5f17597cfd255278408c5e8850bac17f96648debc6dea6a044c8",
+    "call-result-3e2f88eb54874ef9b3034619c807848a.json": "7d14f410b49c43a8c8a0bf1b7c41ed4640a3b10ffca5d71767125fbbd5f553a6",
+    "call-result-42281cf7597b4b59ab14d8ef77abb557.json": "efd4712f298f025b85b1ca46dc93aa67da70c40bc4e2f4c2ef9195862f3cdfd2",
+    "call-result-46c4fdf3c3e240af989f36268cb20ac7.json": "8a8cd07a9502445f3f435c41c73899df4cf74b16dd818638dcc61b92dedc70db",
+    "call-result-47118ac66cc243c39b44cd5bf2ac7ba3.json": "05aa744430ca6cd14ee2fb198787ad9a70373a68e901edd1b3435989d01e26cf",
+    "call-result-47744059306b43c4b16f25608016dbe6.json": "9dc2c85938ab9e43e7d16562884cfec336c9d4c5d93fbfce49ac23948e2436e9",
+    "call-result-47b8a1e9a1fe4af693257a3090616d03.json": "d89128949396be630af28f6457a85bb8e5578f3d6da163f91ef39971c7d682af",
+    "call-result-4886000bf34c48039be13c264d081934.json": "f5d1ebc31d5eed74819dbcc8b1cb61859b08431e94d691dee7dd62af5bf31735",
+    "call-result-4fb6fde1598c4febb028b8493bb73cf1.json": "62b30c294d81b55ecb55975a3d329eceacc4e88a162382bff64ec01571b97903",
+    "call-result-52fb110dcf784753a6ce09907b8a8bb4.json": "5ed7ae9738b9adfa46c53df6e571d6969e8b4e59e73045c64650c975e33f2df7",
+    "call-result-530f8af942de49f6bc659a929cae53d7.json": "9d1d0cbdad62273a934be5ff7cb34e1ff2934e0d2bd85f002663f007661460b7",
+    "call-result-54774a3e34e447c5a0a7807fe3061a1b.json": "0cb512d046399c6f38fdd608f926408b4d00962489cebc5d6f0df12e090f5b5d",
+    "call-result-54943e9e0f4e43c893f51c7061111c79.json": "1350244644654061ec55b5b5291ba9d2e6a2b262a242289813c42c5654ed78b0",
+    "call-result-54a6df125c3a459d9dc68ad5d759e88d.json": "6ec4c095ebe6f1d9d5d5fec1b9dfabae013ac7dd6721906a1e41e48f78d6e7e2",
+    "call-result-584db7e2f2e9441e9a0feb5b0ae40968.json": "9afb14117d7ade307c891d88964be322ab9e40d8ea07ccf331726827e30f46ea",
+    "call-result-5dd06d91ea924a2fbf5e91b8543eb3f1.json": "062cff0cc8633c87977af07a38f110e95595017cad4eb52eb890762ce9970c56",
+    "call-result-614a1b87b33249debdb9f11dcb79fe10.json": "868f8807eda8709dd176c05f6853e2dcc9ecda2ebad50b2e6c68f0c3fe702934",
+    "call-result-61e4990ee17b4079b7ce59fd91cfac0a.json": "81db065a52e02474b7e7091d5f22a1eef4ff96009b43bf996a875b4521d0d969",
+    "call-result-69e86cc510d54a319726dd6cbc0768fe.json": "5603dad451f5bb5ddd7fd3b723df9e5c2f6f79ae314d76cbae085a08cde92e0e",
+    "call-result-6fc18c2c701444b6a9293effec68fa9c.json": "3033031ae70496886cb7ca8c7ef7158a612a365da97a0af3cf14698c5f455a0f",
+    "call-result-6fe3a8f9525547e0a14de49ad48f72c8.json": "9997fa8867e16245a37dc32f80388ec2b84080f71ad4f8f66cb5626df4551f0c",
+    "call-result-701c48dbc9c74321a5b899cd54604605.json": "f88330363f4750ff068201816ab67e809f18d0f56674f69b75a833d7713d96b8",
+    "call-result-7397571ff9c1465999a057d51796aacb.json": "94b734ef7d80842a803303da21d00aeac593b5a516eb1ac5c7f42711c793d21b",
+    "call-result-7440166438ca48da880328a92ca1dc52.json": "ff4ea5d690729f7c3721f1cc3d58ad82ccdf718ff18dcfd49b16f958b60acef6",
+    "call-result-748a4e1df7aa433bb17bff496dd475a7.json": "7171a1e0604021b3c4331fcf34d92d262483045136c313b90f13793bc7a1c352",
+    "call-result-767d483ace004f74a906ddcd1ff6a5bf.json": "e7fa1a6b207930bb74d01ffad49481a14284dcc750f0c0ac2da8db9a800f2e81",
+    "call-result-79b40d37ccf743d6af79c852e95692af.json": "3cfc06119f20d2f0c60e0022554ddd9ec3b1b530dcca30fd132c70e2bb226537",
+    "call-result-7a04ec46133e441fb7eeb1c6cb5daf47.json": "7d7cd370059867a70d84dd48f6e51e50ae9d3d79e9271591ff94ccdca357a167",
+    "call-result-7a7b8d4c2f804608b2d154d170eb67b9.json": "7d864773b3c2ed3f788a0614105e936ea5d20adfc083ef2311ede8f4ff919a4a",
+    "call-result-7cb7cae3d1314d23a429256d0e340291.json": "d618fe0dc9fd2cc7d11c2d2ec96738b1606a1ff8120860b239c076026ba3ecca",
+    "call-result-80a97946a02b42ef8ebe4cf7f65ebdd9.json": "a415ec8ce1f26e582e89a4be83cadd93c2714967a5cfdf6006faa70062a45749",
+    "call-result-82ebf83848c948478940cb76734c45e3.json": "84ac58bb282e4d8138c7e2f092bdcac14a33934ba14336236bd48b15332c6749",
+    "call-result-89956b2c4ad940a794e25f3d61acb390.json": "f12429d56034a53eab6f31538fdbc25bf08df7de7ff82d2227270e726674e01d",
+    "call-result-8a239662994e4856924cbd7371e47ac6.json": "c352c4a01231efe7d90a56742904a2449b3279e89d89a546ac77ac0802676af8",
+    "call-result-8ac14267fdcc41b5b978737f1c00f21b.json": "a7d6f1d86ddd941460cb8d7033106dea1fa33d9a3d5050b77f889e831056c6f2",
+    "call-result-8d1cc2e0f0174dc49068e23d244eed68.json": "e1ccbef2b6f6b53a44bb5bb4a5240ab392b1df5c8352729d26bdf37eb42559e9",
+    "call-result-8db33361af3342fcbe598de15ec6b562.json": "30af2aa1b84dcf9ef056fdffa99a072039d1ef0b6c2ed8fdfbac535f747d4e31",
+    "call-result-8f5751bbf30e4018b421c3ac96155582.json": "54797f71dd2dc74ab657481501da02289263e55047716afbd4d0448f560ccb2b",
+    "call-result-9195065a667e45bdae7208de295ccf94.json": "38d5fe3b8ee12bb96ad79bdd5b9ffe94f51a716e34f9868a2a8960d859be05d2",
+    "call-result-9392f90ce0e64ff89a31732a105f4063.json": "9f8a5438bd8386324c835c34df6ed57203a5fe619c47ea3ea96ea76d78c314ea",
+    "call-result-93989963ddd54bbdb85e9eb813b611a0.json": "3f4d48d2a6b23120caad417a2c2be7aa267b7263293707c09a45dd75ceeda803",
+    "call-result-96b73c3aa06447e69d435c46624b948f.json": "889e15ffba48262aa4f2b060de3e68358b49f824672a6249015a6c18807b760e",
+    "call-result-975746a2a59449e8bf750de97c426e6b.json": "a3c7fb1e877d9b6988ad36e3edf832dd381f6c1f1d16b375ef1de65bc1187b57",
+    "call-result-980c4b1a553d4c35b66b01863cff14f1.json": "2804e361cadddbf526a9a0d2855f685f3e2c408e7597966fac2b5a2b4917af33",
+    "call-result-98ecc86d13f94cb5ba2f947791308a43.json": "b5b34d77e3d88d0f0ad7788b91ad6abaee9b1f54da905470fe9e0f17a4937753",
+    "call-result-9da0248b253843d78a15ad02989a2624.json": "4ee99b20d8ba49f2a087acb93a57eccf702f382947de14c4bd355960e55c73f4",
+    "call-result-9f913e43da814a2699f2e6043bbac62c.json": "cf5b5bba43c0bc9c391506bf581b1482a28524727e1e129f0c327e2599c9a4b0",
+    "call-result-a34350475e644c9f91d4ecaa19ed1686.json": "fd6d83eacef5947fa22844f5cded7b755fb3a93f8d69e6b7359318c1cf98c48e",
+    "call-result-a446e55c449e4390a5681b09fd10194d.json": "c27ab4ea92626407d6149e82bc521d4e0da5792a59f86d17a4924a6c61c727be",
+    "call-result-a7dca687ad684162a0a96cfe53ec17b3.json": "c654c5f4901506aba9836fce09ba59b7df5ae43dae09e64b95c1e2ff31e96955",
+    "call-result-abe176cd40e5452d9e75fd8b15ef4b47.json": "a09f95832a1310fa4a9b09e21de500a657a3493b97b4502d19bdf7a01d4d1f4c",
+    "call-result-ad70c6c03be44be180f42c9dbd79d8db.json": "7b086b099f6df08e71a9c17b20fa003c31b5751d3efab008c7e1549b41a8da3f",
+    "call-result-adea4af9f40b4aa585fe58b04235511c.json": "d61447c1a8ee2d1747cefe95471e30cfc8241cd2b9ef930eecfa3ca048ae4eac",
+    "call-result-ae8eddf0c924460da3b89ce7fa38b308.json": "3b301f63f07c8fd7df54a2c482b9f9fe97cd94e48c491c790338d6728eb6d82c",
+    "call-result-af2b25de94724d2593817f1942fe58dc.json": "c1be81c3daf9b02ac7117f7ea1c8caa7618811e28a8bb6889205049d9faee52a",
+    "call-result-b1ca110a4fd54ab8ba75856196a65e20.json": "d176e38adea8c1183bdcc8c7a3d1985c4a246caa75333a8aa1460fc2a11f1259",
+    "call-result-bb39334296b247edbe0d7d86d70b4b5e.json": "8decc36e50609e2faa0727813bbf5a393605b35bd8f66d6b45f8bb7d9a568a3f",
+    "call-result-bd70a256afbd4d5abdce644ae3fd6cdf.json": "058c74b7335e56db752bbea57026025aba92eaafa5cf1019ad1e01ebb3731afa",
+    "call-result-bdb1f602f39e4fa8989c9c6d1773d305.json": "ea567f9e42288cc44f117ac3206522ab70adc4162036fefb73e35107b8084085",
+    "call-result-c2356848f32b4f22893fc96a51c7b354.json": "5c53f279f92aa4d0462f27fe4432b42f50ce0ee8a8cdbd869b386b9d55a5f01f",
+    "call-result-c4491651cb0e42ad972317155c536ba7.json": "13923e0d65d6b1e0688ac16ff8c14b65f792edf80973adc60a9fe8bc4e62346f",
+    "call-result-c9f4fe2919ad4ba581492dcbd4a7aeb3.json": "a450c8b5660b7c4e2bce673c84b51f0002ff9edb3a8f86e2ecf16562d8bc1884",
+    "call-result-cbd9ca375f414348a1ad6f95f834d9ae.json": "8fb88df1104e655159bb4802f0f09cd1e807fbe30afeb2407abcc9ac35cc994e",
+    "call-result-cc40b648cde54f3fb6a405dcf8061371.json": "6e2ffd684a117ac711304d2be845d01b28d92a53afae273b14cf47822330c793",
+    "call-result-d02e55ca730b4945b6b2a44328f8c74b.json": "791b4630c1477384c6b72b33fcae128731d84e309bee34bb936fb80e868188db",
+    "call-result-d0ad4c9a3aee4fe9b1890e787a2b8f79.json": "91a0b1d03331d728bf9b6283726ffd7bb53e3fbf490ffd2c5c7a6bb9b3989e7c",
+    "call-result-d1a63193d5e84fa1b984b2d956a4218d.json": "4ac0112948636db392bbd8d606408ee41cff6624ada289a90b9dec36c13adee7",
+    "call-result-d1af09b95ee9489cb16e0d5d594eb0fa.json": "be231e43ad220b6e3a18a1f85bc7dcdfb00a0e4fbf4ae5a39266435f98e321ed",
+    "call-result-d4c34bedca1640b9a7970e5498e24db8.json": "6a2f9cd973e9c3f3455427ddecba2f715599f88eae43756c0873ddd810660418",
+    "call-result-d8866d7adec84340b66159ae2e709d98.json": "4f0c1b145dfe2c870269b77ee7c0d06e8f8af8e7c00cba7ee68fa6669021beeb",
+    "call-result-da34c52fb12b48c9abdf64f90f33bd94.json": "c0dc9f197da10bebf739a75f2590882ecdd5dd984c3f7f4fd4508358027f6da9",
+    "call-result-da677c405a9b412897af5320ed5fd570.json": "4195b7abd84b65c920a37939030e8e77e7d6deb1c604938c01dcf218eb57b94c",
+    "call-result-daadc47a02644bd8b0dbed780513afbb.json": "11815027f751ab8349f58303c1d7af30572d34f131ee7a09d39e3f9dde1fe57e",
+    "call-result-dbd123b07f074f4eb60ec15cfac6bebd.json": "7d0a279b4cd26313540497f3581b1fdf39d9eaaef1354db29dd5c816001a1645",
+    "call-result-df1ab337319b4f2fa268ab469696be90.json": "257fee637dbcbfce9bbe312f1835aa64f9af86faa209961d8a43c02875376dad",
+    "call-result-e1c2435d287d443c93e16f1c6da01d51.json": "2967377f7c5c8eef32eaf67a9953e58791aa9c3343b07e189fcc4fa1ede81c25",
+    "call-result-e3f7ebf1e72942278f12e9cbeab43ad4.json": "02397738180ff237a79a984248194325b0f55f56797a4166d57e006d71a8b19e",
+    "call-result-e44f7de8d0b74a279d56fad25728c00a.json": "b0aaf0fbd2b33364cfa4b403544aaf6dedbcea5c8bd4f99b9c200415f98a4e83",
+    "call-result-e56c99a96c724133a4bdca47831839a9.json": "e6632fe7f69c45507ed2c0501745402b28f85e9d82a8048259d32eb5ffd1aa90",
+    "call-result-e8909e5eb2a14634ad2ffaafee969e39.json": "7a5c88b41ee829912bbc1eacd2a476ca6dbaa0254c4569895d4eaad5fedcdca3",
+    "call-result-e9775354d7ba40b78c33be9c62395def.json": "f0271bbe3e4568ce0314ce39b081e77ab6d84f0fd311b04ece9f12026dfa0259",
+    "call-result-edd1dbc8f4414dacb735edd6d8c93a96.json": "b7bb212b8983ebed03686b3e05f80a81ca0b66ec7eeb5cbd116f5bd9ac71074c",
+    "call-result-fabaa20bd87a422d98ff5f171052e9ff.json": "86f0fcd61145c2d2c1abf4ca62d56863f12e33d807446ab0d557ccc54029441c",
+    "call-result-fb3e06f634914f1a996dd9a819773713.json": "b82480f3c112c2d2d921bb0832383568725c7011c447ba48162e2c8d4fd1c99c",
+    "call-result-fb81e2c1d1064c21b8f809f2bd0b8758.json": "380273f18a13be1eceaf8f22416b2a36048867549df9d8577cf29acfca6716d0",
+    "call-result-fcb863574de2444ab41d642c402bd3d5.json": "afeac29b5ef63cb32444fd7a46e5129971dce4cf86c903241ea04808ec3ac543",
+    "call-result-ff4c156199394a9a9bb043d764f5a749.json": "58a50f3eaecb0ee447833a90a3f352587dd926127a3aa37d3fd163d94ba5e4c0",
+    "call-result-ff79084a291f419bbbc6dc18e7aa5a02.json": "95a093340bdbd30ebe414bbb35d222c399f0832fa3240a32e0e779dc9d76985e",
+    "call-result-ff81116497794a3ba19f9a28b57dbade.json": "ecb12749b08977d90214fd911b9ca443311c80696089c7a4e2c098e481b1f8da",
+    "call-start-011c30014d834e0190d48c2db557629c.json": "22244ee328c9145104590c8935525a459444c1f3e49ca9f3f902d4ff2f3d67cb",
+    "call-start-032da32487c944fa9322859110e92e13.json": "d69c5e6b14abf1e85d4c8f57e129a117b1bf9a83d8b259f47e6ceeb08045fa47",
+    "call-start-07c9c3b19fe64de6b72646f5d9155009.json": "a73faad12d61df3eb901caa7cb40f6cea7546b7577deeea02e943fd40bec75da",
+    "call-start-08db9217c1624076a471e002648c7507.json": "ad3657f02c9ebbe54f8197d0f79e53429d4c5049234545a198e3398d750f095d",
+    "call-start-09345b2dee3b40259f1e6ca7a72cf28b.json": "2788ba99f320b48dc8423c52818144b110c8ed9a809a171586b4045257c368e7",
+    "call-start-096dddb1a445475aa43a8f07d1fa3679.json": "03b4b1286490515fc7018171c7de20e12ba664ba3fd8845d7fe9fe5ea5a39a80",
+    "call-start-0abc889d697642cfaaeeb30f3687b85a.json": "7a214dcb6be746e6df33c44dbc9da1fe19b5d3851cfbab2d1ffcc5acac4fca24",
+    "call-start-0b85110d95634526881667bc3ff9e012.json": "c0c045940f55bac3a5949711fe752cf43471e32751dca906ac2d6669f24fed47",
+    "call-start-0f7d2f456edd4ca588f549c2b9a36fd5.json": "fb5242dea6b5acfec43f0da7dc27d0393bc4e70c12aabb75b3305f3f6f315c66",
+    "call-start-10355f059e0a4e9090399fa60ec67f87.json": "f2bfbd40ecda3acdd33d4a2289e7f9a123a05701d6130b7a65586c16bf0cf1de",
+    "call-start-15a6df31b1c340729564818c8d3a656a.json": "c81827cf0de58183fc66336be28e6c7333cb0b65e0f980885d16c500269e8782",
+    "call-start-1655e6dcd2324fe382132a1425648e06.json": "eb4377385d0fff156dc387d884daf8d8d48fae4948644e4007ca17c75952973a",
+    "call-start-16d7a89280f04d6b88dd7f6819827378.json": "d79a3732950767b2ea4c06eef360fce167cdb5c9893a3894c6c6adcfed9d2ebc",
+    "call-start-1b6d134d3ed64d0a8bc8dcc168a18ae9.json": "9ec0cd64da276c2f4ca060e06d50ebb68b57cec0bbc5b2a02ff37da9f5bb3cd2",
+    "call-start-20fc7c09ff234005b241e072b8d76ae6.json": "5dc19ad0081020bf0f07e63c16c7194c7781d9fb199f0efc43d420667674a9c4",
+    "call-start-23817e17dcbc46ab90509ad8a07c9337.json": "d966e3fe3bdf600a218c241349641a67c7a6c92bb61d9f053eb07f0b8ca0a925",
+    "call-start-2500723795364c4db0ae4198fbeb50cf.json": "983d6698c996c6332a28482830887bec6c24a2f26dad4ba8259148801302bb5d",
+    "call-start-2699862ed442440bab50f5620b1e69de.json": "3358cca79b74b8301d022a54a150d78da2cb2916b97c8647ec3b25223a252450",
+    "call-start-28a394ddd9c6427ab278c3a9f6810e5d.json": "4f39fce696a52997e16c793a9d27b65a3c279b05500785ebe82f8a55b804e4d9",
+    "call-start-28e723d05f5a4bd5adaa6ac913484978.json": "6b01786f96a7e864a8c58d080b000e1e166b454d9ff5f9b8ee9f7cafd9474505",
+    "call-start-2a5e92c9c8024dce91afa689337ea497.json": "4f878d82f2dc43bc604365d0cce99487a89e45815e4a7c49f698962c4238754a",
+    "call-start-2e7a4e51d207475bb8b26394b57c0ff0.json": "3292454ea2248fd1716b1d016e2285c22dac2891d660ee146d327101871fe8c0",
+    "call-start-2edb520cc5e645238ea2babf90dbc5f9.json": "54045549bb9300ba2fd75756a325625384a804e46840a357a0c6c9e540754f5e",
+    "call-start-2f8d7bb2fd9c45de9d09b3ded3ea2bda.json": "1dbf5b0761ba661aef0dbda37ed6dd2ea6a8b09c83780ecbbf4e8643f51f6b99",
+    "call-start-30462756b13040a9919c396b3e4b811f.json": "a0779694bcfd84181af0426d5e3f5f56141aa23be0f17e9fd4dfb347a587d7d6",
+    "call-start-32947467f60e422b82be1b7ad2253d69.json": "4342ed5c69c6710000c50dfaa7fb05ac4b989bc383de86f95d8466bf32ea9114",
+    "call-start-3311c9acba104f1aae08a5a114894a4f.json": "2429041252de73ee9e62e7b46cbeaa956ced0438a6151cd65d9449d7a04091a2",
+    "call-start-331aadd0825843828ab00f496cc6c4fd.json": "9b4535048b0d919c5a007ad0fd8e0c7466678df59088fb9836c592994d5ec160",
+    "call-start-35f6c82e935f459e81abb13f4d22cbc4.json": "d3b378543a8eb632f55505534d0978d43e637247922cc78f810be53926252dcb",
+    "call-start-43e70380292e4af1935c006bf707469d.json": "a6a9209a7d36edf4c351f6cb35a8234577b466329f323b543327f0ca72928ce1",
+    "call-start-4480a9662281429e8fdef1adec8a308a.json": "6ca7551a1aca747d66eaad3602637e48f4aac88237d2db199e8664b860369c1e",
+    "call-start-44a6f949a5cd42a79bf00963e122632b.json": "f21cca02220d919def5969d2338fe29c615fea64f8ecdba782637704dcff3c92",
+    "call-start-4a99e0572be64ecda65574c2996fe622.json": "ac3e53055681d2bdf61a83a8d39a603721b5eec9c216fab83e5caa4c369fc4fb",
+    "call-start-4dfa87a972a54e2680067a321541ae2a.json": "e2f72b435f88290d4ffab160034279518050fa29c9658fde5a54f095b9e5c38b",
+    "call-start-52eeeb85470c4440a0106f8671a6f51f.json": "6a81bf59400bd010c94a20fff0d52013a13f41470d6d66219624519fdb28cb08",
+    "call-start-547aac975fae4e6e9c76c8478508fe61.json": "2509365fa7c0bc000256731cc3f0f382b269b22b7889d133ac27aecb3b64c403",
+    "call-start-54e90428afc140e588eda459f925823b.json": "3825a1466b92806ebd5b3fe4a5f9eb0e8fd7117ce7471da39beb8fd5faafc3fb",
+    "call-start-58353e58a3cd4eca8a9a684405c7ede5.json": "ce25fd20990d471f3d9b35439f8d9c3fa8ab6b122fa5a3deb52835f4139addb6",
+    "call-start-5896538deb3941c7aa2f3c4f86a19166.json": "50394df0adb0f1c0559532d90c013f237a479d3b154096318a931ddd9d099455",
+    "call-start-5b909e016bbe489ababbdd29cc9f099f.json": "eb4fd1195d6f7d7a5abd65de4290a9e8a24983b649dde810c4fd0721f4b1ca96",
+    "call-start-5cae46a56e814962926666842a3a3224.json": "5b7dc550748efd9459f7f4af8fe9809b858897f0ef2584664ef8bcb7cd70a6ae",
+    "call-start-613d8b6edbdf4f078b55bb44454bfabe.json": "0bd3fe898537951c41c9e8659d67f33a5c2291bd8fc680ff3565e7a177d970b8",
+    "call-start-61f27a82359d4521a18e21258a7265c1.json": "ed0327f81eb8cb67d3c230d965a0ccf9793e37f4835b27286fb156accdbd682f",
+    "call-start-6339edfa1602403cb539c8008ca21e06.json": "9cd93148cc8458cc6ed20b020872491500420c1c799c56e1aa31f4e9f19a7818",
+    "call-start-652c775d89b04ac4849b3dbdde359154.json": "9250df5b4c840504105af21530e56664ae78529353a0a0b83c607f3b4ef9f4b0",
+    "call-start-65ffa8faf1aa4f2b8b0a90e1b99f2b1f.json": "03ad6e1060f49d3843ddc27882feb6ef5f5da57e1486bbebd2852ebc5258b7c1",
+    "call-start-6688c69d387147bc929556b918db1a60.json": "05005a3a7be8c7db9fb1b9463076e527a58c51a498a2953a215a67903606257c",
+    "call-start-670f488b785445b9aa1a47aa043fc71d.json": "a406fa7b5680770a624e8373a38a4416d017e30e45f2b09d979c6bb9f6bff304",
+    "call-start-672519ae71604628b9a9fca8288a174f.json": "bb34045c14e1de2c3b11ddb067797a9a74bc05bca4869b5c06d946d276842f4d",
+    "call-start-693b3042dfc7488c987c87c80d4aa18b.json": "38c1093aace7946882a18b296f04b9d9e4bc8c0d9db4eaf8ac9bcf3dabec0a28",
+    "call-start-6a21d23f2ff147b4b17f7806a629b4d2.json": "9d3006d8517ce5a3f6e487af2e79c51ec6c7c84046e12c1f07e514d021cabfd5",
+    "call-start-6a386460d6ef42b9bdbd037cda5eb7d9.json": "1b0a1797f383215b53e31b2538132ce2d022119ee30d263c693413902be1b8e9",
+    "call-start-6a909517876948cdba293165c4480b7c.json": "1a65d9102b8f34a0aea56887100e1ce08571ea1cf8ac8cc672348f6e15ed9979",
+    "call-start-6c59117f396f4e5981d07d3fc6080c5f.json": "0523fb103c7b375099e26089b50f75f4f7118ae66514a20633ad62ec73e7c59e",
+    "call-start-6fdc719e697c45058f504529ae590874.json": "711f637f2022622a9ab9c99b11388e485949a494d162e65fef0f39ea504363a8",
+    "call-start-712ca0ebe056411aa3b3e725d611e02e.json": "817ceffd0fa24c095ea235f49b808aaae609093e31026f6f6e49f98fe08f2690",
+    "call-start-72920bd152e64b2bbd9faadba2c92bab.json": "275d4e8cb92f2010b9967c84512e73c9fb433b845b6cde602680678edbdd2032",
+    "call-start-73417bd73ecb46e58d2db8deee6705f9.json": "bd943de056579be66c814b56118dab69480dd70592175569b490cc9c1a69b181",
+    "call-start-755122842e2b48a099a8cd2bff3284b1.json": "5ab16d475c0c1640476f59dcdaecc8c6ffa0288bb1cf7dd79d9ee77903208f86",
+    "call-start-7641d8b421e347498430daaf7ba032b0.json": "b641da0c58b42d1524b08b46b7ed7c806a6367901116653923aaf1eadbc1546a",
+    "call-start-790f034cf43e41c198cdc06d7d79acb3.json": "4e33a5e22eb040d06789d413505f8156db9de6bdf9afadf2b85cda32d431acab",
+    "call-start-7a2db7c68bdc442d8ebcd32ca40a3bb6.json": "3f3cab553aaa476346326585d7c988b1c818dac3ac9a598e6f6017442fb69a5c",
+    "call-start-7e9c3cb551e143bea4cac134af57d226.json": "129e8feef99637cfd65a402d06aea067c4f30294a33405b6a20284bbc3acab3d",
+    "call-start-8379fecff8604d3888872200d508e10f.json": "83c042311ed8bcb31e4cdcaf4bf29a2631a7008730a07dbadfb2e54e5b4bc950",
+    "call-start-85053d33818e47efb14494410cd893d8.json": "c186bae3ea578c713614108f6b3d17d49ea06c9c96698b667db3129cd4fbfb5b",
+    "call-start-85de64448c824c5090c496449f60a9ff.json": "f9b816866d09af33edaa9091c4df7bcf78ddd36ee4d6338b3673d27fdb6dc912",
+    "call-start-9136fec309774a91bcbaf45c1d9aa614.json": "8784a00a981b50f2e90193c6c1ce97894591b691832bbd012da25db976220f35",
+    "call-start-953cc05080eb4dff92ec67f7f6da20d7.json": "b2d7f8b81ce24f465ad361de9d6f7a2fee4bb4c2786bda5bef0af04f69bc2127",
+    "call-start-9889e38e949b4269b16345bc78850f04.json": "d5cd1fe94708df4bff583b4ec97ae401b66a55cb079633d4b970d46bd2867b32",
+    "call-start-991aea5e0b93421ca3b56d9f974bdb7e.json": "a3035fe25576d140d27ca7123e37c952f2c088adef7df1c889e6535736be67f4",
+    "call-start-99a1d9d2658d42c29be1c82250d48d4b.json": "842d52bd680eb918f8d6e032923496575b760387e68ea2655b3da395bc99204f",
+    "call-start-99eeebfb01a04cad998438f1c444f6f7.json": "4c79dddce7e1f71c67e0f847e906da15a4bfa6fefa13cddee02a5db2e36e1542",
+    "call-start-9df03b1f662948ad81a16dd82013d685.json": "a8a1f8b9bfa0c8e9517cd23d09c694d61a820afe77320f13f7ff27c57337f63b",
+    "call-start-a1a6bd4298134b76b41619874d2040bf.json": "a842d53b81d6255a0350b5600faa2611a9f74ed51135b5a2264c396d4f945131",
+    "call-start-a41a96db9bda4c0db89c2fb4079ee3fa.json": "0f31b77a523bf1d4e4b0261574d95d0f8bb2f0ac4f4dfeaf9ddaa1e5fe6644e8",
+    "call-start-a53c65c0459747aabcea268494b62932.json": "10a2eb6d72423eb38785d456c603c201727a58befc87890e0b60e9b879549fe8",
+    "call-start-a68e9f173d4c403ca31fe4bfcbaf654c.json": "0b48c272f7879b37fe6dd3952e38c302a0c1a137ba6f9099e27538c412b824cf",
+    "call-start-a92b7f857c4049718cccc950db70f100.json": "3a9c871b30c35a30cdd20ad7beef144c6744c65f3c4e351b9aae759b2287868b",
+    "call-start-aa06c0b0382141efa7b9b71a25465381.json": "f7e08b1a88e90f2acc0bace3ac0fa7f921c4145f2689c4f00954496a36d53f6c",
+    "call-start-ab1f85c14f3c425d8dc763b6b70c7e40.json": "b2154729a7b878e49326bcbc65d3ff0ddaa5be6d9dfdec49aa444c1907b7107c",
+    "call-start-ac8641810b854134983b54ab328c6693.json": "45754a3b4b2330109d717f695711477125fbe586260cef46892353c3640df33a",
+    "call-start-ad91cac7b16842fba062153b75680b6a.json": "fd4a81a1fa4aad394d28e3885401c832c321abb71aaed4010d36d31fd43c4707",
+    "call-start-b06c8e48f61e4f39b01c6985ed1343d3.json": "66128088748084875ee93b4ee90802a352fe4d987b67cbb6f2c9c319c2a14f44",
+    "call-start-b224026d365442b49b82d65ae56112f9.json": "5ffaebe40d006f64db5565cfbe5fbb2f1948b35733170b1ab31e093106ebc4be",
+    "call-start-b2a49928197d4030b2735de2c7c2ac26.json": "fe466d12d006a0f67f7eab2e661425c5592ab0a5f8db3e81a569e3caaf43de94",
+    "call-start-b579226011a14b43971d0f8f99fa73de.json": "1a2fa6c30c4ddc49488041d36b74899cad14cb879daba50c39d1b4a17c784f6a",
+    "call-start-b5b1f4a70e964f479f8894c7b621fcf5.json": "4a0dc8abe99c76b80463ff1b0d47303808671a274dc2034d017526b5e7833afe",
+    "call-start-b697c525226048edab84096970d8b4f9.json": "43167954c9a66e1c3706e47741aeb9b7acac7065ad530a015960216040f01012",
+    "call-start-b8e9e486d8c74cfdac39638348ab022e.json": "f9f23ac24cb4aeef2dcecdac0af5ed4e2d6ce7f275441b484729cca5f6828776",
+    "call-start-bb0f3fbfce1d4779bf5b19b3022a6a00.json": "517cbf1aaec70183bf19fe114d0ba1aca503300f8eeae82e6253bcbdbad48a05",
+    "call-start-bc4df0fa3cf542269aa0602952839a76.json": "dd99013296fcd7ddb99e47be248d575dcd032bbe64429b4bdf18e3daaa48d9bc",
+    "call-start-bd6bb48c4d114e27a06534238a76c299.json": "69c31c2ae5ab173930ca1a23c63f141fa4bee2b580b3baf6ac67d1a3100cfe95",
+    "call-start-c1f37649dfa04f209f017c00726876c6.json": "59e102684ebbc69f1b3e99ae7d4aa42923d6805a6b76cf0d910d3424b315a6b8",
+    "call-start-c266d67c2e4848a090a1daad942233e3.json": "af1575f27f363c735728548bde1187949a01891053783b3dcfa2652629b3a301",
+    "call-start-c619bc0bfc0341f894f917045610c272.json": "298ca6d0109dc3f1cebad5e319d63ad219837dba71f446705c23b5adfe65a7df",
+    "call-start-c8e0879d34f54002acc705ef17717850.json": "291914f18537fe85d2f1df71378cdff36ea526b347149de0443bc65a952d091f",
+    "call-start-cac68e4b33774b99919132097ae4084d.json": "15a4194d2f86d319622f1cdc04a418aa08417a7c1f9038136ca50fc1c647b772",
+    "call-start-d279c92da13345a5bc97bc5497935710.json": "518af7ec5eee7bd66a14df2d4c856e27f55938eca695645bc681f8039ece32a5",
+    "call-start-d406fea68f9446319c739720443b376f.json": "c2b29827d02955accd684d02fad14d50bb967acd130d6137b584dced4b7a160c",
+    "call-start-d785bbea00e64f4ea16a0b9ca1c49680.json": "789fdba99377dcece08405ff3dc281f337c10dd346b243bb4eaf497087952e71",
+    "call-start-d85eaeb7e70c4e44aa798c7686e12e17.json": "ef2381e2376bc22923e90c9adbfaf1bd184b4f883d76f0d005ee823da590790f",
+    "call-start-db27cad7be1e49d3b3d75bc3e4c90779.json": "374fe77915917bbcd39674eadadce9223b0c618b04e1bbe79c827ffbea6ac8c4",
+    "call-start-db402395d6604f40ae66ecd2e0f46451.json": "32a633648d3ff6296ca544e0d95106f12e0e713746f2baeed7d8f1c7210dd9e3",
+    "call-start-df8b760cd9db45e884b26bb9142a4c1a.json": "da0cad45356c6ca06c2f8edbcab46449e21937c16a2a64720b699150dfd8dd4d",
+    "call-start-e07dbf2681ec4a9890b8c1b1eeb6f44b.json": "26ff98aeca9999bfa7f02db08db03021c33695da9c3c018cd4ff9c717b5a09b8",
+    "call-start-e13ffa8aef6a405b94cb61bf19edc241.json": "e8194c2e1e231759ab909d3a8adef5274698b14af572976d384d8d21aa8d82a2",
+    "call-start-e1e199825012440692f8cc20e8833cc5.json": "9b584aa8e17d50f8d2e590e769ae02076f55ffa623cc5af496300902072b5c9c",
+    "call-start-e9c3613543ef4ea8a0c6af91d4be0d93.json": "43faceeca4f9ed794091c19356ac22b21456c13e63416efe0bcf8461b925f8b6",
+    "call-start-ec2c33f1cfe346e98319c4e79f0f338e.json": "8923cf3a680582abc8a7ef3befb2a485e9d1984a2de44421d34b94a2b13ce9bc",
+    "call-start-ee62cea06b6d4c4fb50df5373377b2e7.json": "f2aad0be9b7f1499de6867043e50c03030e051219d0149da3d616feab353c997",
+    "call-start-eef833c8053d47009138880f62356e10.json": "b546fca7a61aa73708de6277b78d5bb16889745883223346fdaf85de428b129f",
+    "call-start-f1362b314ea149cfaf023a2f2c5ee712.json": "25b4eb10a12d9770bee8ee7983a424161abc74c63fdd958c65d918b92fbdafd7",
+    "call-start-f15ca93555f249ceaf7943d1302f35e9.json": "5fff4da74ea06ae2d06c7320300d8adad9d189d30f000a0d320aa4e4c7610fec",
+    "call-start-f80c794b73df4d7ca185ac86d4bbe911.json": "35993437ba72841938107f4e22f0498d5d882c7bd8f0ed17edc99814a3d6004e",
+    "call-start-f83b300c398b451c9ae578ed64044c11.json": "0b20003faee7726ff0da47d5137420bbb43e7a25d079fd80915c95eb9e9daa85",
+    "call-start-f8949db4a9e8495a8d82a319e1ef50b1.json": "2db2483e37e0a1be277bc88e88a4014a9417b54c5a844dbd9dd348464566dc88",
+    "call-start-fa82078dd6ca4860b2ce08e92030418f.json": "fa7ec1642ba0bb54925096c7d1ff303e389dfc9d472a76fc369903416bbc9e1e",
+    "iteration-7cec06aab56a4b52924f7502dfa221c1.json": "662eca114994372658c2a79618087909c9e0c9ce25b240cba387b4ddcfe66735",
+    "iteration-e4b5d9935b1f4e06976abbc0054ed9c0.json": "ce49444a45dbab2412737ac5722e50955a56237cc51eb5f4cf356173fdda01f4",
+    "patterns.json": "bce3588833e05360019984233d09076cdad87feba47343ad071a2c1f92dd5d85",
+    "rollout-0adf6bdc6d564ebc8d7e3eb2e5a1f1db.json": "b5dc8a165afcb8d37ec83cb9979dfc242d1bb8c3b9bf5fd7e48337c8c907f7fd",
+    "rollout-0de4a87a857a41d485854f98183a6e8b.json": "7cb7f418aca6a6461c7abb98fddb0fb99b4eaa6eac9db6bab4aebedd9475c7b8",
+    "rollout-1f87c15192554a288fdd5abe148d586a.json": "a83da85e80cb5080bf863f1d8dacd8ef7cd82c4f9ccbff700e174693c842d2dc",
+    "rollout-1f9b56067fa24abd950b1443df1da0b2.json": "c26fcf76d79260e690cfd3e77a888cc172ae74744dc39d91489b9575427a4454",
+    "rollout-211948c4900945d091ab066ac66b6a08.json": "d6245a83de6f4303fa2b46358b7e7b296ff63032f73e586a6f00b5e1f0fccdbf",
+    "rollout-2837c6aed310400e8e1bae82db40da33.json": "50f01b74d3d3c011a07fb27faae424beaec8d5fced62d5ca61370a8488bf2656",
+    "rollout-28404fa89ed34a6c9a66bc6ec3e281ad.json": "a322afa2ab7218fe2203b7c3cbd97a6e3bdab16727446c0e40faf0d31cc4882f",
+    "rollout-2dcaea3a810c46cebd7b4671b4ef6afd.json": "3dff73a99a0c919960019bedc3a04fc4d85fb6b374ffe63dd8562da03bede1ec",
+    "rollout-313f741aef184d0882641511c93428b4.json": "d4274f8ef7059817a8b5448ded0794aa5f08788793197127390bdef7cf75fcdc",
+    "rollout-362a073bb3e14506b4e4b8e12cd77181.json": "76ac0c9370dad2ddd577e8f15b47b4c2b03f260b04a9b32eeb7e7eb145e9f563",
+    "rollout-36d84816ed0a4bef8a0f077e72dc7a50.json": "b3c1ad00d188a8b2ab27716a52cbc1bab37d6d75591b7f4a3336f74101483bba",
+    "rollout-3723d53be02f41509216b23274515649.json": "f0634dc17d83e0bc4b7bc62385c02e5abc3b8fb86ad108611f7e4dab09caa7b7",
+    "rollout-4246be3c022c4058a37150a9ce6d9d5d.json": "d16ead54c7df9bf628345aa4cdb08e3b774b1de925c087e616c93c53701f2d3d",
+    "rollout-42b112b124b84b6083b81607fce4e8e5.json": "e051e89d810c806640038494eb3e0a152287af930f0b9b706dba0f955981076e",
+    "rollout-4372739816db4760a05f0967d9cc22a5.json": "5647cdcccca6516b0b77d2a2f9694fe1c33839e3b0979c87a0d0c6c8fbacf4c8",
+    "rollout-43d557ee15c3495592d4d1be2408fee1.json": "494f78f91a6c02558bfc886e1395d540a8a59fe7c5e906c256bf32c8488fa74d",
+    "rollout-449bc45f42bb4a67946ac5451b51dc95.json": "f625a6048e5a3c3a116ec2e83a95017b5e53363c7da2defeeb122efa07781b1a",
+    "rollout-44dc15d282c945f38778980e30073c68.json": "b4c463f583b84e73f7e03fe3e780e5ccacc4365fba5a6e601c327bb2e3bd774f",
+    "rollout-48d1240496b44c0381a5c97ea1795bc0.json": "353a5955497776641c013b711dc9253468ab128914bf0cae7b66a305cdf5e874",
+    "rollout-4a1fb1be423c4e95b460474410d8826d.json": "afa28d9b552ee78292c3557a7468b2d0392ccee9c512e122f8673d12af81e5aa",
+    "rollout-51b2c754e9764857a34e9cb9be8fd8dd.json": "2364f715210ed340b3f2a85ed66a4ddc55e3015a5f7185379bcc6f4c28b5ac87",
+    "rollout-5c53ca72d011497b928939cb303ee87b.json": "90a4ad88b6f8a7d05c5b4cb2a028fe895cf4b32a4729a847a6b500cb310f0824",
+    "rollout-5d7c08413ea446849858e6cf4a6d2a00.json": "1ddf0c099c1c7b761a0f0953ec00d416ba1db318f640ee2715d54b11fe1c953c",
+    "rollout-606f95e9e08e409e8ee02c06018d8b81.json": "567bc3c12c64477cf0b0192bb05c17203ceee5e70c3887cce0e82ebb37ac482e",
+    "rollout-6208715724a44a1a97b088a603f49004.json": "f06d82a4a1cf56a25fe58b811833c085566f426de8339ee66af1eab5330d722f",
+    "rollout-6470215da7a24a3c9d92f8ba5230254c.json": "bebfd512e0e7fa1c40b90874b0b43f1910f1f4fce773ef0cc4eb60c836dada43",
+    "rollout-66fa1e9776264e22baf4adb714cdc74b.json": "b7c956f8aa287471e8b5335dbb90b26ca5c60c07d1cdf9cb75b7e2d348144f53",
+    "rollout-68150a3f5f9e4d039266559b342a21a4.json": "4b65a1a175ae719a0df611ec381c73233b04fa3db74980f5a1e38f9ebf321322",
+    "rollout-7184ab5ed0da4af9b0c889fc7a1ca57e.json": "9e1992e261f3faf16eb85133d090227942483185d75fca9969384b9030570808",
+    "rollout-770fc9d889ff436da09e8c56b3b78d5d.json": "27f3eee6aca18296b1e3c89b5e12dc707c5a903bd79bcef2f934e6a6a9fc00ed",
+    "rollout-7f00170739184874b03cba92f44808ab.json": "399909e986288fbc32bbe1b1d49c5e6ec41694937ce21860f56c3115a3cc5703",
+    "rollout-8283d3baa5be4588b0d38fb5f7c26ff1.json": "a7d96cf0b6eb44f9d31f86ba67e467c4cc5b94ac0b83239e067950a88a6f926d",
+    "rollout-8340d52811e6489e98fb08afa366d0b3.json": "67ea5a4bac3057a1b06c3be8be0199ce5fcab5ef31f69d18aa00b1af84fab127",
+    "rollout-838424465b2347e595cbcc769f5dcfd2.json": "5bfd93efc3eefc1de2984a34b9f5f6c1781733afdd834de1d3902863d6ea4ab1",
+    "rollout-869a53a0d82c40e3a34eb12faa6b3daf.json": "d5c23732f8a05402bbd6d938d891c555c5105e9c27bffeb46a77e97c32662112",
+    "rollout-8b6291a7ab1641c5919f30fd17dace03.json": "49d1ef9a16bb8031bc18184983e69c89d3ed166b8fa890c68d08b90a9c049135",
+    "rollout-8b91cac59a66412fb7058119233c8593.json": "2819a443c8ec4771a04c1d53fe55ed9a261cfd5bf6343ef58e348bb509da94e3",
+    "rollout-9147edecaf764a90bdd16a1c07efe13a.json": "257be40dc4e5f882b78206aa193f8f7ccc4bc93f67470dd4b48a11545de8a3c1",
+    "rollout-92240679e43243a8ac5c3fdb2d9c05f4.json": "df60f445aa80173e2d4451e9a5ac342f0e64ef1e5243704624ce8ed73b06bc95",
+    "rollout-9c4225e3e1d3435d857de5d3341f4c1b.json": "11560c492b7c3dcb3acc2a5b9e712df787671a06a45a5f6208d6a7379a53d162",
+    "rollout-a2c4fa12baa44006aaf56359ba5ca011.json": "e9f24ebf9483f8c51310d60f667fc32b59dd4c5a28af6d7ac5b94a82598b5b2b",
+    "rollout-a669ea4a4d3741cb93ef3e1a553c621e.json": "c6f1c6ab82ad9cc35033bb27253fa4cf554afd5572af740920bb57fb58d22f9e",
+    "rollout-a97f17b4e94847c4b7b0b4d26440ed08.json": "fb80658a44b07b594befd29f84d9801c5ea9fa4b5829d69000e24c96fef1da04",
+    "rollout-aa0fd0b160864cac91316fcf7ef53533.json": "35fcfad14f98cb9260958cb79b1f69a1fb6df8eef59a40c39c46d0928c6e1bf7",
+    "rollout-ad230ff13fb24767b730076bb3e4e23a.json": "22cfb05e2eef0ce5be530e99487f1835036012f43d18bbc11281d845f6797261",
+    "rollout-b197592d78c546ac924705cd7d40537e.json": "bd40330153a961ae052ce3b42f81a3bf8a25363a62e7b2c483cf3a0015e1916b",
+    "rollout-b1eca85fff2b4669a61a4454b3995d70.json": "420e80eb3a8fc698e06d1a98c4fbd963411b0cd1e4c5ca253bc65d2121075fd8",
+    "rollout-bbd36020dfa448828e88937a6bc1769f.json": "78ea9d742d8a55424fced2291b01678477e85fde7e60551a8c8aea1aec4a59ae",
+    "rollout-c7c3a2ec19ad46f7afbc5aae0b5955d6.json": "6106ef5aa70498b057008841cdfd7bc919113dde1dc9514e203aa11e9c811340",
+    "rollout-d5cd2043f976472d98dd4886fe4b8c49.json": "3f67a821d59b7c162ad60ebbeda8f5c9732ff84a8459974a33a82af340394e57",
+    "rollout-daa6e343b1c64d1bab0f0b361248d455.json": "6a06de43588d7313e330c92a356d39d459a4de80761e3c38d0a09feb76a36dc1",
+    "rollout-e4a0c8300b954719b565ba4d6e0fe7f6.json": "3661ffe49b4951684b15e1c787e50643f5cf9faafa558d17fc62c2edc2617f6e",
+    "rollout-e9cdcd61074d41c39669bd32f0ecabfc.json": "42ee93df15c3fb9f8418365fd1d1b51a582abaf359652344052de67d03dec405",
+    "rollout-eacef7d500b24c6189325638cd4bf995.json": "735f7c79ece27afda100dc4e7f0e1bf491ddaff2a1792fa301e721ac51af57cc",
+    "rollout-f0a730c20a23404184e99a66cbaa1ae4.json": "a4b235f48786a372c9daf967d8432086c58b79cac4a134b05f4a86bde0f2e783",
+    "rollout-fa715c9b80e84238b3aab355659b313d.json": "7956a5f8d932f7f383ea8d538a4f3034018eb3b0a67313a81a33eaf5b51f22e9",
+    "run-c3e5d2b186da4e3ba579c44571bace1a.json": "4ff09ffdefaba00a608a667faf7d2ee4755429c96f7753bd5bcbeba4303d8ca8",
+    "run-inputs.json": "5a17b8f2dc83718bf7e16a28e94d05aaa058f2fd90ce26588003a9bdef0a11cf",
+    "runtime-hashes.json": "c2e27bab19844135dad514e66de632d4368a8de5099e9734c77ec84001c0cd79",
+    "selection.json": "34d760559bfa05057e558ca437915546c1ead6dc93da0a891e924332b03cbdef",
+    "trace-00003.jsonl": "97bf1ef720764baef1f1ec502214ca7e76e33c66051900c3e659e00b0b24e750",
+    "trace-00005.jsonl": "d56d80437a4b371c3909a9fb8c7873cb9650dfd2d9e18a6fbc040507cb8c2951",
+    "trace-00007.jsonl": "1a919067e8b02b1672d00ccd590454508091922c9beadfd6412a18f99ce31800",
+    "trace-00009.jsonl": "6deaa46cb66cabe67da1b397a106ed1de9f5d27cc504e009f1bd0fe043bf781f",
+    "trace-00013.jsonl": "04c4039b12a41bb3b13129d95533404449d28a305c45434aa45864d35366fdb4",
+    "trace-00015.jsonl": "f679ebc8668b89d994a6213cf82b6349fd7dc915030f166626820fac9bb397ac",
+    "trace-00017.jsonl": "73b62d5f93a4a6fc9b72942354e6948c00ca28af563316f2eac08dae763e8100",
+    "trace-00019.jsonl": "3e6c923de122956ec19b448cccf583b8826a28f0e3ca0426df7b856800140350",
+    "trace-00021.jsonl": "d51a2c4c496eb374e707f15edaa545cd8609731a3406a47ad9c6957d589f8e8a",
+    "trace-00023.jsonl": "123109a92c4e18a171d9ca624dede9710a36f98543cd556608f759729f6755d4",
+    "trace-00025.jsonl": "47d3dab71cb950d5417b34090eaeefaf49de97213d3a8068353f85ba9eccb195",
+    "trace-00027.jsonl": "15ca62488f0771241d4ba76f3d4d292df6e908f47956e8c181de71e213506946",
+    "trace-00029.jsonl": "b1fdc12a1ec597aa1089f9720e366ea9b84e1d2a56697a50b80f53e003158ee2",
+    "trace-00031.jsonl": "2249423e1950f3a4c8a0c3cfbf52d085ea5e973fd5f6e2b7a5e842f3fc893c91",
+    "trace-00033.jsonl": "57b855b80e94112bd3b62afd56e9d1c3ffcdf2e68d5d188259b2eb33c48c1149",
+    "trace-00035.jsonl": "02835d83af55096c0b809e1a9e4ce09ad75675134883c7974782aac89e503714",
+    "trace-00039.jsonl": "a0d0af208171bf3ade2e06b9b054afd0320d09cc2eea0c392aaf3c7826d426b0",
+    "trace-00041.jsonl": "7f70eba2ba110edb4b8f12f782389fe462e434a81be3d86c33a9d7c76950c1cf",
+    "trace-00043.jsonl": "e3c8815b78867733c1f3d0580e53eb792ca9dffd669ea492e8f7bda13470a7ad",
+    "trace-00045.jsonl": "6f8b13236826fb4d17b7f8314a8f5aa64d3a594f04396c46861a3eb73a8b5480",
+    "trace-00047.jsonl": "4599af139b943150f565294fe3309d107b22ba459d1d49c47a112ad36acc32ef",
+    "trace-00049.jsonl": "61d98523d55377d7eb0fc2f4b83eb4a542a5d3aac4c6609ee7aa094a19157fa3",
+    "trace-00051.jsonl": "6327554adf3cc50c7dbae42430ac44017a253c313f25348367f4cbd8139cc707",
+    "trace-00053.jsonl": "6026bdd03629484f4904387b9f1d7c1d7ebd829badaecfb074b689ec954b60a9",
+    "trace-00055.jsonl": "af1eb08a66c6eaf96c5f83e27609f6503a9ae4c3c39817093795e820dbf669db",
+    "trace-00057.jsonl": "bd2c3a0b514a0df4c69db098bb2ef6098e0a778bc63e22fc1ed3140ec6a5b0df",
+    "trace-00059.jsonl": "7337f0d764516db9902c61a6483a4cff27f1df1d4972864158eef4b6dbdd72b5",
+    "trace-00061.jsonl": "8f0b0407cd8cf5aec4e6a76adb4252f5c3ec0154b6f2867caa9565e7cb60cdbf",
+    "trace-00063.jsonl": "f632d6cd0a184dec59128feef725458c776e8df78443b5c741c757f0f7a8a2f8",
+    "trace-00065.jsonl": "ee8b9e52ca1c3dbf4fbb3ab215076cf433a4972596f2dc91bdff90019b69297e",
+    "trace-00067.jsonl": "932b27bec56e940bd2a0cad0fdc2d0a712c693ad2027b7fab3cc16d4bfc2af69",
+    "trace-00069.jsonl": "1be52bdf606cb189bb12c887dd2e1e5227ca8a4a1afa13e03f60f064f24d955d",
+    "trace-00070.jsonl": "945f10af59865f71532650d24932e9cd5abd360717f522d8234befc7d7921cf7",
+    "trace-00072.jsonl": "b5b25b13a37dc7d07c3745fe64388bd5d48efb3abb341fc380bfcf239f470bbc",
+    "trace-00074.jsonl": "2058aac22db923ef7be9886611a21426fbd89779a46925074425d7289c43bf33",
+    "trace-00076.jsonl": "cbb376e31812604f512f5ce00b50ea72753ee04a4c41649387b13eccd19ad997",
+    "trace-00078.jsonl": "efb8a78d9cd2bb678bcf3d73eed0bcd9fcc56881315471095a3fd143c00514d2",
+    "trace-00080.jsonl": "e9e0c9d3a4aced2e0c3695ccf2d18ea9e0ee649f2924bc532bc68077296f6955",
+    "trace-00082.jsonl": "f1ac86da1bdc624f26e36bc49b2ef7cb8438f3951ea5a370d29d1fc25421f3df",
+    "trace-00084.jsonl": "166698d194cf35e9c5f27d72789984efeb6c8538a9e922b6789e03d44711145c",
+    "trace-00086.jsonl": "0082bf08f6967ad53c9e8de2db2c39a102c39aa9e6f4f609099060f9b3357764",
+    "trace-00088.jsonl": "46a1ac4adf6f05567aae295a508f1e6027e8a98e2775c4ab2e04b147c80ee941",
+    "trace-00090.jsonl": "27d69314fd3f6f96a8e02d93b258506df4fc12a19e9a43bda7c9954be83af5b4",
+    "trace-00092.jsonl": "ffd29cd15025c35f6740206fd9ca229af1ab8f157453aa2ec7b45da30a3b1398",
+    "trace-00094.jsonl": "de56eab0918193c254e97ab5ea7fa529b3076d55e17b561a104a29f8b45a3cd2",
+    "trace-00096.jsonl": "746647e913e32bf1c0a31eb83254f162ffef44e78e2b42a485c51c2f0cfaf679",
+    "trace-00098.jsonl": "9ff4984d16dc21aeebfceaec68b1116672164738d437e47a1af287962163340d",
+    "trace-00100.jsonl": "b5d3b3ef22217eb73587cc595c93220d5bb6e01bac847dc2fdb8e45deb9278c5",
+    "trace-00102.jsonl": "89d5743c966a949cbc9c317102721f3372c692528780bd8272a2461f79ee13e9",
+    "trace-00104.jsonl": "39f832287b162c005a1fdfff3a3745f5790cd8beeb796415de09f667000eeecc",
+    "trace-00106.jsonl": "c62644ea79c1d961a1d56c1f0f5bfb3b66a555fdf5f928b74dae441d207283cc",
+    "trace-00108.jsonl": "1730e06f4823eefb7897a96aaeec688a741e543561753e191008838feffb5aa7",
+    "trace-00110.jsonl": "74a88b6cbc6e24a5ea3a99db94f5fc38331e3b5f5669d557cfc31435f8122cef",
+    "trace-00112.jsonl": "31862a76dc7c27f18bd894a64d734faad8d27789c9c35731bd74c07c834bc764",
+    "trace-00114.jsonl": "39df5df10bc1e291580ca4181ed1c8d9d2cf4f1fe783b4c765b95344a7586815",
+    "trace-00116.jsonl": "cf77bc749e2e30792fe6878d50be5a5e057e428c91db809a98e68473eff2d469",
+    "workspace-violation-8e3508a4da5044ff98e115cb9f31ebcf.json": "6df4a34282faa33ff0a927208e0b4a15d7bcd7f8f02bc06f1a942eed728f3d07"
+  },
+  "limitations": [
+    "Public repository task sample, not a production-wiki or universal benchmark.",
+    "A calibrated semantic judge can make mistakes. Original failed verdicts are preserved.",
+    "Subscription CLI cost reports do not establish incremental billing; aggregate USD is unavailable when any runner omits it.",
+    "Final questions are exposed after this run and cannot support a fresh generalization claim.",
+    "Both proposals were rejected, so baseline and selected are byte-identical. Any final score difference measures execution variability, not an effect of a skill change.",
+    "All skill files are injected during comparison. This does not measure native progressive skill discovery or prove every supplied instruction was followed.",
+    "Workspace hashes do not cover the entire host. A validation rollout wrote a temporary diagnostic outside its copied workspace under the native host policy; no claim of host-wide write isolation is made."
+  ],
+  "failure_breakdown_overlapping_counts": {
+    "test-0-baseline-0": {
+      "total": 8,
+      "passed": 3,
+      "judge_accepted_but_evidence_invalid": 2,
+      "artifact_failure": 2,
+      "write_violation": 1
+    },
+    "test-0-selected-0": {
+      "total": 8,
+      "passed": 2,
+      "judge_accepted_but_evidence_invalid": 3,
+      "artifact_failure": 0,
+      "write_violation": 0
+    },
+    "train-0-0": {
+      "total": 4,
+      "passed": 1,
+      "judge_accepted_but_evidence_invalid": 1,
+      "artifact_failure": 0,
+      "write_violation": 0
+    },
+    "train-1-0": {
+      "total": 4,
+      "passed": 1,
+      "judge_accepted_but_evidence_invalid": 1,
+      "artifact_failure": 0,
+      "write_violation": 0
+    },
+    "transfer-0-0-baseline-0": {
+      "total": 8,
+      "passed": 3,
+      "judge_accepted_but_evidence_invalid": 0,
+      "artifact_failure": 0,
+      "write_violation": 0
+    },
+    "transfer-0-0-selected-0": {
+      "total": 8,
+      "passed": 3,
+      "judge_accepted_but_evidence_invalid": 2,
+      "artifact_failure": 0,
+      "write_violation": 0
+    },
+    "validation-0-0-best-0": {
+      "total": 4,
+      "passed": 3,
+      "judge_accepted_but_evidence_invalid": 1,
+      "artifact_failure": 0,
+      "write_violation": 0
+    },
+    "validation-0-0-candidate-0": {
+      "total": 4,
+      "passed": 2,
+      "judge_accepted_but_evidence_invalid": 1,
+      "artifact_failure": 0,
+      "write_violation": 0
+    },
+    "validation-1-0-best-0": {
+      "total": 4,
+      "passed": 2,
+      "judge_accepted_but_evidence_invalid": 2,
+      "artifact_failure": 0,
+      "write_violation": 0
+    },
+    "validation-1-0-candidate-0": {
+      "total": 4,
+      "passed": 1,
+      "judge_accepted_but_evidence_invalid": 2,
+      "artifact_failure": 0,
+      "write_violation": 0
+    }
+  },
+  "benefit_scope": "Primary end-to-end task pass rate (answer, judge evidence, artifacts and boundaries); transfer outcomes are reported separately.",
+  "post_freeze_corrections": [
+    "Future runs allow exact quotations from supplied saved artifacts and expose every changed text artifact to the judge, while keeping factual sources distinct. The frozen study only allowed source-map quotations and omitted non-check artifacts. Original scores were not recomputed."
+  ],
+  "export_verification": {
+    "status": "verified",
+    "files": 662,
+    "manifest_sha256": "8264e7de031a3e0d214f0fb7a341ae9903851b678b15eb74fa6eea29d800e094"
+  }
+}

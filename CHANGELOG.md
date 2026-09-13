@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [3.2.0] - 2026-09-12
+## [3.2.0] - 2026-09-13
 
 ### Added
 - Complete bounded evolution loop with persistent training evidence and patterns, multi-file proposals, retained failed attempts, validation-only selection, independent final testing and optional cross-agent transfer. Invalid model-authored patches are retained as rejections without aborting the remaining cycle.
@@ -28,7 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Credit the WikiSkill paper in the README and documentation, mapping the adopted methodology to implementation choices and published validation limits.
 - Main plugin/skill version is 3.2.0: additive and backward-compatible, so no Markdown or CLI migration is required. Experience capture, skill editing and paid inference are never started by upgrade.
 - Keep `.evolution/` snapshots out of normal search, lint, statistics and graph extraction. Preserve searchable lessons and trial summaries in existing wiki page types.
-- Prepare Paperclip companion `paperclip-plugin-llm-wiki` v0.5.3 with matching archive exclusions in search, health and page reading. Publication follows merge; this PR does not publish either release.
+- Paperclip companion `paperclip-plugin-llm-wiki` v0.5.3 adds matching archive exclusions in search, health and page reading. Its package README records publication status.
 - Update command reference, agent workflows, site navigation, upgrade guide, contributor checks, manifest descriptions and machine-readable documentation. Handle documentation pages without a git modification timestamp during local builds.
 
 ## [3.1.1] - 2026-09-04

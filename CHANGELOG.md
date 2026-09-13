@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-09-13
+
+### Added
+- Complete bounded evolution loop with persistent training evidence and patterns, multi-file proposals, retained failed attempts, validation-only selection, independent final testing and optional cross-agent transfer. Invalid model-authored patches are retained as rejections without aborting the remaining cycle.
+- Nine host adapters (Claude, Codex, Cursor, Gemini, OpenCode, Pi, OMP, Hermes and OpenClaw) with neutral skill provisioning, durable interrupted tool traces and explicitly nullable usage; calibrated semantic judging, source-quotation checks, artifact tasks, and shared call/time/cost accounting across every role.
+- Pre-request inference reservations in a bounded first-party API runner, with conservative model-context/output ceilings, Decimal accounting, no retry after uncertain responses, and expiring reviewed prices. CLI runners reject hard-USD configurations before inference.
+- Ground semantic verdicts in exact factual-source or saved-artifact quotations, including changed artifacts without an explicit assertion. Artifact state does not establish the truth of newly authored claims.
+- Task-cluster confidence intervals and paired randomization analysis, plus a 16-task public-project study covering real ingestion, index/log updates, graph compilation and hybrid-search execution.
+- Portable skill/evidence bundles with SHA-256 verification; prepared runtime provisioning, disabled ONNX telemetry side effects and detached subprocess cleanup. Completed write-boundary violations retain evidence and score zero without ending the remaining isolated comparisons; runner/protocol failures still stop the run.
+- Version 2 example suites and full-cycle regression tests. Fictional evaluation data lives under `eval/evolution/pilot/`, outside the installed skill, to avoid supplying answer keys to inference.
+
+- Optional `/wiki:learn` workflow for immutable observed task experience, cited source/concept patterns, root-cause hypotheses, applicability and counterexamples.
+- `/wiki:evolve` and stdlib `wiki_evolve.py` for evidence-linked whole-skill proposals and new skills, complete baseline/candidate snapshots, fixed-corpus paired evaluation, retained rejected attempts, explicit apply and rollback, whole-skill drift checks and interrupted-transition recovery.
+- A provider-neutral JSON runner contract, optional authenticated Claude Code query adapter, and a 20-task fictional query pilot covering citations, current/historical decisions, contradictions, multi-source answers and abstention. No model improvement is claimed without a measured trial.
+- Retained legacy version 1 regression gates; the new version 2 loop selects on validation only and reserves final tests for reporting. Both preserve failed attempts and reject malformed outputs and timeouts.
+- Idempotent experience/pattern templates and experiment-archive guidance, an optional upgrade schema marker, end-to-end lifecycle tests and PR CI for Python and documentation.
+
+### Changed
+
+- Credit the WikiSkill paper in the README and documentation, mapping the adopted methodology to implementation choices and published validation limits.
+- Main plugin/skill version is 3.2.0: additive and backward-compatible, so no Markdown or CLI migration is required. Experience capture, skill editing and paid inference are never started by upgrade.
+- Keep `.evolution/` snapshots out of normal search, lint, statistics and graph extraction. Preserve searchable lessons and trial summaries in existing wiki page types.
+- Paperclip companion `paperclip-plugin-llm-wiki` v0.5.3 adds matching archive exclusions in search, health and page reading. Its package README records publication status.
+- Update command reference, agent workflows, site navigation, upgrade guide, contributor checks, manifest descriptions and machine-readable documentation. Handle documentation pages without a git modification timestamp during local builds.
+
 ## [3.1.1] - 2026-09-04
 
 ### Fixed
@@ -186,7 +211,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v3.1.1...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.2.0
 [3.1.1]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.1.1
 [3.1.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.1.0
 [3.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.0.0

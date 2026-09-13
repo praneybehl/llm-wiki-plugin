@@ -80,7 +80,7 @@ def resolve_link(link: str, by_path: dict, by_slug) -> "str | None":
 
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
-SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw"}
+SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw", ".evolution"}
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str, bool]:

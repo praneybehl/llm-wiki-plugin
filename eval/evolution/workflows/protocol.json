@@ -1,0 +1,27 @@
+{
+  "registered_at": "2026-09-13",
+  "baseline_public_commit": "06369b2eb0617bf7b07b2b8a5c07f4aca1fb1bf0",
+  "iterations": 2,
+  "repeats": 1,
+  "tasks": {
+    "train": 4,
+    "validation": 4,
+    "test": 8
+  },
+  "primary_metric": "paired held-out task accuracy",
+  "unit": "task, with repeated executions clustered",
+  "confidence": "97.5% task-cluster bootstrap per agent; Bonferroni across two agents",
+  "positive_evidence": "selected skill changed, positive interval lower bound and paired randomization p < .025",
+  "selection": "strict validation improvement, no critical regressions, tool ratio <=1.5",
+  "cost_policy": "existing subscriptions only; no API inference; measured tokens and reported CLI costs, aggregate USD unknown",
+  "failure_policy": "Completed write violations score zero. Invalid model-authored proposals are retained as rejected; the loop continues with its last valid skill. Authentication, malformed runner JSON and execution failures remain fatal. Final outcomes never feed back into selection.",
+  "preflight": "Training tasks only. Both agents executed ingestion, graph extraction and hybrid retrieval. Earlier runs exposed runtime provisioning, ONNX telemetry sidecar and missing judge observations; these infrastructure issues were fixed before this protocol freeze. The first study was interrupted during validation and never exposed final tasks.",
+  "calibration_revision": "Positive paraphrase explicitly answers the replacement question; the previous incomplete positive failed calibration before training/final testing.",
+  "measurement_revision": "All five preceding attempts ended before final exposure. The last stopped on an invalid proposal deleting SKILL.md. Invalid-proposal rejection and the proposer contract were repaired before this fresh run. Two optimization iterations, all 16 tasks and both agents are retained; repeats are reduced to one to limit additional subscription use. Statistical units remain eight distinct final tasks; prior two-repeat validation results remain recorded separately.",
+  "budget": {
+    "max_calls": 160,
+    "max_seconds": 7200,
+    "timeout": 480,
+    "max_usd": null
+  }
+}

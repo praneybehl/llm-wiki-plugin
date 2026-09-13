@@ -1,0 +1,46 @@
+{
+  "iterations": 3,
+  "repeats": 3,
+  "budget": {
+    "max_calls": 400,
+    "max_seconds": 7200,
+    "timeout": 180,
+    "max_usd": null
+  },
+  "selection": {
+    "max_tool_ratio": 1.25
+  },
+  "inference": {
+    "argv": [
+      "python3",
+      "/absolute/skill/scripts/wiki_evolve_agent.py",
+      "codex"
+    ],
+    "model": "REPLACE_WITH_EXACT_MODEL_ID"
+  },
+  "maintainer": {
+    "argv": [
+      "python3",
+      "/absolute/skill/scripts/wiki_evolve_agent.py",
+      "codex"
+    ],
+    "model": "REPLACE_WITH_EXACT_MODEL_ID"
+  },
+  "proposer": {
+    "argv": [
+      "python3",
+      "/absolute/skill/scripts/wiki_evolve_agent.py",
+      "codex"
+    ],
+    "model": "REPLACE_WITH_EXACT_MODEL_ID"
+  },
+  "judge": {
+    "argv": [
+      "python3",
+      "/absolute/skill/scripts/wiki_evolve_agent.py",
+      "codex"
+    ],
+    "model": "REPLACE_WITH_EXACT_MODEL_ID"
+  },
+  "transfer": []
+}

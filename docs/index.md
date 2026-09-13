@@ -30,8 +30,8 @@ Use it when knowledge should outlive one conversation: long-running research, cu
 
 *Add sources once, retrieve cited evidence later, and save useful learning back so the next session starts with more than the last one did.*
 
-::: tip New in v3.0.0
-Meaning-based search is now local and default through FastEmbed + sqlite-vec, while direct `python wiki_search.py "<query>" --no-embed` keeps dependency-free BM25. See [Search & retrieval](/search) and [Upgrade to v3](/upgrade).
+::: tip New in v3.2.0
+Capture verified task experience, consolidate reusable lessons and evaluate evidence-linked skill changes with explicit apply/rollback. Existing local search and wiki pages remain compatible. See [Learning and skill evolution](/evolution) and [Upgrade](/upgrade).
 :::
 
 ## How it works
@@ -101,7 +101,7 @@ No. Default semantic search runs locally with FastEmbed and sqlite-vec, and Mark
 
 ### Which coding agents support LLM Wiki?
 
-The agentskills.io-compatible skill is verified with Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, and OMP. Claude Code also receives `/wiki:*` slash commands through the plugin; other agents invoke the same workflows through natural language. See the [agent support matrix](/agents).
+The agentskills.io-compatible skill supports Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, OMP, and Hermes. Claude Code also receives `/wiki:*` slash commands through the plugin; other agents invoke the same workflows through natural language. See the [agent support matrix](/agents).
 
 ### How do I install and start using LLM Wiki?
 
@@ -110,3 +110,7 @@ Install the plugin or skill for your agent, run `/wiki:init`, ingest a source wi
 ---
 
 LLM Wiki plugin, MIT licensed. [Source on GitHub](https://github.com/praneybehl/llm-wiki-plugin). Based on [Karpathy's LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f), with section retrieval informed by Cerebras's [How We Built Our Knowledge Base](https://www.cerebras.ai/blog/how-we-built-our-knowledge-base) and the local FastEmbed + sqlite-vec architecture validated against [Basic Memory](https://github.com/basicmachines-co/basic-memory).
+
+## Learning from task experience
+
+The optional evolution workflow adapts [WikiSkill](https://arxiv.org/html/2608.27454v1) into persistent experience capture, pattern consolidation and tested skill changes. See [the adaptation map and measured limits](./evolution.md#research-basis-and-adaptation). The current study demonstrated no quality gain.

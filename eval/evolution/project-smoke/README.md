@@ -1,0 +1,13 @@
+# Project workflow smoke trial
+
+This small corpus summarizes this repository's existing contracts from `README.md`, `CONTRIBUTING.md`, and `skills/llm-wiki/assets/SCHEMA.md.template`: canonical Markdown, local embeddings, source mutability and release-version fields. It is separate from the fictional Lark pilot and is not a production benchmark.
+
+On 2026-09-12, an empty-skill run completed training, consolidation, a new-skill proposal, validation, frozen final testing and Claude Code transfer. It used Codex CLI 0.153.4 with `gpt-5.6-luna`; Claude Code 2.1.263 reported `claude-sonnet-5` and auxiliary `claude-haiku-4-5-20251001` usage for its `sonnet` alias. Both CLIs used existing subscriptions. Codex did not report measured USD, so the aggregate cost remains null.
+
+The candidate tied the baseline on validation (one pass each), so it was rejected and no installed skill changed. All four final task executions created the correct JSON artifact. The initial semantic grader invented artifact citation labels, which the evidence validator correctly rejected. The judge schema now restricts evidence sources to actual source keys; replaying those four saved answers passed 4/4. Those replay results did not reopen candidate selection. The original final scores and runtime hashes remain in `live-results.json` rather than being replaced with corrected scores.
+
+Earlier live checks also caught ambiguous output paths and a maintainer returning descriptive evidence instead of task IDs. The shared runner now specifies wiki-relative output paths, gives the judge measured artifact observations, and constrains maintainer evidence IDs in its output schema. Raw observations are captured before consolidation. Offline regressions cover these contracts, runtime budgets, test reuse, workspace boundaries, source quotations and multi-file recovery.
+
+This verifies executable behavior, not an improvement in model quality. There is one task per split and one repeat; the final baseline and selected skill were identical after the rejected proposal. Report any benefit only after a larger representative study with fresh final tasks. The live cycle used a frozen runtime snapshot; subsequent history, target-validation and bookkeeping changes are covered by the current offline tests.
+
+To reproduce the workflow, copy `../pilot/config.example.json`, choose authenticated runners and exact model IDs, set one iteration and one repeat, and authorize a maximum of 24 runner calls. Run `wiki_evolve_loop.py` against `suite.json` using a new disposable learning wiki and an empty working skill directory. Add a Claude transfer entry to reproduce the second-agent check. Do not reuse this public final task as evidence of generalization.

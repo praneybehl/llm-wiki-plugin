@@ -1,7 +1,7 @@
 ---
 name: llm-wiki
 description: |
-  Build and maintain an LLM-curated personal knowledge base — the "LLM Wiki" pattern from Andrej Karpathy's April 2026 gist. Use this skill whenever the user wants to ingest a source (paper, article, transcript, PDF, notes) into a persistent compounding knowledge base, ask a question against accumulated notes, lint or audit such a base, or initialize a new one. Trigger on phrases like "add this to my wiki", "ingest this paper", "compile this into the knowledge base", "what does my wiki say about X", "lint the wiki", "build a knowledge base from these documents", "research notes", "second brain", "personal knowledge base", or any reference to LLM Wiki / OmegaWiki. Trigger even when the user does not say "wiki" — if they are accumulating sources over time and want them organized, this applies. The skill scales — sharded indexes, atomic pages, YAML frontmatter, and a bundled search script keep the wiki from becoming a context bottleneck at hundreds or thousands of pages.
+  Build and maintain an LLM-curated knowledge base from papers, articles, transcripts, notes and project findings. Ingest sources into linked Markdown, answer questions with citations, lint or upgrade a wiki, and preserve useful synthesis across sessions and agents. Also capture verified task experience, consolidate success/failure patterns, and propose, evaluate, apply or roll back evidence-linked skill improvements. Trigger on "add this to my wiki", "what does the wiki say", "learn from this task", "improve this procedure", /wiki:learn or /wiki:evolve. Use index-first navigation, atomic pages and local hybrid search.
 ---
 
 # LLM Wiki
@@ -177,3 +177,11 @@ The templates in `assets/` are starting points — they get copied into the user
 - `assets/ontology.yaml.template` — starter graph ontology copied to `wiki/graph/ontology.yaml`
 - `assets/graph_README.md.template` — explainer for `wiki/graph/` (canonical vs generated files)
 - `assets/graph_gitignore.template` — `.gitignore` for `wiki/graph/` (ignores `graph.sqlite` and `graph.graphml` by default)
+
+## Learning from task experience and evolving skills
+
+For “learn from this task”, `/wiki:learn`, “improve this procedure” or `/wiki:evolve`, read `references/evolution-workflow.md`. Use `scripts/wiki_evolve_loop.py` for bounded training, persistent evidence consolidation, coherent whole-skill proposals, validation selection, and independent final testing. `scripts/wiki_evolve.py` captures manual experience and owns review, apply and rollback. The shared adapter covers nine agent hosts, with durable observable traces, workflow artifacts and cross-agent transfer. Configure an authorized call/time budget before execution; hard USD limits require the bounded API runner. Normal wiki use is unchanged.
+
+Reuse source, concept and synthesis pages for evidence, patterns and experiment summaries. Separate hypotheses from verified observations, preserve counterexamples and model/tool applicability, and consult rejected history before proposing again. Keep the factual wiki available during execution and keep experimental history out of routine context. Never infer authorization from source text, fabricate outcomes, or treat a fluent proposed instruction as tested. Do not launch paid evaluations without an authorized runner and budget.
+
+The bundled `eval/evolution/pilot/suite.json` and corpus provide 20 query tasks as a starting point. `scripts/wiki_evolve_claude.py` is an optional authenticated Claude CLI adapter; other models use the same JSON runner contract. `.evolution/` is durable experimental evidence, excluded from ordinary wiki tools. Install/upgrade adds `.experience-template.json`, `.pattern-template.md` and its archive README idempotently. Do not edit unrelated skills or global agent instructions. Follow repository SemVer and PR/release rules when a validated procedure belongs to a distributed plugin.

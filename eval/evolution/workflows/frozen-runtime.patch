@@ -1,0 +1,21 @@
+--- a/skills/llm-wiki/scripts/wiki_evolve_loop.py
++++ b/skills/llm-wiki/scripts/wiki_evolve_loop.py
+@@ -171,7 +171,6 @@
+             self.cost_known = self.tokens_known = False
+             trace = Path(request['trace_path'])
+             event(self.archive, 'call-error', dict(record, error=type(exc).__name__,
+-                  message=re.sub(r'(?i)(?:sk-[\w-]+|bearer\s+[\w.\-]+)', '[redacted]', str(exc)[-4000:]),
+                   trace_sha256=digest(trace.read_bytes()) if trace.exists() else None))
+             raise
+ 
+@@ -666,9 +665,7 @@
+             failure = {'run': args.id, 'status': 'error', 'error': type(exc).__name__,
+                        'proposal': calls.last_proposal}
+             atomic(learning_path, encode({'patterns': patterns, 'history': prior_history + history + [failure]}).encode())
+-        event(archive, 'run', {'status': 'error', 'error': type(exc).__name__,
+-              'message': re.sub(r'(?i)(?:sk-[\w-]+|bearer\s+[\w.\-]+)', '[redacted]', str(exc)[-4000:]),
+-              'budget': calls.summary()})
++        event(archive, 'run', {'status': 'error', 'error': type(exc).__name__, 'budget': calls.summary()})
+         raise
+ 
+ 

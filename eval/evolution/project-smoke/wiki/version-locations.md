@@ -1,0 +1,1 @@
+The main release version must agree in package.json, .claude-plugin/plugin.json, and both metadata.version and plugins[0].version in .claude-plugin/marketplace.json. There are four JSON version fields across three files.

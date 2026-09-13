@@ -1,13 +1,13 @@
 ---
 title: Commands
-description: Reference for all seven /wiki:* slash commands — init, ingest, query, lint, stats, graph, upgrade.
+description: Reference for all nine /wiki:* slash commands — init, ingest, query, lint, stats, graph, upgrade, learn, evolve.
 ---
 
 <!-- Adapted from: docs/commands.html (source: README.md "Commands" table, commands/wiki/{init,ingest,query,lint,stats,graph,upgrade}.md). -->
 
 # Commands
 
-Seven `/wiki:*` slash commands ship with the Claude Code plugin. In other agents, phrase the same requests in natural language — the underlying skill triggers either way.
+Nine `/wiki:*` slash commands ship with the Claude Code plugin. In other agents, phrase the same requests in natural language — the underlying skill triggers either way.
 
 | Command | What it does |
 | --- | --- |
@@ -17,6 +17,8 @@ Seven `/wiki:*` slash commands ship with the Claude Code plugin. In other agents
 | [`/wiki:lint`](#lint) | Structural and semantic health check. |
 | [`/wiki:stats`](#stats) | Show size, link density, and which scaling threshold the wiki is at. |
 | [`/wiki:graph <action>`](#graph) | Compile, lint, or query the typed graph layer. |
+| [`/wiki:learn <task artifacts>`](#learn) | Capture verified experience and consolidate reusable patterns. |
+| [`/wiki:evolve <goal or action>`](#evolve) | Stage, evaluate, inspect, apply or roll back a skill improvement. |
 | [`/wiki:upgrade`](#upgrade) | Upgrade an existing wiki to the current plugin version. |
 
 ## `/wiki:init` {#init}
@@ -100,3 +102,11 @@ Upgrade an existing wiki with idempotent file operations, mandatory runtime inst
 ```
 
 Resolves the installed `init_wiki.py` separately from the configured global or project wiki, then runs it with `--upgrade`. Existing content stays untouched while the complete pinned local runtime is installed and verified, parse/vector indexes synchronize, and missing `SCHEMA.md` sections are walked one at a time. See [Upgrade to v3](/upgrade).
+
+## `/wiki:learn <task artifacts>` {#learn}
+
+Capture verified successes or failures as immutable raw experience, ingest a source page and consolidate a reusable pattern with evidence, applicability and counterexamples. No skill is changed and no paid model evaluation is launched. See [Learning and skill evolution](/evolution).
+
+## `/wiki:evolve <goal or action>` {#evolve}
+
+Run bounded training, consolidate observed evidence, propose one complete skill change, select on validation, and test the frozen result independently. `history` and `show <id>` inspect past attempts; `apply <id>` installs an authorized, reviewed passing candidate; `rollback <id>` restores its baseline if no intervening edits occurred. See [Learning and skill evolution](/evolution) for runner setup, the demonstration suites, budget controls and recovery.

@@ -1,11 +1,22 @@
 ---
-title: Upgrade to v3
-description: Move existing wikis to default local FastEmbed + sqlite-vec retrieval without migrating content.
+title: Upgrade to v3.2
+description: Add optional experience capture and tested skill evolution without migrating existing wiki content.
 ---
 
 <!-- Adapted from: the v3.0.0 local semantic retrieval design and commands/wiki/upgrade.md. -->
 
-# Upgrade to v3.0.0
+# Upgrade to v3.2.0
+
+v3.2.0 adds optional experience capture and evaluated skill improvements. It is a minor release because existing wikis, frontmatter and CLI flags remain compatible. It does not enable a background optimizer.
+
+Update the installed plugin/skill, then run `/wiki:upgrade` against your configured wiki. The existing runtime setup remains mandatory. Upgrade adds `.experience-template.json`, `.pattern-template.md` and `.evolution/README.md` only if absent; custom files and SCHEMA.md are preserved. It proposes an optional `## Skill evolution` schema section for review.
+
+Use `/wiki:learn` for verified task experience, then `/wiki:evolve` for evidence-linked proposals and measured promotion. No evaluation or skill replacement occurs during upgrade. Back up `.evolution/` as durable history, unlike the disposable `.wiki-cache/`. See [Learning and skill evolution](/evolution) for the runner contract, pilot suite, inference budgets and rollback.
+
+The Paperclip companion v0.5.3 excludes experiment snapshots from its browse/search/health surfaces. Update that companion separately when using it with an evolving wiki.
+
+## Upgrading from before v3.0
+
 
 v3.0.0 replaces provider-backed embeddings with default local FastEmbed + sqlite-vec retrieval. Existing Markdown stays untouched; only the disposable vector index changes.
 
@@ -31,7 +42,7 @@ The default section search now initializes a local model and sqlite-vec index in
 
 ## The upgrade
 
-1. **Pull v3.0.0.** Update the plugin the same way you installed it — for Claude Code, re-run the marketplace install; for skill-only agents, re-run `npx skills add`.
+1. **Pull the current release.** Update the plugin the same way you installed it — for Claude Code, re-run the marketplace install; for skill-only agents, re-run `npx skills add`.
 2. **Run the upgrade.** In Claude Code:
 
    ```bash

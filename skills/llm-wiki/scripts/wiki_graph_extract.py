@@ -84,7 +84,7 @@ def resolve_link_slug(link: str, by_path: dict, by_slug) -> "str | None":
 
 
 SKIP_TOP_LEVEL_FILES = {"SCHEMA.md", "index.md", "log.md", "README.md"}
-SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw"}
+SKIP_TOP_LEVEL_DIRS = {"indexes", "graph", "raw", ".evolution"}
 
 DEFAULT_FORMATS = ["jsonl", "sqlite", "graphml"]
 

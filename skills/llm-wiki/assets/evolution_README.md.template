@@ -1,0 +1,15 @@
+# Skill evolution records
+
+This directory contains canonical local experiment records, not a disposable cache. Back it up with the wiki. `wiki_evolve.py` creates one directory per experiment with complete baseline/candidate skill snapshots, motivating evidence, a diff, evaluation results, and apply/rollback receipts. Never edit snapshots or evaluation results to make a proposal pass.
+
+Search, lint, statistics and graph compilation exclude this directory. Curate useful lessons as ordinary source/concept pages and publish an experiment summary as a synthesis page, linked from the normal wiki index. Do not expose private traces or results in public plugin releases.
+
+Only `apply` changes the selected installed skill after a passing evaluation. A rejected candidate leaves it unchanged. `rollback` restores an accepted change when the skill still matches its snapshot. Both refuse concurrent edits. If a process dies during a transition, rerun the same command to finish it. If a dead process leaves `lock/`, confirm no evolution process is running before removing that empty directory.
+
+See the installed skill's `references/evolution-workflow.md` for capture, consolidation, evaluation, promotion and recovery. An agent runner is a trusted local program. The copies supplied to it are not an operating-system sandbox.
+
+Apply/rollback also use a temporary `.wiki-evolve-lock/` in the target skill to coordinate changes from different wikis. After a process dies, inspect both this lock and the wiki lock before removing stale empty lock directories and retrying. This lock directory is excluded from skill snapshots.
+
+Each started trial also preserves its suite/runner configuration and a complete frozen `corpus/` under the experiment directory. Keep these private alongside the skill snapshots. Corpus hashes are rechecked during promotion. An interrupted trial is reported as incomplete and requires a new proposal ID; do not reuse partially recorded input artifacts.
+
+`wiki_evolve_loop.py` also stores bounded evolution runs here. `learning.json` preserves training patterns and proposal history across runs. Final-test results remain in each run archive and must never be fed back into selection. Raw training observations live in the configured raw root. Run budgets count every role and final/transfer call.

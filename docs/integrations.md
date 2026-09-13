@@ -32,7 +32,7 @@ flowchart LR
   plugin --> s5["wiki.query agent tool"]
 ```
 
-Install (once v0.1 ships to npm):
+Install the companion:
 
 ```bash
 pnpm paperclipai plugin install paperclip-plugin-llm-wiki

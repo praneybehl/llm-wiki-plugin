@@ -1,0 +1,90 @@
+{
+  "date": "2026-09-13",
+  "attempts": [
+    {
+      "run": "study",
+      "reason": "Interrupted during validation after unnecessary cache copying; runtime provisioning and detached-child cleanup repaired.",
+      "included_in_final_analysis": false,
+      "runner_calls_started": 19,
+      "completed_task_executions": 7,
+      "final_selection_frozen": false,
+      "final_tasks_executed": 0,
+      "recorded_status": "error",
+      "evidence_sha256": {
+        "run-cb63cc46c45d4e9bb10a05b04f9dccd0.json": "37a9d341c3c91ca4c379591542d875914dcc2f901604c25e76511d171ef72144",
+        "run-inputs.json": "486c349cc8a9a431780acefdccad046fc614e1314fb85204ad9accdc21c4c19e",
+        "runtime-hashes.json": "0cdda9c6c236e89af037a1a8d757ea5b8870a3b263cdf2117ecac2602acfcae4"
+      }
+    },
+    {
+      "run": "study-two",
+      "reason": "Stopped before final testing after a suite-generation error; no results used.",
+      "included_in_final_analysis": false,
+      "runner_calls_started": 4,
+      "completed_task_executions": 0,
+      "final_selection_frozen": false,
+      "final_tasks_executed": 0,
+      "recorded_status": "error",
+      "evidence_sha256": {
+        "run-a6d94537939b47bba42a5f1b1ba6c32f.json": "aa8838173cdaca0f6d8c6a200e624d7257840ff26e2d55aa332fc487ec136808",
+        "run-inputs.json": "f98d700b68d36f727dea3eacb569a71907d55422946de9df191eedb38f430cbd",
+        "runtime-hashes.json": "656e1e1b0f093f6b8d732346404797541678dcac8370cc49c1c50f54a6e909af"
+      }
+    },
+    {
+      "run": "study-three",
+      "reason": "Failed positive judge calibration before training; incomplete positive answer clarified.",
+      "included_in_final_analysis": false,
+      "runner_calls_started": 1,
+      "completed_task_executions": 0,
+      "final_selection_frozen": false,
+      "final_tasks_executed": 0,
+      "recorded_status": "error",
+      "evidence_sha256": {
+        "run-56ed72fb97a348bc9ac9d6d25a985de7.json": "b9ca364132e1bb86cf9fc493aa0122cc352ea008e9712defeb83a000fb43ed0c",
+        "run-inputs.json": "e3929a7b8babfa61e391281c1d18e1bfb19d0c5ccd0c371829789c89eea2414a",
+        "runtime-hashes.json": "656e1e1b0f093f6b8d732346404797541678dcac8370cc49c1c50f54a6e909af"
+      }
+    },
+    {
+      "run": "study-four",
+      "reason": "Stopped during validation when completed inference edited an unrelated protected concept; completed boundary violations now score zero.",
+      "included_in_final_analysis": false,
+      "runner_calls_started": 19,
+      "completed_task_executions": 7,
+      "final_selection_frozen": false,
+      "final_tasks_executed": 0,
+      "recorded_status": "error",
+      "evidence_sha256": {
+        "run-74953d2abcff4e68a76f4fb852d5408f.json": "e3308e365fda499e2d8a3ebfa7a77cb24d6cf61ec39336799038b946a9c1b4d5",
+        "run-inputs.json": "b1483e0c7a138458013aeca2a9bb7fcc24a1ea9a878bf3a8567f05fe1afaa10f",
+        "runtime-hashes.json": "4922a4d1901f053b1f67094fc0cc76ee43cb07c256819660a30c472598c9dc32"
+      }
+    },
+    {
+      "run": "study-five",
+      "reason": "Second proposal attempted to delete SKILL.md. The safeguard refused it, but the old control flow aborted instead of retaining a rejection and continuing with the last valid skill.",
+      "included_in_final_analysis": false,
+      "runner_calls_started": 52,
+      "completed_task_executions": 24,
+      "final_selection_frozen": false,
+      "final_tasks_executed": 0,
+      "recorded_status": "error",
+      "iterations": [
+        {
+          "iteration": 0,
+          "status": "rejected",
+          "validation": {
+            "best": 3,
+            "candidate": 2
+          }
+        }
+      ],
+      "evidence_sha256": {
+        "run-a0d6e14b3aa34bcbb2f0fd5c081b652c.json": "34fa383e0167108eece8ba31eed5b10bfff2a2996417eb8320750cb6fd803341",
+        "run-inputs.json": "e92f590e325d336af998add66b1c8cc18658bf031268731107d24e1ac2975f15",
+        "runtime-hashes.json": "f9dc59536d4e617a32fd7a8e14d8a6c7fe7a7cdf2d00f674038aaf1b61fd2f5e"
+      }
+    }
+  ]
+}

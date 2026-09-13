@@ -1,0 +1,312 @@
+{
+  "version": 2,
+  "corpus": "wiki",
+  "tasks": [
+    {
+      "id": "owner",
+      "split": "train",
+      "question": "Who owns Lark?",
+      "rubric": "Identify Mira as the product owner.",
+      "sources": [
+        "sources/product.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "formats",
+      "split": "train",
+      "question": "Which export formats does Lark support?",
+      "rubric": "Identify both Markdown and CSV as supported export formats.",
+      "sources": [
+        "sources/product.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "current-price",
+      "split": "train",
+      "question": "What is the current monthly Team price per seat?",
+      "rubric": "State that the current Team price is 18 USD per seat per month; do not present the superseded 12 USD price as current.",
+      "sources": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "current-trial",
+      "split": "train",
+      "question": "How long is the current trial?",
+      "rubric": "State that the current trial lasts 30 days.",
+      "sources": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "old-price",
+      "split": "train",
+      "question": "What was the July 2026 Team price?",
+      "rubric": "Identify the July 2026 historical price as 12 USD per seat per month, not the September price.",
+      "sources": [
+        "sources/pricing-old.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "contract",
+      "split": "train",
+      "question": "Do existing contracts automatically move to the current Team price?",
+      "rubric": "Explain that existing contracts retain signed prices, rather than automatically changing.",
+      "sources": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "encrypt",
+      "split": "train",
+      "question": "Which encryption algorithm protects stored documents?",
+      "rubric": "Identify AES-256 as encryption at rest.",
+      "sources": [
+        "sources/security.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "training",
+      "split": "train",
+      "question": "Are customer uploads used for model training?",
+      "rubric": "Explicitly state customer uploads are not used for model training.",
+      "sources": [
+        "sources/security.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "conflict",
+      "split": "validation",
+      "question": "How many pilot customers were there on August 15? Explain any disagreement.",
+      "rubric": "Report both the launch note count of 6 and sales report count of 8 on August 15, attribute each, and explain that the disagreement is unresolved. Do not pick one as verified truth.",
+      "sources": [
+        "sources/launch.md",
+        "sources/sales-report.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "release",
+      "split": "validation",
+      "question": "Who owns the release, and which tests must pass?",
+      "rubric": "Identify Mira as release owner and both import and export tests as release checks.",
+      "sources": [
+        "sources/launch.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "residency",
+      "split": "validation",
+      "question": "Which country stores customer documents?",
+      "rubric": "Explicitly abstain: the supplied corpus does not establish this fact. Do not invent an answer.",
+      "sources": [],
+      "abstain": true
+    },
+    {
+      "id": "certification",
+      "split": "validation",
+      "question": "Is Lark SOC 2 certified?",
+      "rubric": "Explicitly abstain: the supplied corpus does not establish this fact. Do not invent an answer.",
+      "sources": [],
+      "abstain": true
+    },
+    {
+      "id": "platforms",
+      "split": "validation",
+      "question": "Which desktop platforms are currently supported?",
+      "rubric": "Identify Linux and macOS as supported platforms.",
+      "sources": [
+        "sources/product.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "currency",
+      "split": "validation",
+      "question": "What currency is the Team price denominated in?",
+      "rubric": "Identify USD as the price currency.",
+      "sources": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "trial-change",
+      "split": "test",
+      "question": "What did the trial duration change from and to?",
+      "rubric": "Explain that the historical 14-day trial changed to the current 30-day trial.",
+      "sources": [
+        "sources/pricing-old.md",
+        "sources/pricing-current.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "retention",
+      "split": "test",
+      "question": "Compare retention for customer documents and release artifacts.",
+      "rubric": "Distinguish 90-day customer document retention from 180-day release artifact retention.",
+      "sources": [
+        "sources/security.md",
+        "sources/operations.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "rollback",
+      "split": "test",
+      "question": "What must happen after a failed release?",
+      "rubric": "Explain restoring the previous artifact and running the import test after a failed release.",
+      "sources": [
+        "sources/operations.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "contacts",
+      "split": "test",
+      "question": "Give both the security and onboarding contact addresses.",
+      "rubric": "Give security@lark.example for security and help@lark.example for onboarding.",
+      "sources": [
+        "sources/security.md",
+        "sources/operations.md"
+      ],
+      "abstain": false
+    },
+    {
+      "id": "uptime",
+      "split": "test",
+      "question": "What service-level uptime percentage does Lark guarantee?",
+      "rubric": "Explicitly abstain: the supplied corpus does not establish this fact. Do not invent an answer.",
+      "sources": [],
+      "abstain": true
+    },
+    {
+      "id": "revenue",
+      "split": "test",
+      "question": "What was Lark revenue in August 2026?",
+      "rubric": "Explicitly abstain: the supplied corpus does not establish this fact. Do not invent an answer.",
+      "sources": [],
+      "abstain": true
+    },
+    {
+      "id": "artifact-train",
+      "split": "train",
+      "question": "Create train-price.json containing a JSON object with keys currency and monthly_seat_price from the current Team pricing source. Cite the source in your answer.",
+      "rubric": "The artifact records the current Team price, not the superseded price. The answer accurately describes the saved result and cites the current pricing source.",
+      "abstain": false,
+      "sources": [
+        "sources/pricing-current.md"
+      ],
+      "allow_write": [
+        "train-price.json"
+      ],
+      "artifacts": [
+        {
+          "path": "train-price.json",
+          "kind": "json",
+          "equals": {
+            "currency": "USD",
+            "monthly_seat_price": 18
+          }
+        }
+      ]
+    },
+    {
+      "id": "artifact-validation",
+      "split": "validation",
+      "question": "Create validation-price.json containing a JSON object with keys currency and monthly_seat_price from the current Team pricing source. Cite the source in your answer.",
+      "rubric": "The artifact records the current Team price, not the superseded price. The answer accurately describes the saved result and cites the current pricing source.",
+      "abstain": false,
+      "sources": [
+        "sources/pricing-current.md"
+      ],
+      "allow_write": [
+        "validation-price.json"
+      ],
+      "artifacts": [
+        {
+          "path": "validation-price.json",
+          "kind": "json",
+          "equals": {
+            "currency": "USD",
+            "monthly_seat_price": 18
+          }
+        }
+      ]
+    },
+    {
+      "id": "artifact-test",
+      "split": "test",
+      "question": "Create test-price.json containing a JSON object with keys currency and monthly_seat_price from the current Team pricing source. Cite the source in your answer.",
+      "rubric": "The artifact records the current Team price, not the superseded price. The answer accurately describes the saved result and cites the current pricing source.",
+      "abstain": false,
+      "sources": [
+        "sources/pricing-current.md"
+      ],
+      "allow_write": [
+        "test-price.json"
+      ],
+      "artifacts": [
+        {
+          "path": "test-price.json",
+          "kind": "json",
+          "equals": {
+            "currency": "USD",
+            "monthly_seat_price": 18
+          }
+        }
+      ]
+    }
+  ],
+  "calibration": [
+    {
+      "question": "What is the current Team price?",
+      "rubric": "State that the current Team price is 18 USD per seat per month; do not present the superseded 12 USD price as current.",
+      "sources": [
+        "sources/pricing-current.md"
+      ],
+      "citations": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false,
+      "answer": "Each Team seat costs eighteen US dollars monthly.",
+      "passed": true
+    },
+    {
+      "question": "What is the current Team price?",
+      "rubric": "State that the current Team price is 18 USD per seat per month; do not present the superseded 12 USD price as current.",
+      "sources": [
+        "sources/pricing-current.md"
+      ],
+      "citations": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false,
+      "answer": "It is $12 per seat per month. The source also mentions $18, but that is not current.",
+      "passed": false
+    },
+    {
+      "question": "What is the current Team price?",
+      "rubric": "State that the current Team price is 18 USD per seat per month; do not present the superseded 12 USD price as current.",
+      "sources": [
+        "sources/pricing-current.md"
+      ],
+      "citations": [
+        "sources/pricing-current.md"
+      ],
+      "abstain": false,
+      "answer": "The current Team price is $18 per seat per month, and all old contracts must immediately pay it.",
+      "passed": false
+    }
+  ]
+}

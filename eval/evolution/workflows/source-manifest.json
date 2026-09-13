@@ -1,0 +1,32 @@
+{
+  "retrieval": {
+    "repository_path": "skills/llm-wiki/references/query-workflow.md",
+    "commit": "06369b2eb0617bf7b07b2b8a5c07f4aca1fb1bf0",
+    "sha256": "828680cdcf11d05c1bf95de83d618c22b6da5d0ab0826b843d6813f70852e24a"
+  },
+  "releases": {
+    "repository_path": "CONTRIBUTING.md",
+    "commit": "06369b2eb0617bf7b07b2b8a5c07f4aca1fb1bf0",
+    "sha256": "25d5acfb8e57dd52add98dea340b04f3437309b4c23b6b26daae75b780377803"
+  },
+  "ingestion": {
+    "repository_path": "skills/llm-wiki/references/ingest-workflow.md",
+    "commit": "06369b2eb0617bf7b07b2b8a5c07f4aca1fb1bf0",
+    "sha256": "c722f66bda0c8944fddb4d8478e423a442db92cd47e51570c0d337dc33fa3b83"
+  },
+  "schema": {
+    "repository_path": "skills/llm-wiki/assets/SCHEMA.md.template",
+    "commit": "06369b2eb0617bf7b07b2b8a5c07f4aca1fb1bf0",
+    "sha256": "4e18a5fc82c5d4b927072b1b85e72c63f3625b76cf4f67b32836ed921fe81c33"
+  },
+  "links": {
+    "repository_path": "CHANGELOG.md",
+    "commit": "06369b2eb0617bf7b07b2b8a5c07f4aca1fb1bf0",
+    "sha256": "29366a6ef03999c555ad7cad2c7878195fc74471cb8231be1ee08c0b810ac904"
+  },
+  "runtime": {
+    "repository_path": "skills/llm-wiki/scripts/setup_wiki.py",
+    "commit": "06369b2eb0617bf7b07b2b8a5c07f4aca1fb1bf0",
+    "sha256": "07a843ac5679a74f569a587e4351f02c90fb8408834ab387900367374a187f11"
+  }
+}

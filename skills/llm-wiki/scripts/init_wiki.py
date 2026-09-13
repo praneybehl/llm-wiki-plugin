@@ -43,6 +43,12 @@ SUBDIRS = ["sources", "entities", "concepts", "synthesis", "graph"]
 # template_anchor, blurb).
 SCHEMA_SECTION_MARKERS = [
     {
+        "marker": "## Skill evolution",
+        "version": "3.2.0",
+        "anchor": "## Skill evolution",
+        "label": "Optional experience capture and tested skill evolution",
+    },
+    {
         "marker": "## Optional graph metadata",
         "version": "0.3.0",
         "anchor": "## Optional graph metadata",
@@ -194,6 +200,9 @@ def init_wiki(project_root: Path, wiki_dir: str, raw_dir: str, upgrade: bool = F
         ("index.md.template", wiki / "index.md"),
         ("log.md.template", wiki / "log.md"),
         ("page.md.template", wiki / ".page-template.md"),
+        ("experience.json.template", wiki / ".experience-template.json"),
+        ("pattern.md.template", wiki / ".pattern-template.md"),
+        ("evolution_README.md.template", wiki / ".evolution" / "README.md"),
         ("ontology.yaml.template", wiki / "graph" / "ontology.yaml"),
         ("graph_README.md.template", wiki / "graph" / "README.md"),
         ("graph_gitignore.template", wiki / "graph" / ".gitignore"),

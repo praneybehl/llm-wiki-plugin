@@ -19,7 +19,7 @@ The button creates the Durable Objects, the KV namespace, the R2 bucket, the Vec
 
 ## Deploy from the command line
 
-You need Node.js 20 or later and a Cloudflare account.
+You need Node.js 22 or later and a Cloudflare account. The pinned Wrangler version needs Node.js 22.
 
 ```sh
 cd server
@@ -98,7 +98,7 @@ python3 skills/llm-wiki/scripts/wiki_remote.py import ~/wiki
 The server works on the Workers Free plan. These limits apply:
 
 - Each request gets a small CPU budget. The server keeps request work small. Embedding and graph rebuilds run later in Durable Object alarms, in batches.
-- After a large import, search can be lexical for some pages for a short time. `wiki_overview` shows the number of sections that wait for vectors (`vector_lag`).
+- After a large import, search can be lexical for some pages for a short time. `wiki_overview` shows the number of sections that wait for vectors (`vector_lag`). After `vector_lag` reaches 0, Vectorize can need about one minute more before new sections match by meaning.
 - Workers AI, Vectorize, R2 and Durable Objects have daily or monthly free amounts. A large wiki or many agents can use all of the free amount. Then features that need that product stop until the next period.
 - A request body can be at most 100 MB. Raw files have the same limit.
 

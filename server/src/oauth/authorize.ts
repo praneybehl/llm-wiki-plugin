@@ -1,7 +1,7 @@
 import { AuthorizationError, CimdFetchError, type AuthRequest, type ConsentDescription } from "@cloudflare/workers-oauth-provider";
 import type { Env } from "../env";
 import { isAdminToken, isWikiId, registryStub, wikiStub } from "../http/auth";
-import { escapeHtml as esc } from "../http/util";
+import { HttpError, escapeHtml as esc, readForm } from "../http/util";
 import type { Scope } from "../types";
 import { csrfField, htmlPage } from "../ui/layout";
 import { checkCsrf, csrfFor, readSession } from "../ui/session";
@@ -118,7 +118,13 @@ export async function handleAuthorize(request: Request, env: Env): Promise<Respo
   }
   if (request.method !== "POST") return plain(405, "Use GET or POST.");
 
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await readForm(request);
+  } catch (e) {
+    if (e instanceof HttpError) return plain(e.status, e.status === 413 ? "The form is too large." : e.message);
+    throw e;
+  }
   const field = (n: string) => {
     const v = form.get(n);
     return typeof v === "string" ? v : "";
@@ -150,8 +156,10 @@ export async function handleAuthorize(request: Request, env: Env): Promise<Respo
       const code = await wikiStub(env, wiki).consumePairingCode(proof);
       if (!code) return await retry("The admin token or pairing code is not valid for this wiki.", 401);
       label = code.label;
-      const codeWrites = code.scopes.includes("write") || code.scopes.includes("admin");
-      if (!codeWrites) scopes = ["read"];
+      const codeAdmin = code.scopes.includes("admin");
+      if (!codeAdmin && !code.scopes.includes("read")) return await retry("This pairing code does not grant read access.", 403);
+      // The approved access is at most what the code grants.
+      if (!codeAdmin && !code.scopes.includes("write")) scopes = ["read"];
     } else {
       return await retry("Enter the admin token or a pairing code.", 401);
     }

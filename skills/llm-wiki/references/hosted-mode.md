@@ -24,21 +24,32 @@ Use one backend for one operation. Never write the same change to a local folder
 
 ## Tool map
 
-| Local action | Hosted MCP tool | CLI (`scripts/wiki_remote.py`) |
+| Local action | Hosted MCP tool | Shell fallback (`scripts/wiki_remote.py`, or the JSON API) |
 |---|---|---|
-| Read `SCHEMA.md` and `index.md` | `wiki_overview` | `status` |
+| Read `SCHEMA.md` and `index.md` | `wiki_overview` | `read SCHEMA.md index.md`, or `status --json` (fields `overview.schema` and `overview.index`) |
 | `wiki_stats.py` | `wiki_overview` (counts) | `stats` |
-| Read a page, a heading or a line range | `wiki_read` (`paths`, `heading`, `start_line`, `end_line`) | `read <path>...` |
-| List a folder | `wiki_read` with `list_prefix` | `read` (see `--help`) |
-| `wiki_search.py` | `wiki_search` (`query`, `top`, `type`, `tag`, `since`, `granularity`, `mode`) | `search <query>` |
-| `grep -rl "\[\[slug\]\]"` | `wiki_search` with `backlinks: "<slug>"` | `search` (see `--help`) |
-| `wiki_search.py --top-linked N` | `wiki_search` with `top_linked: N` | `search` (see `--help`) |
+| Read a page, a heading or a line range | `wiki_read` (`paths`, `heading`, `start_line`, `end_line`) | `read <path>... [--heading <text>] [--start-line N] [--end-line N]` |
+| List a folder | `wiki_read` with `list_prefix` | API: `GET /api/v1/pages?prefix=<folder>/` |
+| `wiki_search.py` | `wiki_search` (`query`, `top`, `type`, `tag`, `since`, `granularity`, `mode`) | `search <query> [--top N] [--type T] [--tag T] [--since YYYY-MM-DD] [--granularity section\|page] [--lexical]` |
+| `grep -rl "\[\[slug\]\]"` | `wiki_search` with `backlinks: "<slug>"` | API: `GET /api/v1/backlinks?target=<slug>` |
+| `wiki_search.py --top-linked N` | `wiki_search` with `top_linked: N` | API: `GET /api/v1/top-linked?n=<N>` (1 to 500, default 20) |
 | `str_replace`, new file, `log.md` line | `wiki_commit` (`edit`, `create`, `append`) | `commit <ops.json>` |
 | `git log`, `git diff`, revert | `wiki_history` | `history [path]` |
 | `wiki_graph_query.py`, graph extract | `wiki_graph` | `graph <op>` |
 | `wiki_lint.py`, `wiki_graph_lint.py` | `wiki_lint` | `lint` |
-| Read files in `raw/` | `wiki_raw` (`list`, `stat`, `read` with `offset` and `length`) | `raw ls`, `raw get` |
+| Read files in `raw/` | `wiki_raw` (`list`, `stat`, `read` with `offset` and `length`) | `raw ls [prefix]`, `raw get` |
 | Save a text source | `wiki_raw` with `action: "put_text"` | `raw put <file>` |
+
+`wiki_remote.py` has no folder list, backlinks or top-linked command. For these three actions, call the JSON API. It uses the same token as the CLI. Set `LLM_WIKI_URL` to the server URL and `LLM_WIKI_TOKEN` to the agent token, then:
+
+```bash
+AUTH="Authorization: Bearer $LLM_WIKI_TOKEN"
+curl -sS -H "$AUTH" "$LLM_WIKI_URL/api/v1/pages?prefix=concepts/"
+curl -sS -H "$AUTH" "$LLM_WIKI_URL/api/v1/backlinks?target=transformer"
+curl -sS -H "$AUTH" "$LLM_WIKI_URL/api/v1/top-linked?n=20"
+```
+
+URL-encode the query values. Each response is JSON. A `prefix` of an empty string lists all pages.
 
 The server updates search rows, links and graph rows in the same commit. Do not run extract or cache scripts in hosted mode.
 
@@ -94,7 +105,7 @@ An `edit` operation applies on a newer page when its `old` text still occurs onc
 
 - `wiki_search` returns rows in the same shape as `wiki_search.py --json`.
 - The search is hybrid (FTS5 BM25 plus Workers AI vectors, fused with RRF). It is lexical when the deployment has no Vectorize or Workers AI binding, or when you send `mode: "lexical"`.
-- New text is searchable by keyword at once. Vectors follow after a short delay. `vector_lag` in the response shows the sections without a current vector.
+- New text is searchable by keyword at once. Vectors follow after a short delay. `vector_lag` in the response shows the sections without a current vector. After `vector_lag` reaches 0, Vectorize can need about one minute more before new sections match by meaning. Do not treat a missing semantic match in that minute as an error.
 - Hosted and local results are equivalent, not identical. The BM25 constants and the embedding runtime are different.
 - `decide: true` applies the optional relevance gate. See `decision-models.md`.
 
@@ -115,10 +126,21 @@ An `edit` operation applies on a newer page when its `old` text still occurs onc
 
 ## Connect an agent
 
+With a token:
+
 1. Store the URL and token: `python3 scripts/wiki_remote.py login --url <url> --token -`. The command reads the token from standard input.
 2. Print the MCP configuration: `python3 scripts/wiki_remote.py mcp-config <client>`. Clients: `claude-code`, `codex`, `cursor`, `gemini`, `opencode`, `omp`, `pi`, `generic`. The output refers to `LLM_WIKI_TOKEN`. It does not show the token.
 3. Show the configuration to the user. Add it only after the user approves.
 4. Propose the hosted stanza from `agent-memory-integration.md`.
+
+With OAuth (only for a client that supports OAuth sign-in for remote MCP servers):
+
+1. Add `<url>/mcp` to the client without an `Authorization` header, after the user approves.
+2. The user starts the sign-in in the client. The client opens the server authorization page with its own request. Do not tell the user to open `<url>/authorize` directly.
+3. The user approves with `ADMIN_TOKEN` or a pairing code from `wiki_remote.py pair --label <label> --scopes read,write`.
+4. Call `wiki_overview` to verify the connection, then propose the hosted stanza.
+
+OAuth gives a token to the MCP client only. `wiki_remote.py` (import, pull, export, raw put) still needs `login` with a token.
 
 The `/setup` page on the server shows the same configuration text for each client.
 
@@ -127,8 +149,10 @@ The `/setup` page on the server shows the same configuration text for each clien
 1. `python3 scripts/wiki_remote.py import <wiki-dir> --raw <raw-dir> --dry-run`
 2. Show the report to the user.
 3. Run the same command without `--dry-run`.
-4. The import compares the SHA-256 of every local file with the server manifest. Exit code 1 means a mismatch. Exit code 3 means that remote pages are different and the import wrote nothing. Do not change agent instructions until the report has no mismatches.
-5. Optional: make the old folder a read-only mirror with `pull --git`.
+4. The import compares the SHA-256 of every file that it selected with the server manifest. Exit code 1 means a mismatch. Exit code 3 means that the import did not replace some remote pages: see `pages.divergent` (the import wrote nothing) and `pages.changed_during_import`.
+5. Exit code 0 does not prove that the import selected every file. Read `skipped` and `raw.skipped` in the report. Each entry has a `path` and a `reason`. `generated` (generated files in `graph/`) is an expected exclusion. `too_large`, `not_utf8`, `not_text`, `symlink`, `invalid_path` and `path_too_long` are missing source content, unless the user accepts the file by name. Hidden files and folders are skipped and are not in the lists. Fix missing source content and run the import again.
+6. Do not change agent instructions until the report has no mismatches and no missing source content.
+7. Optional: make the old folder a read-only mirror with `pull --git`.
 
 The import is resumable. Run it again after an interruption. It skips identical files. It does not replace a changed remote page unless you add `--overwrite`.
 

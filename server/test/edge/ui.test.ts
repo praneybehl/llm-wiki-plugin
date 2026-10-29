@@ -45,9 +45,12 @@ describe("UI", () => {
     expect(res.status).toBe(200);
     const token = /lw_main_[A-Za-z0-9_-]+/.exec(out)![0];
     expect((await api("/whoami", { token })).body.wiki).toBe("main");
-    for (const client of ["Claude Code", "Codex", "Cursor", "Gemini CLI", "OpenCode", "omp / Pi", "Generic MCP client"]) {
+    for (const client of ["Claude Code", "Codex", "Cursor", "Gemini CLI", "OpenCode", "omp", "Pi", "Generic MCP client"]) {
       expect(out).toContain(client);
     }
+    expect(out).not.toContain("omp / Pi");
+    expect(out).toContain("~/.omp/agent/mcp.json (all projects) or .omp/mcp.json (one project)");
+    expect(out).toContain("~/.pi/agent/mcp.json (all projects) or .pi/mcp.json (one project)");
     expect(out).toContain("bearer_token_env_var = &#34;LLM_WIKI_TOKEN&#34;");
     // The token list never shows the secret again.
     const again = await (await get("/setup?wiki=main", cookie)).text();
@@ -70,6 +73,32 @@ describe("UI", () => {
     expect(res.status).toBe(403);
     const wikis = await api("/admin/wikis");
     expect(wikis.body.map((w: { id: string }) => w.id)).not.toContain("ui-forged");
+  });
+
+  it("refuses form bodies over 64 KiB before it reads them", async () => {
+    const page = await get("/login");
+    const cookie = cookiesFrom(page);
+    const csrf = csrfFrom(await page.text());
+    const big = form({ csrf, token: ADMIN, pad: "x".repeat(70 * 1024) }).toString();
+    const withLength = await post("/login", cookie, { csrf, token: ADMIN, pad: "x".repeat(70 * 1024) });
+    expect(withLength.status).toBe(413);
+    expect(withLength.headers.getSetCookie().some((c) => c.startsWith("__Host-lw-session="))).toBe(false);
+
+    // A streamed body has no Content-Length; the cap still applies.
+    const bytes = new TextEncoder().encode(big);
+    const stream = new ReadableStream<Uint8Array>({
+      start(ctrl) {
+        for (let i = 0; i < bytes.length; i += 8192) ctrl.enqueue(bytes.slice(i, i + 8192));
+        ctrl.close();
+      },
+    });
+    const streamed = await call("/login", {
+      method: "POST",
+      headers: { Cookie: cookie, "Content-Type": "application/x-www-form-urlencoded", Origin: ORIGIN },
+      body: stream,
+      redirect: "manual",
+    });
+    expect(streamed.status).toBe(413);
   });
 
   it("rejects a tampered session cookie", async () => {

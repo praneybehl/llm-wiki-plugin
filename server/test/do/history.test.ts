@@ -26,6 +26,16 @@ describe("history, revisions and revert", () => {
     expect(diff.ok && diff.value.diff).toBe("--- a/p.md@1\n+++ b/p.md@2\n@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n");
   });
 
+  it("reports bytes for current and older revisions", async () => {
+    const { wiki } = await freshWiki();
+    await wiki.commit("a", { message: "one", ops: [{ op: "create", path: "p.md", content: "héllo €\n" }] });
+    await wiki.commit("a", { message: "two", ops: [{ op: "put", path: "p.md", content: "x", base_rev: 1 }] });
+    const old = await wiki.revision("p.md", 1);
+    expect(old.ok && old.value.bytes).toBe(new TextEncoder().encode("héllo €\n").byteLength);
+    const current = await wiki.revision("p.md", 2);
+    expect(current.ok && current.value.bytes).toBe(1);
+  });
+
   it("reverts a commit as a new commit and refuses when pages changed later", async () => {
     const { wiki } = await freshWiki();
     await wiki.commit("a", { message: "seed", ops: [{ op: "create", path: "p.md", content: "v1" }, { op: "create", path: "gone.md", content: "g" }] });

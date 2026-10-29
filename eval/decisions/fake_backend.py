@@ -115,7 +115,8 @@ def serve(handler: Handler = default_handler) -> tuple[ThreadingHTTPServer, str]
         def do_POST(self):  # noqa: N802
             length = int(self.headers.get("Content-Length") or 0)
             body = json.loads(self.rfile.read(length) or b"{}")
-            requests.append({"path": self.path, "auth": self.headers.get("Authorization"), "body": body})
+            requests.append({"path": self.path, "auth": self.headers.get("Authorization"),
+                             "wiki": self.headers.get("X-LLM-Wiki"), "body": body})
             status, payload, delay = handler(body)
             if delay:
                 time.sleep(delay)

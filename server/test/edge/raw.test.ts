@@ -78,4 +78,54 @@ describe("raw files", () => {
     const r = await put(token, "a.txt", "x", await sha256Hex("x"));
     expect(r.status).toBe(403);
   });
+
+  /**
+   * Simulate a race: the other upload lands in R2 after this upload's
+   * preflight `head`, so the preflight sees no object.
+   */
+  function racedEnv(winnerKey: string, winnerBody: string) {
+    const real = env.RAW!;
+    let first = true;
+    const bucket = {
+      head: async (key: string) => {
+        if (first && key === winnerKey) {
+          first = false;
+          await real.put(key, winnerBody, { sha256: await sha256Hex(winnerBody), customMetadata: { uploaded_by: "winner" } });
+          return null;
+        }
+        return real.head(key);
+      },
+      put: (...args: Parameters<R2Bucket["put"]>) => real.put(...args),
+      get: (...args: Parameters<R2Bucket["get"]>) => real.get(...args),
+    } as unknown as R2Bucket;
+    return { ...env, RAW: bucket };
+  }
+
+  function rawPut(wiki: string, path: string, text: string, sha: string) {
+    return new Request(`${ORIGIN}/api/v1/raw/${path}?wiki=${wiki}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${ADMIN}`, "X-Content-SHA256": sha, "Content-Type": "text/plain" },
+      body: text,
+    });
+  }
+
+  it("never replaces an object that a racing upload created first", async () => {
+    await setupWiki("raw-e");
+    const r = await handleApi(rawPut("raw-e", "race.txt", "loser", await sha256Hex("loser")), racedEnv("raw-e/raw/race.txt", "winner"));
+    expect(r.status).toBe(409);
+    const stored = await env.RAW!.get("raw-e/raw/race.txt");
+    expect(await stored!.text()).toBe("winner");
+    const list = await api("/raw?wiki=raw-e");
+    expect(list.body).toEqual([expect.objectContaining({ path: "race.txt", sha256: await sha256Hex("winner"), bytes: 6, uploaded_by: "winner" })]);
+  });
+
+  it("answers 200 when a racing upload stored the same bytes first", async () => {
+    await setupWiki("raw-f");
+    const sha = await sha256Hex("same");
+    const r = await handleApi(rawPut("raw-f", "race.txt", "same", sha), racedEnv("raw-f/raw/race.txt", "same"));
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ path: "race.txt", sha256: sha, bytes: 4 });
+    const list = await api("/raw?wiki=raw-f");
+    expect(list.body).toEqual([expect.objectContaining({ path: "race.txt", sha256: sha })]);
+  });
 });

@@ -2,7 +2,7 @@
 #
 # Declares the node types and predicates that the compiled graph layer
 # (wiki/graph/) recognises. Edit this file when you introduce a new
-# domain-specific predicate or node type — wiki_graph_lint.py reads it
+# domain-specific predicate or node type. wiki_graph_lint.py reads it
 # to validate every typed edge declared in page frontmatter.
 #
 # Markdown remains canonical. This file is just the contract that makes

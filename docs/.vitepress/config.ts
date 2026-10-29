@@ -44,8 +44,13 @@ const faqItems = [
 ]
 
 
+// Pages under docs/v3/ are the frozen v3.2.0 documentation.
+const legacyPrefix = 'v3/'
+
 function canonicalUrl(relativePath: string): string {
-  const route = relativePath === 'index.md' ? '' : relativePath.replace(/\.md$/, '.html')
+  const route = relativePath.endsWith('index.md')
+    ? relativePath.slice(0, -'index.md'.length)
+    : relativePath.replace(/\.md$/, '.html')
   return new URL(route, site).toString()
 }
 
@@ -136,13 +141,18 @@ export default withMermaid(
     ignoreDeadLinks: false,
     sitemap: {
       hostname: site,
+      // v3 pages are noindex, so the sitemap lists only v4 pages.
+      transformItems: (items) => items.filter((item) => !item.url.startsWith(legacyPrefix)),
     },
     transformPageData(pageData) {
       const url = canonicalUrl(pageData.relativePath)
+      const legacy = pageData.relativePath.startsWith(legacyPrefix)
       const title =
         pageData.relativePath === 'index.md'
           ? 'LLM Wiki: LLM-curated knowledge base'
-          : `${pageData.title} | LLM Wiki`
+          : legacy
+            ? `${pageData.title} (v3.2.0) | LLM Wiki`
+            : `${pageData.title} | LLM Wiki`
       const description =
         pageData.description ||
         'Build and maintain an agent-curated, continuously compiled knowledge base for your projects.'
@@ -151,7 +161,15 @@ export default withMermaid(
       pageData.frontmatter.head ??= []
       pageData.frontmatter.head.push(
         ['link', { rel: 'canonical', href: url }],
-        ['meta', { name: 'robots', content: 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1' }],
+        [
+          'meta',
+          {
+            name: 'robots',
+            content: legacy
+              ? 'noindex,follow'
+              : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1',
+          },
+        ],
         ['meta', { property: 'og:type', content: pageData.relativePath === 'index.md' ? 'website' : 'article' }],
         ['meta', { property: 'og:site_name', content: 'LLM Wiki' }],
         ['meta', { property: 'og:title', content: title }],
@@ -221,52 +239,105 @@ export default withMermaid(
         {
           text: 'v4.0.0',
           items: [
-            { text: 'Upgrade to v4', link: '/upgrade' },
-            { text: 'Changelog', link: `${repo}/blob/main/CHANGELOG.md` },
-            { text: 'Releases', link: `${repo}/releases` },
+            {
+              items: [
+                { text: 'v4.0.0 (latest)', link: '/' },
+                { text: 'v3.2.0 (legacy)', link: '/v3/' },
+              ],
+            },
+            {
+              items: [
+                { text: 'Upgrade to v4', link: '/upgrade' },
+                { text: 'Changelog', link: `${repo}/blob/main/CHANGELOG.md` },
+                { text: 'Releases', link: `${repo}/releases` },
+              ],
+            },
           ],
         },
       ],
 
-      sidebar: [
-        {
-          text: 'Introduction',
-          items: [
-            { text: 'Home', link: '/' },
-            { text: 'Getting started', link: '/getting-started' },
-          ],
-        },
-        {
-          text: 'Guides',
-          items: [
-            { text: 'Commands', link: '/commands' },
-            { text: 'Workflows', link: '/workflows' },
-            { text: 'Learning & skill evolution', link: '/evolution' },
-            { text: 'Search & retrieval', link: '/search' },
-            { text: 'Graph layer', link: '/graph' },
-          ],
-        },
-        {
-          text: 'Hosted',
-          items: [
-            { text: 'Hosted wiki', link: '/hosted' },
-            { text: 'Decision models', link: '/decisions' },
-          ],
-        },
-        {
-          text: 'Ecosystem',
-          items: [{ text: 'Agents', link: '/agents' }],
-        },
-        {
-          text: 'Release',
-          items: [{ text: 'Upgrade to v4', link: '/upgrade' }],
-        },
-      ],
+      sidebar: {
+        // The v3.2.0 pages get their own sidebar. Keep this key before '/'.
+        '/v3/': [
+          {
+            text: 'v3.2.0 (legacy)',
+            items: [
+              { text: 'Home', link: '/v3/' },
+              { text: 'Getting started', link: '/v3/getting-started' },
+            ],
+          },
+          {
+            text: 'Guides',
+            items: [
+              { text: 'Commands', link: '/v3/commands' },
+              { text: 'Workflows', link: '/v3/workflows' },
+              { text: 'Learning & skill evolution', link: '/v3/evolution' },
+              { text: 'Search & retrieval', link: '/v3/search' },
+              { text: 'Graph layer', link: '/v3/graph' },
+            ],
+          },
+          {
+            text: 'Ecosystem',
+            items: [
+              { text: 'Integrations', link: '/v3/integrations' },
+              { text: 'Agents', link: '/v3/agents' },
+            ],
+          },
+          {
+            text: 'Release',
+            items: [
+              { text: 'Upgrade to v3.2', link: '/v3/upgrade' },
+              { text: 'Current version (v4.0.0)', link: '/' },
+            ],
+          },
+        ],
+        '/': [
+          {
+            text: 'Introduction',
+            items: [
+              { text: 'Home', link: '/' },
+              { text: 'Getting started', link: '/getting-started' },
+            ],
+          },
+          {
+            text: 'Guides',
+            items: [
+              { text: 'Commands', link: '/commands' },
+              { text: 'Workflows', link: '/workflows' },
+              { text: 'Learning & skill evolution', link: '/evolution' },
+              { text: 'Search & retrieval', link: '/search' },
+              { text: 'Graph layer', link: '/graph' },
+            ],
+          },
+          {
+            text: 'Hosted',
+            items: [
+              { text: 'Hosted wiki', link: '/hosted' },
+              { text: 'Decision models', link: '/decisions' },
+            ],
+          },
+          {
+            text: 'Ecosystem',
+            items: [{ text: 'Agents', link: '/agents' }],
+          },
+          {
+            text: 'Release',
+            items: [
+              { text: 'Upgrade to v4', link: '/upgrade' },
+              { text: 'v3.2.0 docs (legacy)', link: '/v3/' },
+            ],
+          },
+        ],
+      },
 
       // Native fuzzy full-text search also acts as the local suggestion engine.
       search: {
         provider: 'local',
         options: {
+          // Leave the v3.2.0 pages out of the search index, so results show only v4 pages.
+          _render(src, env, md) {
+            return env.relativePath.startsWith(legacyPrefix) ? '' : md.render(src, env)
+          },
           miniSearch: {
             searchOptions: {
               fuzzy: 0.2,

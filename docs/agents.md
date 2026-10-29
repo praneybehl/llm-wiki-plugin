@@ -90,7 +90,8 @@ Every agent in the matrix can also use a [hosted wiki](/hosted) over MCP (Stream
 | Cursor | `~/.cursor/mcp.json` |
 | Gemini CLI | `~/.gemini/settings.json` (`httpUrl`) |
 | OpenCode | `opencode.json` (`type: "remote"`) |
-| OMP and Pi | `~/.omp/agent/mcp.json` |
+| OMP | `~/.omp/agent/mcp.json` (all projects) or `.omp/mcp.json` (one project) |
+| Pi | `~/.pi/agent/mcp.json` (all projects) or `.pi/mcp.json` (one project); built-in MCP, or `pi mcp add` |
 | Hermes, OpenClaw, other | URL plus `Authorization: Bearer <token>` header |
 
 The exact text for each client is on the [Hosted wiki](/hosted#connect-agents-over-mcp) page, on your server's `/setup` page, and in the output of `python3 skills/llm-wiki/scripts/wiki_remote.py mcp-config <client>`. Clients that support OAuth can connect without a token. For the memory file, use the hosted-wiki stanza in `skills/llm-wiki/references/agent-memory-integration.md`.

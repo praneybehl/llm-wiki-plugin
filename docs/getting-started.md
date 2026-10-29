@@ -165,9 +165,9 @@ The hosted wiki is optional. You still install the skill on each agent as above.
    /wiki:init --hosted https://<your-worker>
    ```
 
-   > **Expected**: The agent stores the URL and token, checks the connection, shows the MCP configuration for your client, and proposes a memory stanza. It writes nothing without your approval.
+   > **Expected**: The agent asks whether you use a token or OAuth. With a token, it stores the URL and token, checks the connection and shows the MCP configuration for your client. With OAuth, it adds the `/mcp` URL to your client, you sign in from the client, and the agent calls `wiki_overview`. Then it proposes a memory stanza. It writes nothing without your approval.
 
-4. To move an existing local wiki, run `/wiki:migrate`. It uploads, verifies every file, and can keep the local folder as a read-only mirror.
+4. To move an existing local wiki, run `/wiki:migrate`. It uploads, verifies every uploaded file, reports the files that it skipped, and can keep the local folder as a read-only mirror.
 
 After that, `/wiki:ingest`, `/wiki:query` and `/wiki:lint` work the same way. The agent uses the MCP tools instead of local files.
 

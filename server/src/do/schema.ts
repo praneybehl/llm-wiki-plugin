@@ -6,6 +6,9 @@ export const WIKI_SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
   // One row per path ever written. Deleted files keep a tombstone row (deleted = 1)
   // so `changes` can report the deletion. `rev` is the seq of the last change.
+  // The row must stay under the 2 MB SQLite row limit for any accepted file
+  // (content <= 1.5 MB): text columns derived from content are clipped in
+  // derive.ts, and large derived JSON lives in `page_data`.
   `CREATE TABLE IF NOT EXISTS pages (
     id INTEGER PRIMARY KEY,
     path TEXT NOT NULL UNIQUE,
@@ -25,14 +28,20 @@ export const WIKI_SCHEMA: string[] = [
     sources TEXT NOT NULL DEFAULT '[]',
     updated TEXT,
     updated_date TEXT,
-    meta_json TEXT NOT NULL DEFAULT '{}',
     malformed INTEGER NOT NULL DEFAULT 0,
     line_count INTEGER NOT NULL DEFAULT 0,
     word_count INTEGER NOT NULL DEFAULT 0,
     stats_type TEXT,
-    stats_links TEXT NOT NULL DEFAULT '[]',
-    links TEXT NOT NULL DEFAULT '[]',
-    graph_json TEXT
+    has_graph INTEGER NOT NULL DEFAULT 0
+  )`,
+  // Derived JSON of a live page (kinds: meta, links, stats_links, graph), split
+  // into parts so that no row passes the SQLite row limit. Missing kind = default.
+  `CREATE TABLE IF NOT EXISTS page_data (
+    path TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    part INTEGER NOT NULL,
+    data TEXT NOT NULL,
+    PRIMARY KEY (path, kind, part)
   )`,
   `CREATE INDEX IF NOT EXISTS pages_rev ON pages(rev)`,
   `CREATE INDEX IF NOT EXISTS pages_slug ON pages(slug)`,
@@ -80,12 +89,15 @@ export const WIKI_SCHEMA: string[] = [
   `CREATE VIRTUAL TABLE IF NOT EXISTS sections_fts USING fts5(body, ${FTS_TOKENIZER})`,
   `CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(body, ${FTS_TOKENIZER})`,
   `CREATE TABLE IF NOT EXISTS vector_deletes (vector_id TEXT PRIMARY KEY)`,
+  // `base` (the link text after the last "/") is a virtual column: storing it
+  // next to `clean` would hold a long link twice and could pass the row limit.
   `CREATE TABLE IF NOT EXISTS links (
     src TEXT NOT NULL,
     ord INTEGER NOT NULL,
     clean TEXT NOT NULL,
     has_slash INTEGER NOT NULL,
-    base TEXT NOT NULL,
+    base_start INTEGER NOT NULL,
+    base TEXT GENERATED ALWAYS AS (substr(clean, base_start)) VIRTUAL,
     PRIMARY KEY (src, ord)
   )`,
   `CREATE INDEX IF NOT EXISTS links_clean ON links(clean)`,

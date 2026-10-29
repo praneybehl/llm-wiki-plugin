@@ -105,12 +105,15 @@ Each agent gets its own token. The token label is the author of each commit that
 
 MCP clients that support OAuth can connect without a token. The server supports dynamic client registration and client ID metadata documents.
 
-1. Add the server URL `https://<your-worker>/mcp` to the client without a header.
-2. The client opens `https://<your-worker>/authorize` in your browser.
+1. Add the server URL `https://<your-worker>/mcp` to the client without an `Authorization` header.
+2. Start the sign-in in the client (for example `/mcp` in Claude Code, or `pi mcp login llm-wiki` in Pi). The client opens the server authorization page in your browser with its own request parameters. Do not open `https://<your-worker>/authorize` yourself: without the client request, the sign-in cannot complete.
 3. Prove that you own the wiki: enter `ADMIN_TOKEN`, or a one-time pairing code.
 4. Select the wiki and the access: read, or read and write.
+5. Ask the agent to call `wiki_overview` to verify the connection.
 
-A pairing code is valid for 10 minutes and works one time. Make one on the setup page or with `python3 skills/llm-wiki/scripts/wiki_remote.py pair --label <label> --scopes read,write`. Use pairing codes when you approve a client on a device where you do not want to type `ADMIN_TOKEN`.
+OAuth gives a token only to the MCP client. The CLI (`wiki_remote.py` import, pull, export and raw uploads) still needs an agent token and `wiki_remote.py login`.
+
+A pairing code is valid for 10 minutes and works one time. Make one on the setup page or with `python3 skills/llm-wiki/scripts/wiki_remote.py pair --label <label> --scopes read,write`. The scopes must include `read` or `admin`. Use pairing codes when you approve a client on a device where you do not want to type `ADMIN_TOKEN`.
 
 OAuth scopes are `wiki:read` and `wiki:write`. Discovery documents are at `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource/mcp`.
 
@@ -167,12 +170,21 @@ bearer_token_env_var = "LLM_WIKI_TOKEN"
    "headers": {"Authorization": "Bearer {env:LLM_WIKI_TOKEN}"}}}}
 ```
 
-**OMP and Pi** (`~/.omp/agent/mcp.json`)
+**OMP** (`~/.omp/agent/mcp.json` for all projects, or `.omp/mcp.json` in one project)
 
 ```json
 {"mcpServers": {"llm-wiki": {"type": "http", "url": "https://<your-worker>/mcp",
   "headers": {"Authorization": "Bearer ${LLM_WIKI_TOKEN}"}}}}
 ```
+
+**Pi** (`~/.pi/agent/mcp.json` for all projects, or `.pi/mcp.json` in one project). Pi has built-in MCP support. It reads the project file only after you trust the project. See the [Pi MCP documentation](https://pi.dev/docs/latest/mcp#configure-servers).
+
+```json
+{"mcpServers": {"llm-wiki": {"type": "http", "url": "https://<your-worker>/mcp",
+  "headers": {"Authorization": "Bearer ${LLM_WIKI_TOKEN}"}}}}
+```
+
+Or from a shell: `pi mcp add llm-wiki --url https://<your-worker>/mcp --bearer-token-env-var LLM_WIKI_TOKEN`. Run `pi mcp list` to check the connection.
 
 **Other clients** (Hermes, OpenClaw, custom agents): use the URL `https://<your-worker>/mcp` and the header `Authorization: Bearer <token>`. Agents without MCP can use the JSON API at `/api/v1` with the same header, or the CLI.
 
@@ -206,12 +218,22 @@ python3 $REMOTE import ~/wiki --raw ~/wiki/raw             # upload
 ```
 
 - The import sends small batches. It skips files that are identical on the server. If it stops, run it again: it continues.
-- It uploads every UTF-8 text page, including `SCHEMA.md`, `index.md`, `log.md`, `indexes/` and `graph/ontology.yaml`. It skips hidden folders and files (`.git`, `.obsidian`, `.wiki-cache`, `.evolution`) except top-level templates, and generated graph files. The JSON report lists skipped files that are too large or not text.
+- It uploads every UTF-8 text page, including `SCHEMA.md`, `index.md`, `log.md`, `indexes/` and `graph/ontology.yaml`. It skips hidden folders and files (`.git`, `.obsidian`, `.wiki-cache`, `.evolution`) except top-level templates, without a report entry.
 - Raw files go to R2 with their SHA-256. Use `--no-raw` to skip them.
-- It does not replace a remote page that is different and that an earlier import did not write. Instead, it stops with exit code 3 and writes nothing. Add `--overwrite` to replace such pages.
-- At the end it compares the SHA-256 of every local file with the server manifest and prints a JSON report. Exit code 1 means a mismatch.
+- It does not replace a remote page that is different and that an earlier import did not write. Instead, it stops with exit code 3 and writes nothing. Add `--overwrite` to replace such pages. It also does not replace a page that another writer changed while the import ran: the report lists it in `pages.changed_during_import`, and the exit code is 3.
+- At the end it compares the SHA-256 of every file that it selected with the server manifest and prints a JSON report. Exit code 1 means a mismatch.
 
-After the import, compare `python3 $REMOTE lint` with the local lint, and try a few searches. Change your agent instructions only after the report shows no mismatches. Your local wiki does not change during the import, so you can stop at any step.
+Exit code 0 does not prove that every file was selected. Read the `skipped` and `raw.skipped` lists in the report. Each entry has a `path` and a `reason`:
+
+| Reason | Meaning | Action |
+|---|---|---|
+| `generated` | A generated file in `graph/` (for example `nodes.jsonl`, `graph.sqlite`). The server builds the graph again. | None. Expected exclusion. |
+| `too_large` | The page is larger than 1,500,000 bytes. | Split the page. |
+| `not_utf8`, `not_text` | The file is not UTF-8 text. | Convert it, or move a binary source to the raw folder. |
+| `symlink` | The file or folder is a symbolic link. | Copy the target into the wiki. |
+| `invalid_path`, `path_too_long` | The server refuses the path. | Rename the file. |
+
+Fix each file with missing source content and run the import again, or accept the file by name. After the import, compare `python3 $REMOTE lint` with the local lint, and try a few searches. Change your agent instructions only after the report shows no mismatches and no missing source content. Your local wiki does not change during the import, so you can stop at any step.
 
 ## Keep a local mirror
 
@@ -303,3 +325,4 @@ Page paths that start with `.` are not accepted, except top-level template files
 | `503` on raw upload | The deployment has no R2 binding. Turn on R2 and deploy again, or keep raw files local. |
 | Search mode is `lexical` | The deployment has no Vectorize or Workers AI binding. Deploy again with the button or `npm run deploy`. |
 | `vector_lag` stays above 0 | Workers AI is at its daily limit or failed. The server tries again later. Keyword search still works. |
+| `vector_lag` is 0, but a new section does not match by meaning | Vectorize can need about one minute more after `vector_lag` reaches 0. Wait, then search again. |

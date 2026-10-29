@@ -267,6 +267,10 @@ async function adminRoute(request: Request, env: Env, p: Principal, sub: string,
     const wiki = await adminTarget(env, p, b.wiki);
     if (!validLabel(b.label)) throw new HttpError(400, "bad_request", "label must be 1 to 100 printable characters.");
     if (!isScopeList(b.scopes)) throw new HttpError(400, "bad_request", "scopes must list read, write, raw:write or admin.");
+    // A pairing code signs in an OAuth client, which always needs read access.
+    if (!b.scopes.includes("read") && !b.scopes.includes("admin")) {
+      throw new HttpError(400, "bad_request", 'Pairing code scopes must include "read" or "admin".');
+    }
     return json(await wikiStub(env, wiki).createPairingCode(b.label.trim(), b.scopes, PAIRING_TTL_SECONDS), 201);
   }
   return errorResponse(404, "not_found", `No route for ${method} ${API_PREFIX}${sub}.`);

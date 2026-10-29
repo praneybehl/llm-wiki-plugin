@@ -702,6 +702,15 @@ def decide_gate(args, rows: list[dict], texts: list[str]) -> tuple[list[int], di
     return kept, row_decisions, decision
 
 
+def decision_default_threshold(check: str) -> str:
+    """The default threshold of a decision check, read from decision-questions.json."""
+    path = Path(__file__).resolve().parent.parent / "assets" / "decision-questions.json"
+    try:
+        return str(json.loads(path.read_text(encoding="utf-8"))["checks"][check]["default_threshold"])
+    except (OSError, ValueError, KeyError):
+        return f"see {path.name}"
+
+
 def gated_json(args, items: list[tuple], rows: list[dict], texts: list[str]) -> tuple[list[tuple], list[dict], dict]:
     kept, row_decisions, decision = decide_gate(args, rows, texts)
     kept_rows = [{**rows[i], "decision": row_decisions[i]} if i in row_decisions else rows[i] for i in kept]
@@ -921,7 +930,8 @@ def main():
     parser.add_argument("--decide-pool", type=int, default=20,
                         help="Rows to score with --decide (default: 20).")
     parser.add_argument("--decide-threshold", type=float, default=None,
-                        help="P(relevant) needed to keep a row with --decide (default: 0.5).")
+                        help=f"P(relevant) needed to keep a row with --decide "
+                             f"(default: {decision_default_threshold('relevance')}).")
     args = parser.parse_args()
     cache_path = None
     if args.cache:

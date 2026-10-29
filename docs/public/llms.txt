@@ -29,6 +29,7 @@ The canonical project is https://github.com/praneybehl/llm-wiki-plugin. The docu
 
 - [Supported agents](https://praneybehl.github.io/llm-wiki-plugin/agents.html): Verified agent support, installation methods, and memory-file conventions.
 - [Upgrade to v4](https://praneybehl.github.io/llm-wiki-plugin/upgrade.html): v4 adds the optional hosted wiki and decision layer; local wikis need no migration. Also covers upgrades from v3.1 and earlier.
+- [v3.2.0 documentation (legacy)](https://praneybehl.github.io/llm-wiki-plugin/v3/): The old v3.2.0 pages, including the removed Paperclip integration. Use the v4 pages above for the current release.
 
 ## Source and licensing
 

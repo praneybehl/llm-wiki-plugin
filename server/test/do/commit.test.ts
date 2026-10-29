@@ -53,6 +53,38 @@ describe("commit ops", () => {
     expect(replaced.seq).toBe(2);
   });
 
+  it("upsert checks the expected_sha256 precondition", async () => {
+    const { wiki } = await freshWiki();
+    const upsert = (path: string, content: string, expected?: string | null): CommitOp =>
+      expected === undefined ? { op: "upsert", path, content } : { op: "upsert", path, content, expected_sha256: expected };
+
+    // null: the page must not exist.
+    const created = await must(wiki.commit("i", { message: "u", ops: [upsert("p.md", "one\n", null)] }));
+    const sha1 = created.changed[0]!.sha256;
+    const exists = conflictOf(await wiki.commit("i", { message: "u", ops: [upsert("p.md", "x", null)] }));
+    expect(exists).toMatchObject({ op_index: 0, path: "p.md", reason: "exists", current_rev: 1, current_sha256: sha1 });
+
+    // A matching sha replaces the page.
+    const replaced = await must(wiki.commit("i", { message: "u", ops: [upsert("p.md", "two\n", sha1)] }));
+    expect(replaced.changed[0]!.rev).toBe(2);
+
+    // A different sha conflicts and reports the current sha.
+    const mismatch = conflictOf(await wiki.commit("i", { message: "u", ops: [upsert("p.md", "three\n", sha1)] }));
+    expect(mismatch).toMatchObject({ path: "p.md", reason: "sha_mismatch", current_rev: 2, current_sha256: replaced.changed[0]!.sha256 });
+
+    // A sha for a missing page conflicts without a current sha.
+    const absent = conflictOf(await wiki.commit("i", { message: "u", ops: [upsert("q.md", "q\n", sha1)] }));
+    expect(absent).toMatchObject({ path: "q.md", reason: "sha_mismatch", current_rev: null });
+    expect(absent.current_sha256).toBeUndefined();
+
+    // Omitted: unconditional, as before.
+    await must(wiki.commit("i", { message: "u", ops: [upsert("p.md", "four\n"), upsert("q.md", "q\n")] }));
+    const read = await wiki.read({ paths: ["p.md", "q.md"] });
+    expect(read.pages.map((p) => p.content)).toEqual(["four\n", "q\n"]);
+
+    expect(statusOf(await wiki.commit("i", { message: "u", ops: [upsert("p.md", "x", "ABC")] }))).toBe(400);
+  });
+
   it("appends after a heading and creates on demand", async () => {
     const { wiki } = await freshWiki();
     await must(

@@ -10,7 +10,7 @@ import {
   registryStub,
   wikiStub,
 } from "../http/auth";
-import { HttpError, escapeHtml as esc, unwrap } from "../http/util";
+import { HttpError, escapeHtml as esc, readForm, unwrap } from "../http/util";
 import type { DecisionBackend, ListEntry, Principal, Scope, SearchRow, TokenInfo, WikiSettings } from "../types";
 import { csrfField, htmlPage, redirect, type PageOptions } from "./layout";
 import { renderPage } from "./markdown";
@@ -54,7 +54,7 @@ export async function handleUi(request: Request, env: Env): Promise<Response | n
   const c: Ctx = { request, env, url, csrf: await csrfFor(request, env) };
   try {
     if (request.method === "POST") {
-      const form = await request.formData();
+      const form = await readForm(request);
       if (!(await checkCsrf(request, env, stringField(form, "csrf")))) {
         return messagePage(c, 403, "Form expired", "The form token is not valid. Reload the page and try again.");
       }

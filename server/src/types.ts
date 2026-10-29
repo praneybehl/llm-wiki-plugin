@@ -105,7 +105,12 @@ export interface EditPair {
 export type CommitOp =
   | { op: "create"; path: string; content: string }
   | { op: "put"; path: string; content: string; base_rev: number }
-  | { op: "upsert"; path: string; content: string }
+  /**
+   * `expected_sha256` is an optional precondition. Omitted: create or replace.
+   * `null`: the page must not exist (conflict `exists`). A string: the page must
+   * exist with exactly that sha256 (else conflict `sha_mismatch`).
+   */
+  | { op: "upsert"; path: string; content: string; expected_sha256?: string | null }
   | { op: "edit"; path: string; edits: EditPair[]; base_rev?: number }
   | { op: "append"; path: string; text: string; after_heading?: string; create?: boolean }
   | { op: "delete"; path: string; base_rev: number }
@@ -130,8 +135,10 @@ export interface CommitResult {
 export interface ConflictDetails {
   op_index: number;
   path: string;
-  reason: "exists" | "missing" | "stale_base_rev" | "edit_no_match" | "edit_multiple_matches";
+  reason: "exists" | "missing" | "stale_base_rev" | "edit_no_match" | "edit_multiple_matches" | "sha_mismatch";
   current_rev: number | null;
+  /** sha256 of the current content, when the page exists (upsert preconditions). */
+  current_sha256?: string;
   base_rev?: number;
   /** Unified diff from base_rev to current, when both revisions are known. */
   diff?: string;

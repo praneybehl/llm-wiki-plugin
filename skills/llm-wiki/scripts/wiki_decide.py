@@ -12,8 +12,9 @@ Backends:
     typesafe    TypeSafe Jev (https://api.typesafe.ai). Needs TYPESAFE_API_KEY.
     openrouter  Jev through OpenRouter (https://openrouter.ai/api). Needs OPENROUTER_API_KEY.
     liquid      Liquid decisions API (https://api.liquid.ai/decisions). Needs LIQUID_API_KEY.
-    hosted      Your hosted wiki server (/api/v1/decide). Uses LLM_WIKI_URL and LLM_WIKI_TOKEN
-                or the wiki_remote.py profile.
+    hosted      Your hosted wiki server (/api/v1/decide). Uses the wiki_remote.py profile, URL,
+                token and wiki. --profile wins over LLM_WIKI_URL and LLM_WIKI_TOKEN.
+                LLM_WIKI_CONFIG selects another config file.
 
 Environment:
     LLM_WIKI_DECISIONS          Backend name (default: off).
@@ -39,6 +40,8 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import http.client
+import math
 import json
 import os
 import re
@@ -65,7 +68,6 @@ BACKENDS = {
 BACKEND_CHOICES = ("off", *BACKENDS)
 DEFAULT_TIMEOUT = 8.0
 MAX_WORKERS = 8
-REMOTE_CONFIG = Path("~/.config/llm-wiki/remote.json")
 
 
 def load_questions() -> dict:
@@ -99,6 +101,7 @@ class DecisionClient:
         key: str | None = None,
         timeout: float = DEFAULT_TIMEOUT,
         transport: Transport | None = None,
+        wiki: str | None = None,
     ):
         self.backend = backend
         self.url = url
@@ -106,6 +109,7 @@ class DecisionClient:
         self.key = key
         self.timeout = timeout
         self.transport = transport
+        self.wiki = wiki
 
     @property
     def endpoint(self) -> str:
@@ -139,14 +143,22 @@ class DecisionClient:
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         if self.key:
             headers["Authorization"] = f"Bearer {self.key}"
+        if self.backend == "hosted" and self.wiki:
+            headers["X-LLM-Wiki"] = self.wiki
         req = urllib.request.Request(self.endpoint, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 text = resp.read().decode("utf-8", errors="replace")
         except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:300]
+            try:
+                detail = exc.read().decode("utf-8", errors="replace")[:300]
+            except (OSError, http.client.HTTPException):
+                detail = ""
             code = "insufficient_credits" if exc.code == 402 or "insufficient" in detail.lower() and "credit" in detail.lower() else "http"
             raise DecisionError(code, f"HTTP {exc.code}: {detail}", exc.code) from None
+        except http.client.HTTPException as exc:
+            # IncompleteRead, BadStatusLine, RemoteDisconnected and other protocol errors.
+            raise DecisionError("unavailable", f"bad response from {self.endpoint}: {exc!r}") from None
         except (TimeoutError, OSError) as exc:
             reason = getattr(exc, "reason", exc)
             if isinstance(reason, TimeoutError) or "timed out" in str(reason).lower():
@@ -162,19 +174,22 @@ def note(message: str) -> None:
     print(f"decisions: {message}", file=sys.stderr)
 
 
-def read_remote_profile(profile: str | None) -> tuple[str | None, str | None]:
-    url = os.environ.get("LLM_WIKI_URL")
-    token = os.environ.get("LLM_WIKI_TOKEN")
-    if url and token:
-        return url, token
-    path = REMOTE_CONFIG.expanduser()
+def read_remote_profile(profile: str | None, url_override: str | None = None) -> tuple[str, str, str | None]:
+    """Return (url, token, wiki) with the same config file and rules as wiki_remote.py.
+
+    An explicit profile wins over LLM_WIKI_URL and LLM_WIKI_TOKEN and must exist.
+    LLM_WIKI_CONFIG selects another config file. Raises DecisionError("unavailable").
+    """
+    if str(SCRIPT_DIR) not in sys.path:
+        sys.path.insert(0, str(SCRIPT_DIR))
+    import wiki_remote
+
+    args = argparse.Namespace(profile=profile, url_override=url_override, wiki=None)
     try:
-        config = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return url, token
-    name = profile or config.get("default")
-    entry = (config.get("profiles") or {}).get(name) or {}
-    return url or entry.get("url"), token or entry.get("token")
+        url, token, wiki, _ = wiki_remote.resolve_connection(args)
+    except wiki_remote.CliError as exc:
+        raise DecisionError("unavailable", str(exc)) from None
+    return url, token, wiki
 
 
 def client_from_config(
@@ -197,13 +212,11 @@ def client_from_config(
     key = os.environ.get(spec["key"]) if spec["key"] else None
     if spec["key"] and not key:
         raise DecisionError("unavailable", f"set {spec['key']} to use the {name} backend")
+    wiki = None
     if name == "hosted":
-        remote_url, token = read_remote_profile(profile)
-        url = url or remote_url
-        key = token
-        if not url or not token:
-            raise DecisionError("unavailable", "set LLM_WIKI_URL and LLM_WIKI_TOKEN, or run wiki_remote.py login")
-    return DecisionClient(name, url, model, key, timeout or DEFAULT_TIMEOUT)
+        # A decisions URL (flag or LLM_WIKI_DECISIONS_URL) replaces the profile URL, like --url in wiki_remote.py.
+        url, key, wiki = read_remote_profile(profile, url)
+    return DecisionClient(name, url, model, key, timeout or DEFAULT_TIMEOUT, wiki=wiki)
 
 
 # ---------------------------------------------------------------------------
@@ -219,18 +232,32 @@ def read_choice(answers: dict, name: str, keys: list[str]) -> dict:
     choice = answer.get("choice")
     if not isinstance(choice, str) or choice not in keys:
         raise DecisionError("invalid_answer", f"answer for {name} has an unknown choice {choice!r}")
+
+    def number(value) -> float | None:
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return None
+        return float(value)
+
     probs = {}
     raw_probs = answer.get("probabilities")
     if isinstance(raw_probs, dict):
         for k in keys:
-            p = raw_probs.get(k)
-            if isinstance(p, (int, float)) and not isinstance(p, bool) and p >= 0:
-                probs[k] = float(p)
-        total = sum(probs.values())
-        if total > 0:
+            if raw_probs.get(k) is None:
+                continue
+            p = number(raw_probs[k])
+            if p is None or not math.isfinite(p) or p < 0:
+                raise DecisionError("invalid_answer", f"answer for {name} has a bad probability for {k}: {raw_probs[k]!r}")
+            probs[k] = p
+        if probs:
+            total = sum(probs.values())
+            if not math.isfinite(total) or total <= 0:
+                raise DecisionError("invalid_answer", f"answer for {name} has probabilities that sum to {total}")
             probs = {k: v / total for k, v in probs.items()}
     confidence = answer.get("confidence")
-    confidence = float(confidence) if isinstance(confidence, (int, float)) and not isinstance(confidence, bool) else None
+    if confidence is not None:
+        confidence = number(confidence)
+        if confidence is None or not math.isfinite(confidence) or not 0.0 <= confidence <= 1.0:
+            raise DecisionError("invalid_answer", f"answer for {name} has a confidence outside 0 to 1: {answer.get('confidence')!r}")
     if not probs:
         if confidence is None:
             raise DecisionError("invalid_answer", f"answer for {name} has no probabilities")

@@ -13,10 +13,10 @@ v4.0.0 adds an optional hosted backend and an optional decision layer. Local wik
 
 - **Local wikis need no migration.** Nothing under `wiki/` changes. Local search, lint, graph and evolution scripts are the same.
 - **Hosted wiki (optional).** Deploy one Cloudflare Worker with the Deploy button. Agents connect over MCP or a JSON API with their own tokens or OAuth. See [Hosted wiki](/hosted).
-- **New commands.** `/wiki:init --hosted <url>` connects an agent to a hosted wiki. `/wiki:migrate` moves a local wiki to a hosted wiki and verifies every file.
+- **New commands.** `/wiki:init --hosted <url>` connects an agent to a hosted wiki. `/wiki:migrate` moves a local wiki to a hosted wiki, verifies every file that it selects, and reports the files that it skipped.
 - **New CLI.** `skills/llm-wiki/scripts/wiki_remote.py` (Python standard library only) handles login, tokens, import, pull mirror, export, raw files and MCP configuration.
 - **Decision models (optional, off by default).** Small models can gate search relevance, check graph evidence and screen untrusted text. See [Decision models](/decisions).
-- **Paperclip companion removed.** The `integrations/paperclip/` plugin and its docs are gone. The npm package was never published to the registry, so no registry action is necessary. If you need Paperclip, stay on v3.2.x.
+- **Paperclip companion removed.** The `integrations/paperclip/` plugin and its docs are gone. The npm package was never published to the registry, so no registry action is necessary. If you need Paperclip, stay on v3.2.x. The [v3.2.0 documentation](/v3/) stays available.
 
 ## The upgrade
 

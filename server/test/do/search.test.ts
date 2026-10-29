@@ -1,12 +1,25 @@
-import { runDurableObjectAlarm } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { FakeVectors, attachVectors, failure, freshWiki, importCorpus, sql } from "./helpers";
+import type { WikiDO } from "../../src/do/wiki";
 import type { SearchResponse } from "../../src/types";
 
 async function search(wiki: Awaited<ReturnType<typeof freshWiki>>["wiki"], req: Parameters<typeof wiki.search>[0]): Promise<SearchResponse> {
   const result = await wiki.search(req);
   if (!result.ok) throw new Error(JSON.stringify(failure(result).error));
   return result.value;
+}
+
+/** Fake vectors that run `during` inside the next `embed` call, while the search awaits it. */
+class GatedVectors extends FakeVectors {
+  during: (() => Promise<void>) | null = null;
+
+  override async embed(texts: string[]): Promise<number[][]> {
+    const during = this.during;
+    this.during = null;
+    if (during) await during();
+    return super.embed(texts);
+  }
 }
 
 const ROW_KEYS = [
@@ -164,6 +177,66 @@ describe("hybrid search", () => {
     const after = new Set(fake.store.keys());
     expect(after.size).toBe(initial.size);
     expect([...initial].filter((k) => after.has(k))).toHaveLength(initial.size - 1);
+  });
+
+  it("deletes the vectors of pages that are deleted, moved or leave search", async () => {
+    const { wiki } = await freshWiki();
+    const fake = new FakeVectors();
+    await attachVectors(wiki, fake);
+    await wiki.commit("a", {
+      message: "c",
+      ops: [
+        { op: "create", path: "concepts/del.md", content: "# Del\n\ngone\n" },
+        { op: "create", path: "concepts/out.md", content: "# Out\n\nexcluded\n" },
+        { op: "create", path: "concepts/mv.md", content: "# Mv\n\nmoved\n" },
+      ],
+    });
+    await runDurableObjectAlarm(wiki);
+    expect(fake.store.size).toBe(6);
+    await wiki.commit("a", {
+      message: "d",
+      ops: [
+        { op: "delete", path: "concepts/del.md", base_rev: 1 },
+        { op: "move", from: "concepts/out.md", to: "raw/out.md", base_rev: 1 },
+        { op: "move", from: "concepts/mv.md", to: "concepts/moved.md", base_rev: 1 },
+      ],
+    });
+    for (let i = 0; i < 5 && (await runDurableObjectAlarm(wiki)); i++);
+    const live = (await sql<{ vector_id: string }>(wiki, "SELECT vector_id FROM sections")).map((r) => r.vector_id).sort();
+    expect(live).toHaveLength(2);
+    expect([...fake.store.keys()].sort()).toEqual(live);
+    expect(await sql(wiki, "SELECT vector_id FROM vector_deletes")).toEqual([]);
+  });
+
+  it("reads search rows after the vector awaits, so a concurrent commit cannot swap section ids", async () => {
+    const { wiki } = await freshWiki();
+    const fake = new GatedVectors();
+    await attachVectors(wiki, fake);
+    await wiki.commit("a", { message: "c", ops: [{ op: "create", path: "concepts/a.md", content: "# A\n\nzebra quokka\n" }] });
+    await runDurableObjectAlarm(wiki);
+    const ids = (await sql<{ id: number }>(wiki, "SELECT id FROM sections ORDER BY id")).map((r) => r.id);
+
+    // During the embedding await: delete the matching page and create another.
+    // The new sections reuse the freed row ids.
+    let swapped = false;
+    await runInDurableObject(wiki, (instance: WikiDO) => {
+      fake.during = async () => {
+        const swap = await instance.commit("a", {
+          message: "swap",
+          ops: [
+            { op: "delete", path: "concepts/a.md", base_rev: 1 },
+            { op: "create", path: "concepts/b.md", content: "# B\n\nunrelated words\n" },
+          ],
+        });
+        swapped = swap.ok;
+      };
+    });
+    const result = await wiki.search({ query: "zebra quokka" });
+    expect(swapped).toBe(true);
+    expect((await sql<{ id: number }>(wiki, "SELECT id FROM sections ORDER BY id")).map((r) => r.id)).toEqual(ids);
+    if (!result.ok) throw new Error(JSON.stringify(failure(result).error));
+    expect(result.value.mode).toBe("hybrid");
+    expect(result.value.results.map((r) => r.rel_path)).toEqual([]);
   });
 
   it("retries embedding failures with backoff and falls back to lexical", async () => {

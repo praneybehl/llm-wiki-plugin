@@ -110,7 +110,7 @@ Move a local wiki to a [hosted wiki](/hosted).
 /wiki:migrate ~/wiki --raw ~/wiki/raw
 ```
 
-The command checks the connection, runs local lint, runs `wiki_remote.py import --dry-run` and shows the report. After your approval it runs the import. The import uploads in small batches, skips identical files and continues after an interruption. It then compares the SHA-256 of every page and raw file with the server manifest. The command compares lint counts and a few searches, then offers to turn the local folder into a read-only `pull` mirror and to replace the memory stanza. Your local wiki and agent instructions do not change until the verification passes and you approve.
+The command checks the connection, runs local lint, runs `wiki_remote.py import --dry-run` and shows the report. After your approval it runs the import. The import uploads in small batches, skips identical files and continues after an interruption. It then compares the SHA-256 of every page and raw file that it selected with the server manifest. Exit code 0 does not prove that every file was selected, so the command also reads the `skipped` and `raw.skipped` lists. It separates expected exclusions (generated graph files) from missing source content (too large, not UTF-8 text, symbolic links, refused paths) and asks you to fix or accept each missing file. See [Migrate a local wiki](/hosted#migrate-a-local-wiki). The command compares lint counts and a few searches, then offers to turn the local folder into a read-only `pull` mirror and to replace the memory stanza. Your local wiki and agent instructions do not change until the verification passes and you approve.
 
 ## `/wiki:upgrade` {#upgrade}
 

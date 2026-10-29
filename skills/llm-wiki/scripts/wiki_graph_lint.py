@@ -479,6 +479,15 @@ def render_text(findings: dict) -> str:
     return "\n".join(out)
 
 
+def decision_default_threshold(check: str) -> str:
+    """The default threshold of a decision check, read from decision-questions.json."""
+    path = SCRIPT_DIR.parent / "assets" / "decision-questions.json"
+    try:
+        return str(json.loads(path.read_text(encoding="utf-8"))["checks"][check]["default_threshold"])
+    except (OSError, ValueError, KeyError):
+        return f"see {path.name}"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("wiki", nargs="?", type=Path, default=Path("wiki"))
@@ -487,7 +496,8 @@ def main():
     parser.add_argument("--decide", action="store_true",
                         help="Check unquoted edge evidence with the decision model. Needs LLM_WIKI_DECISIONS.")
     parser.add_argument("--decide-threshold", type=float, default=None,
-                        help="Confidence needed to accept a supporting sentence (default: 0.5).")
+                        help="Confidence needed to accept a supporting sentence "
+                             f"(default: {decision_default_threshold('evidence')}).")
     args = parser.parse_args()
 
     if not args.wiki.exists():

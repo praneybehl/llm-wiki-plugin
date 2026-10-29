@@ -67,6 +67,10 @@ class FakeWiki:
         self.commits: list[dict] = []
         self.corrupt: set[str] = set()
         self.truncate_export = False
+        # Called with the wiki before each commit is checked (simulates a concurrent agent).
+        self.before_commit = None
+        # Apply the next N commits, then answer 503 as if the response was lost.
+        self.lose_responses = 0
 
     # -- helpers used by tests ------------------------------------------------
     def seed(self, path: str, content: str, author: str = "agent") -> None:
@@ -102,6 +106,9 @@ class FakeWiki:
         return rec
 
     def commit(self, body: dict, author: str):
+        hook, self.before_commit = self.before_commit, None
+        if hook:
+            hook(self)
         with self.lock:
             self.commit_calls += 1
             if self.fail_commit_from is not None and self.commit_calls >= self.fail_commit_from:
@@ -113,6 +120,12 @@ class FakeWiki:
                 kind = op["op"]
                 if kind == "create" and cur:
                     return 409, self._conflict(i, path, "exists", cur)
+                if kind == "upsert" and "expected_sha256" in op:
+                    expected = op["expected_sha256"]
+                    if expected is None and cur:
+                        return 409, self._conflict(i, path, "exists", cur)
+                    if expected is not None and (not cur or cur["sha256"] != expected):
+                        return 409, self._conflict(i, path, "sha_mismatch", cur)
                 if kind in ("put", "delete"):
                     if not cur:
                         return 409, self._conflict(i, path, "missing", None)
@@ -132,6 +145,9 @@ class FakeWiki:
                     rec = self._write(op["path"], op["content"], author)
                     changed.append({"path": rec["path"], "rev": rec["rev"], "sha256": rec["sha256"]})
             self.commits.append(body)
+            if self.lose_responses:
+                self.lose_responses -= 1
+                return 503, {"error": {"code": "unavailable", "message": "response lost"}}
             return 200, {
                 "commit_id": f"c{len(self.commits)}",
                 "seq": self.seq if changed else seq_before,
@@ -142,9 +158,21 @@ class FakeWiki:
     @staticmethod
     def _conflict(i, path, reason, cur, base=None):
         details = {"op_index": i, "path": path, "reason": reason, "current_rev": cur["rev"] if cur else None}
+        if cur:
+            details["current_sha256"] = cur["sha256"]
         if base is not None:
             details["base_rev"] = base
         return {"error": {"code": "conflict", "message": f"{reason} at {path}", "details": details}}
+
+    def move(self, src: str, dst: str) -> None:
+        """One commit that moves a page: both changes share one seq, like the real server."""
+        with self.lock:
+            self.seq += 1
+            rec = dict(self.pages.pop(src), path=dst, rev=self.seq)
+            self.pages[dst] = rec
+            self.deleted[src] = self.seq
+            self.last_change[src] = self.seq
+            self.last_change[dst] = self.seq
 
     def changes(self, since: int, limit: int) -> dict:
         with self.lock:
@@ -578,6 +606,93 @@ class ImportTests(RemoteTestCase):
         self.assertIn("--no-raw", report["raw"]["error"])
         self.assertEqual(set(self.wiki.pages), self.EXPECTED_PAGES)
 
+    def test_upserts_carry_the_remote_sha_they_expect(self):
+        root = self.make_wiki()
+        self.import_report(str(root), "--no-raw")
+        ops = [op for body in self.wiki.commits for op in body["ops"]]
+        self.assertTrue(ops)
+        self.assertTrue(all("expected_sha256" in op and op["expected_sha256"] is None for op in ops))
+        (root / "entities" / "alpha.md").write_text("# Alpha v2\n", encoding="utf-8")
+        old = self.wiki.pages["entities/alpha.md"]["sha256"]
+        self.import_report(str(root), "--no-raw")
+        self.assertEqual(self.wiki.commits[-1]["ops"][0]["expected_sha256"], old)
+
+    def test_remote_edit_after_manifest_read_is_not_overwritten(self):
+        root = self.make_wiki()
+        self.import_report(str(root), "--no-raw")
+        (root / "entities" / "alpha.md").write_text("# Alpha v2\n", encoding="utf-8")
+        (root / "entities" / "beta.md").write_text("# Beta v2\n", encoding="utf-8")
+        agent = "# Alpha edited by an agent during the import\n"
+        # The agent writes after the import read the manifest and before its commit.
+        self.wiki.before_commit = lambda w: w.seed("entities/alpha.md", agent)
+        report = self.import_report(str(root), "--no-raw", expect=3)
+        self.assertEqual(self.wiki.pages["entities/alpha.md"]["content"], agent)
+        self.assertEqual(self.wiki.pages["entities/beta.md"]["content"], "# Beta v2\n")
+        self.assertEqual([c["path"] for c in report["pages"]["changed_during_import"]], ["entities/alpha.md"])
+        self.assertFalse(report["ok"])
+
+    def test_new_remote_page_after_manifest_read_is_not_overwritten(self):
+        root = self.make_wiki()
+        agent = "# Gamma made by an agent\n"
+        self.wiki.before_commit = lambda w: w.seed("concepts/gamma.md", agent)
+        report = self.import_report(str(root), "--no-raw", expect=3)
+        self.assertEqual(self.wiki.pages["concepts/gamma.md"]["content"], agent)
+        self.assertEqual([c["path"] for c in report["pages"]["changed_during_import"]], ["concepts/gamma.md"])
+        self.assertEqual(set(self.wiki.pages), self.EXPECTED_PAGES)
+
+    def test_retry_after_lost_response_counts_pages_as_done(self):
+        root = self.make_wiki()
+        self.wiki.lose_responses = 1
+        report = self.import_report(str(root), "--no-raw")
+        self.assertTrue(report["ok"])
+        self.assertEqual(report["pages"]["uploaded"], len(self.EXPECTED_PAGES))
+        self.assertEqual(len(self.wiki.commits), 1)
+        for page in self.EXPECTED_PAGES:
+            self.assertEqual(self.wiki.pages[page]["sha256"], sha((root / page).read_bytes()))
+
+    def test_retry_after_lost_response_does_not_replay_over_an_agent_edit(self):
+        root = self.make_wiki()
+        agent = "# Alpha edited by an agent between the two requests\n"
+
+        def first(w):
+            w.before_commit = lambda w2: w2.seed("entities/alpha.md", agent)
+
+        self.wiki.before_commit = first
+        self.wiki.lose_responses = 1
+        report = self.import_report(str(root), "--no-raw", expect=3)
+        self.assertEqual(self.wiki.pages["entities/alpha.md"]["content"], agent)
+        self.assertEqual([c["path"] for c in report["pages"]["changed_during_import"]], ["entities/alpha.md"])
+        self.assertEqual(report["pages"]["uploaded"], len(self.EXPECTED_PAGES) - 1)
+
+    def test_batches_reserve_message_bytes_and_json_body_limit(self):
+        def page(path, text):
+            data = text.encode("utf-8")
+            return wiki_remote.LocalPage(path, sha(data), len(data), text)
+
+        def ops(pages):
+            return [(p, wiki_remote.upsert_op(p, None)) for p in pages]
+
+        limit = wiki_remote.MAX_COMMIT_BYTES
+        half = [page(f"p{i}.md", "a" * (limit // 2)) for i in range(2)]
+        batches, too_large = wiki_remote.make_batches(ops(half), 25, limit, "wiki")
+        self.assertEqual(([len(b) for b in batches], too_large), ([1, 1], []))
+        for batch in batches:
+            body = {"message": wiki_remote.import_message(len(batch), "wiki"), "ops": [op for _, op in batch]}
+            content = sum(p.size for p, _ in batch) + len(body["message"].encode("utf-8"))
+            self.assertLessEqual(content, limit)
+
+        quotes = [page(f"q{i}.md", '"' * 1_400_000) for i in range(3)]
+        batches, too_large = wiki_remote.make_batches(ops(quotes), 25, limit, "wiki")
+        self.assertEqual(too_large, [])
+        for batch in batches:
+            body = {"message": wiki_remote.import_message(len(batch), "wiki"), "ops": [op for _, op in batch]}
+            self.assertLess(wiki_remote.json_bytes(body), wiki_remote.MAX_JSON_BODY)
+        self.assertEqual(sum(len(b) for b in batches), 3)
+
+        control = page("c.md", "\x01" * 1_000_000)
+        batches, too_large = wiki_remote.make_batches(ops([control]), 25, limit, "wiki")
+        self.assertEqual((batches, [p.path for p in too_large]), ([], ["c.md"]))
+
 
 class PullTests(RemoteTestCase):
     def pull(self, target: Path, *extra: str, expect: int = 0) -> dict:
@@ -726,6 +841,89 @@ class PullTests(RemoteTestCase):
         target = self.tmp / "plain"
         report = self.pull(target, "--git")
         self.assertFalse(report["git"]["committed"])
+
+    def test_pull_refuses_symlinked_folder(self):
+        self.wiki.seed("notes/b.md", "B1\n")
+        target = self.tmp / "mirror"
+        self.pull(target)
+        outside = self.tmp / "outside"
+        outside.mkdir()
+        (outside / "b.md").write_text("B1\n")
+        shutil.rmtree(target / "notes")
+        (target / "notes").symlink_to(outside, target_is_directory=True)
+        # A delete through the link must not remove the file outside the mirror.
+        self.wiki.remove("notes/b.md")
+        code, _, err = run_cli("pull", str(target))
+        self.assertEqual(code, 1)
+        self.assertIn("symbolic link", err)
+        self.assertEqual((outside / "b.md").read_text(), "B1\n")
+        # A write through a link must not create a file outside the mirror.
+        fresh = self.tmp / "mirror2"
+        fresh.mkdir()
+        (fresh / "docs").symlink_to(outside, target_is_directory=True)
+        wiki2 = FakeWiki()
+        wiki2.seed("docs/new.md", "N\n")
+        self.wiki.__dict__.update(wiki2.__dict__)
+        code, _, err = run_cli("pull", str(fresh))
+        self.assertEqual(code, 1)
+        self.assertIn("symbolic link", err)
+        self.assertFalse((outside / "new.md").exists())
+
+    def test_pull_refuses_symlinked_state_file(self):
+        self.wiki.seed("a.md", "A1\n")
+        target = self.tmp / "mirror"
+        target.mkdir()
+        outside = self.tmp / "outside-state.json"
+        secret = json.dumps({"url": self.url, "wiki": "main", "seq": 0, "files": {}, "keep": "me"})
+        outside.write_text(secret)
+        (target / wiki_remote.PULL_STATE_FILE).symlink_to(outside)
+        code, _, err = run_cli("pull", str(target))
+        self.assertEqual(code, 1)
+        self.assertIn("symbolic link", err)
+        # Nothing was read through the link, written through it, or pulled.
+        self.assertEqual(outside.read_text(), secret)
+        self.assertTrue((target / wiki_remote.PULL_STATE_FILE).is_symlink())
+        self.assertFalse((target / "a.md").exists())
+
+    def test_move_page_onto_its_old_folder_name(self):
+        self.wiki.seed("notes/a.md", "A1\n")
+        target = self.tmp / "mirror"
+        self.pull(target)
+        self.wiki.move("notes/a.md", "notes")
+        report = self.pull(target)
+        self.assertEqual(report["deleted"], ["notes/a.md"])
+        self.assertEqual(report["written"], ["notes"])
+        self.assertEqual((target / "notes").read_text(), "A1\n")
+
+    def test_move_onto_folder_keeps_unrelated_local_files(self):
+        self.wiki.seed("notes/a.md", "A1\n")
+        target = self.tmp / "mirror"
+        self.pull(target)
+        (target / "notes" / "mine.txt").write_text("my file\n")
+        self.wiki.move("notes/a.md", "notes")
+        report = self.pull(target, expect=1)
+        self.assertEqual((target / "notes" / "mine.txt").read_text(), "my file\n")
+        self.assertFalse((target / "notes" / "a.md").exists())
+        self.assertTrue(any("notes" in w for w in report["warnings"]))
+
+    def test_local_copies_in_the_same_second_do_not_replace_each_other(self):
+        original = wiki_remote.utc_stamp
+        wiki_remote.utc_stamp = lambda: "20261029T000000Z"
+        try:
+            self.wiki.seed("a.md", "A1\n")
+            target = self.tmp / "mirror"
+            self.pull(target)
+            copies = []
+            for i in (1, 2):
+                (target / "a.md").write_text(f"local edit {i}\n")
+                self.wiki.seed("a.md", f"A{i + 1}\n")
+                copies += [c["saved_as"] for c in self.pull(target)["local_copies"]]
+        finally:
+            wiki_remote.utc_stamp = original
+        self.assertEqual(copies, ["a.md.local-20261029T000000Z", "a.md.local-20261029T000000Z-1"])
+        self.assertEqual((target / copies[0]).read_text(), "local edit 1\n")
+        self.assertEqual((target / copies[1]).read_text(), "local edit 2\n")
+        self.assertTrue(wiki_remote.LOCAL_COPY_RE.search(copies[1]))
 
 
 class ExportAndApiTests(RemoteTestCase):
@@ -877,6 +1075,23 @@ class McpConfigTests(RemoteTestCase):
     def test_bad_client_is_usage_error(self):
         code, _, _ = run_cli("mcp-config", "notepad")
         self.assertEqual(code, 2)
+
+    def test_pi_and_omp_targets(self):
+        def target(client):
+            code, out, _ = run_cli("--json", "mcp-config", client)
+            self.assertEqual(code, 0)
+            return json.loads(out)
+
+        pi = target("pi")
+        self.assertIn("~/.pi/agent/mcp.json", pi["target"])
+        self.assertIn(".pi/mcp.json", pi["target"])
+        self.assertNotIn("omp", pi["target"])
+        self.assertFalse(any("adapter" in n.lower() for n in pi["notes"]))
+        server = json.loads(pi["snippet"])["mcpServers"]["llm-wiki"]
+        self.assertEqual(server["headers"]["Authorization"], "Bearer ${LLM_WIKI_TOKEN}")
+        omp = target("omp")
+        self.assertIn("~/.omp/agent/mcp.json", omp["target"])
+        self.assertIn(".omp/mcp.json", omp["target"])
 
 
 class HelpTextTests(unittest.TestCase):

@@ -109,7 +109,7 @@ import {
   workersVectorBackend,
   type VectorBackend,
 } from "../core/vectors";
-import { derivePage, validDatePrefix, type DerivedPage } from "./derive";
+import { clip, derivePage, validDatePrefix, type DerivedPage } from "./derive";
 import { WIKI_SCHEMA } from "./schema";
 
 export const WIKI_ID_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -120,6 +120,10 @@ const VECTOR_BATCH = 100;
 /** Pages per graph rebuild step (one alarm run). */
 const GRAPH_BATCH = 200;
 const VECTOR_DELETE_BATCH = 1000;
+/** Characters per `page_data` part: at most 3 UTF-8 bytes each, well under the 2 MB row limit. */
+const DATA_PART_CHARS = 500_000;
+/** Graph rows larger than this are left out of the graph (only pathological frontmatter reaches it). */
+const GRAPH_ROW_MAX_BYTES = 1_500_000;
 const LEXICAL_LIMIT = 500;
 const EXCERPT_CHARS = 2000;
 const MAX_READ_PATHS = 100;
@@ -127,6 +131,8 @@ const MAX_EVIDENCE_CHECKS = 25;
 const BACKOFF_BASE_MS = 30_000;
 const BACKOFF_MAX_MS = 3_600_000;
 const PAIRING_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const MAX_MESSAGE_BYTES = 65_536;
+const MAX_FLAG_DETAIL_CHARS = 4000;
 
 type Row = Record<string, SqlStorageValue>;
 
@@ -148,7 +154,7 @@ interface PageRow extends Row {
   tags: string;
   sources: string;
   updated: string | null;
-  graph_json: string | null;
+  has_graph: number;
 }
 
 interface SectionRow extends Row {
@@ -206,6 +212,16 @@ function countOccurrences(text: string, needle: string): number {
   let count = 0;
   for (let i = text.indexOf(needle); i !== -1; i = text.indexOf(needle, i + needle.length)) count++;
   return count;
+}
+
+/** True when the text columns of a graph row stay under GRAPH_ROW_MAX_BYTES. */
+function graphRowFits(values: (string | null)[]): boolean {
+  let units = 0;
+  for (const value of values) units += value?.length ?? 0;
+  if (units * 3 <= GRAPH_ROW_MAX_BYTES) return true;
+  let bytes = 0;
+  for (const value of values) bytes += value === null ? 0 : byteLength(value);
+  return bytes <= GRAPH_ROW_MAX_BYTES;
 }
 
 const HEADING_LINE_RE = /^(#{1,6})\s+(.+?)\s*#*\s*$/;
@@ -284,6 +300,8 @@ function isInt(value: unknown): value is number {
 function validateCommit(req: CommitRequest): Failure | null {
   if (!req || typeof req !== "object") return fail(400, "bad_request", "commit body must be an object");
   if (typeof req.message !== "string") return fail(400, "bad_request", "message must be a string");
+  // The message is stored in one commits row; keep it far below the 2 MB SQLite row limit.
+  if (byteLength(req.message) > MAX_MESSAGE_BYTES) return fail(413, "too_large", `message is larger than ${MAX_MESSAGE_BYTES} bytes`);
   if (req.log !== undefined && typeof req.log !== "string") return fail(400, "bad_request", "log must be a string");
   if (!Array.isArray(req.ops) || req.ops.length === 0) return fail(400, "bad_request", "ops must be a non-empty array");
   if (req.ops.length > MAX_COMMIT_OPS) return fail(413, "too_large", `a commit holds at most ${MAX_COMMIT_OPS} ops`);
@@ -306,7 +324,11 @@ function validateCommit(req: CommitRequest): Failure | null {
     const problem = ((): Failure | null => {
       switch (op.op) {
         case "create":
+          return checkPath(i, "path", op.path) ?? textField(i, "content", op.content);
         case "upsert":
+          if (op.expected_sha256 !== undefined && op.expected_sha256 !== null && !(typeof op.expected_sha256 === "string" && /^[0-9a-f]{64}$/.test(op.expected_sha256))) {
+            return fail(400, "bad_request", `ops[${i}].expected_sha256 must be null or 64 lowercase hex characters`);
+          }
           return checkPath(i, "path", op.path) ?? textField(i, "content", op.content);
         case "put":
           if (!isInt(op.base_rev)) return fail(400, "bad_request", `ops[${i}].base_rev must be a non-negative integer`);
@@ -573,6 +595,7 @@ export class WikiDO extends DurableObject<Env> {
           return unifiedDiff(base, w.content, `a/${w.path}@${baseRev}`, `b/${w.path}@${w.rev ?? "deleted"}`);
         };
         const head = (w: Working): string => w.content.slice(0, EXCERPT_CHARS);
+        const currentSha = (w: Working): string => (!w.touched && w.orig ? w.orig.sha256 : sha256Hex(w.content));
 
         ops.forEach((op, index) => {
           switch (op.op) {
@@ -601,6 +624,16 @@ export class WikiDO extends DurableObject<Env> {
             }
             case "upsert": {
               const w = get(op.path);
+              if (op.expected_sha256 === null && w.live) {
+                conflict({ op_index: index, path: op.path, reason: "exists", current_rev: w.rev, current_sha256: currentSha(w), current_excerpt: head(w) });
+              }
+              if (typeof op.expected_sha256 === "string") {
+                if (!w.live) conflict({ op_index: index, path: op.path, reason: "sha_mismatch", current_rev: null });
+                const sha = currentSha(w);
+                if (sha !== op.expected_sha256) {
+                  conflict({ op_index: index, path: op.path, reason: "sha_mismatch", current_rev: w.rev, current_sha256: sha, current_excerpt: head(w) });
+                }
+              }
               set(w, op.content, true, true);
               break;
             }
@@ -609,6 +642,7 @@ export class WikiDO extends DurableObject<Env> {
               if (!w.live) conflict({ op_index: index, path: op.path, reason: "missing", current_rev: null });
               const stale = op.base_rev !== undefined && op.base_rev !== null && op.base_rev !== w.rev;
               let text = w.content;
+              let size = byteLength(text);
               for (const pair of op.edits) {
                 const count = countOccurrences(text, pair.old);
                 const reason = count === 0 ? "edit_no_match" : count > 1 && !pair.replace_all ? "edit_multiple_matches" : null;
@@ -624,6 +658,9 @@ export class WikiDO extends DurableObject<Env> {
                   if (stale) details.diff = staleDiff(w, op.base_rev!);
                   conflict(details);
                 }
+                // Check the size before building the text: replace_all can multiply it.
+                size += count * (byteLength(pair.new) - byteLength(pair.old));
+                if (size > MAX_FILE_BYTES) throw new Abort(fail(413, "too_large", `${w.path} would be larger than ${MAX_FILE_BYTES} bytes`));
                 text = pair.replace_all ? text.split(pair.old).join(pair.new) : text.replace(pair.old, () => pair.new);
               }
               set(w, text, true, false);
@@ -752,17 +789,15 @@ export class WikiDO extends DurableObject<Env> {
     const sha = w.live ? sha256Hex(w.content) : "";
     this.sql.exec(
       `INSERT INTO pages (path, rev, sha256, bytes, content, updated_at, updated_by, deleted, searchable, slug, type, title,
-         display_title, tags, sources, updated, updated_date, meta_json, malformed, line_count, word_count, stats_type,
-         stats_links, links, graph_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         display_title, tags, sources, updated, updated_date, malformed, line_count, word_count, stats_type, has_graph)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(path) DO UPDATE SET rev = excluded.rev, sha256 = excluded.sha256, bytes = excluded.bytes,
          content = excluded.content, updated_at = excluded.updated_at, updated_by = excluded.updated_by,
          deleted = excluded.deleted, searchable = excluded.searchable, slug = excluded.slug, type = excluded.type,
          title = excluded.title, display_title = excluded.display_title, tags = excluded.tags, sources = excluded.sources,
-         updated = excluded.updated, updated_date = excluded.updated_date, meta_json = excluded.meta_json,
-         malformed = excluded.malformed, line_count = excluded.line_count, word_count = excluded.word_count,
-         stats_type = excluded.stats_type, stats_links = excluded.stats_links, links = excluded.links,
-         graph_json = excluded.graph_json`,
+         updated = excluded.updated, updated_date = excluded.updated_date, malformed = excluded.malformed,
+         line_count = excluded.line_count, word_count = excluded.word_count, stats_type = excluded.stats_type,
+         has_graph = excluded.has_graph`,
       w.path,
       seq,
       sha,
@@ -780,22 +815,57 @@ export class WikiDO extends DurableObject<Env> {
       JSON.stringify(derived?.sources ?? []),
       derived?.updated ?? null,
       derived?.updatedDate ?? null,
-      JSON.stringify(derived?.meta ?? {}),
       derived?.malformed ? 1 : 0,
       derived?.lineCount ?? 0,
       derived?.wordCount ?? 0,
       derived?.statsType ?? null,
-      JSON.stringify(derived?.statsLinks ?? []),
-      JSON.stringify(derived?.links ?? []),
-      graphPage ? JSON.stringify(graphPage) : null,
+      graphPage ? 1 : 0,
     );
+    if (derived) {
+      this.putPageData(w.path, "meta", JSON.stringify(derived.meta), "{}");
+      this.putPageData(w.path, "links", JSON.stringify(derived.links), "[]");
+      this.putPageData(w.path, "stats_links", JSON.stringify(derived.statsLinks), "[]");
+      if (graphPage) this.putPageData(w.path, "graph", JSON.stringify(graphPage), "");
+    }
     const pageId = this.first<{ id: number }>("SELECT id FROM pages WHERE path = ?", w.path)!.id;
-    if (derived?.searchable) this.writeDerived(wiki, w.path, pageId, derived, reuse);
+    if (derived?.searchable) {
+      this.writeDerived(wiki, w.path, pageId, derived, reuse);
+    } else {
+      // Deleted, or moved out of search: its embedded vectors are stale now.
+      for (const vectorId of reuse) this.sql.exec("INSERT OR IGNORE INTO vector_deletes (vector_id) VALUES (?)", vectorId);
+    }
 
     // Graph rows: incremental for edits that keep the node identity, else a batched rebuild.
-    const hadGraph = Boolean(orig?.graph_json && origLive);
+    const hadGraph = Boolean(orig?.has_graph && origLive);
     if (ontologyChanged || (!hadGraph && !graphPage)) return;
     if (!hadGraph || !graphPage || !this.updatePageGraph(w.path, graphPage)) this.markGraphDirty();
+  }
+
+  /** Stores derived JSON of a live page in parts (see `page_data`). A default value stores nothing. */
+  private putPageData(path: string, kind: string, value: string, fallback: string): void {
+    if (value === fallback) return;
+    for (let start = 0, part = 0; start < value.length; part++) {
+      let end = Math.min(value.length, start + DATA_PART_CHARS);
+      // Never split a surrogate pair: SQLite stores each part as UTF-8.
+      const code = value.charCodeAt(end - 1);
+      if (end < value.length && code >= 0xd800 && code <= 0xdbff) end--;
+      this.sql.exec("INSERT INTO page_data (path, kind, part, data) VALUES (?, ?, ?, ?)", path, kind, part, value.slice(start, end));
+      start = end;
+    }
+  }
+
+  /** Derived JSON of `kind` by path, for pages that match `where` (pages alias `p`), in path order. */
+  private pageData(kind: string, where: string, ...args: unknown[]): Map<string, string> {
+    const out = new Map<string, string>();
+    for (const row of this.all<{ path: string; data: string }>(
+      `SELECT d.path AS path, d.data AS data FROM page_data d JOIN pages p ON p.path = d.path
+       WHERE d.kind = ? AND ${where} ORDER BY d.path, d.part`,
+      kind,
+      ...args,
+    )) {
+      out.set(row.path, (out.get(row.path) ?? "") + row.data);
+    }
+    return out;
   }
 
   /** Deletes derived rows of a path. Returns vector ids already embedded, for reuse. */
@@ -811,6 +881,7 @@ export class WikiDO extends DurableObject<Env> {
     this.sql.exec("DELETE FROM sections WHERE path = ?", path);
     if (pageId !== null) this.sql.exec("DELETE FROM pages_fts WHERE rowid = ?", pageId);
     this.sql.exec("DELETE FROM links WHERE src = ?", path);
+    this.sql.exec("DELETE FROM page_data WHERE path = ?", path);
     return done;
   }
 
@@ -833,18 +904,23 @@ export class WikiDO extends DurableObject<Env> {
         state,
       )!;
       this.sql.exec("INSERT INTO sections_fts (rowid, body) VALUES (?, ?)", row.id, searchable);
+      // The id is live again: a delete queued by an earlier commit must not remove it.
+      this.sql.exec("DELETE FROM vector_deletes WHERE vector_id = ?", vectorId);
     }
     for (const vectorId of done) this.sql.exec("INSERT OR IGNORE INTO vector_deletes (vector_id) VALUES (?)", vectorId);
     this.sql.exec("INSERT INTO pages_fts (rowid, body) VALUES (?, ?)", pageId, `${derived.body} ${derived.title ?? ""}`);
     derived.links.forEach((link, ord) => {
       const clean = cleanLinkTarget(link);
+      const slash = clean.lastIndexOf("/");
+      // SQLite substr() counts code points, not UTF-16 units.
+      const baseStart = slash < 0 ? 1 : Array.from(clean.slice(0, slash + 1)).length + 1;
       this.sql.exec(
-        "INSERT INTO links (src, ord, clean, has_slash, base) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO links (src, ord, clean, has_slash, base_start) VALUES (?, ?, ?, ?, ?)",
         path,
         ord,
         clean,
-        clean.includes("/") ? 1 : 0,
-        clean.split("/").pop() ?? clean,
+        slash < 0 ? 0 : 1,
+        baseStart,
       );
     });
   }
@@ -896,7 +972,7 @@ export class WikiDO extends DurableObject<Env> {
 
   /** Per-page graph update. Returns false when a full rebuild is needed instead. */
   private updatePageGraph(path: string, page: GraphPage): boolean {
-    // A rebuild is pending: restart it so it reads this change.
+    // A rebuild is pending: it (or the run after it) reads this change.
     if (this.getMeta("graph_dirty") === "1") return false;
     const { ontology } = this.ontology();
     const old = this.first<{ id: string; slug: string }>("SELECT id, slug FROM graph_nodes WHERE path = ?", path);
@@ -908,7 +984,7 @@ export class WikiDO extends DurableObject<Env> {
     )!.n;
     if (sameSlug > 1) return false;
     this.sql.exec("DELETE FROM graph_nodes WHERE id = ?", node.id);
-    this.insertNode(node);
+    if (!this.insertNode(node)) return false;
     this.sql.exec("DELETE FROM graph_edges WHERE page = ?", path);
     const lookup: EdgeLookup = {
       idForSlug: (slug) => this.first<{ id: string }>("SELECT id FROM graph_nodes WHERE slug = ? LIMIT 1", slug)?.id,
@@ -929,31 +1005,25 @@ export class WikiDO extends DurableObject<Env> {
     return true;
   }
 
-  /** Inserts a node into the live table, or into the rebuild staging table with `next`. Returns true when inserted. */
+  /**
+   * Inserts a node into the live table, or into the rebuild staging table with `next`.
+   * Returns true when inserted. A node too large for one row is left out.
+   */
   private insertNode(node: GraphNode, next = false): boolean {
     const row = nodeRow(node);
+    const nodeJson = JSON.stringify(node);
+    const values = [row.id, row.slug, row.title, row.page_type, row.node_type, row.kind, row.path, row.created, row.updated, row.metadata_json, nodeJson];
+    if (!graphRowFits(values)) return false;
     return this.sql.exec(
       `INSERT OR IGNORE INTO ${next ? "graph_nodes_next" : "graph_nodes"} (id, slug, title, page_type, node_type, kind, path, created, updated, metadata_json, node_json)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      row.id,
-      row.slug,
-      row.title,
-      row.page_type,
-      row.node_type,
-      row.kind,
-      row.path,
-      row.created,
-      row.updated,
-      row.metadata_json,
-      JSON.stringify(node),
+      ...values,
     ).rowsWritten > 0;
   }
 
   private insertEdge(edge: GraphEdge, next = false): void {
     const row = edgeRow(edge);
-    this.sql.exec(
-      `INSERT OR IGNORE INTO ${next ? "graph_edges_next" : "graph_edges"} (id, subject, predicate, object, source, evidence, confidence, status, extraction_method,
-         page, metadata_json, edge_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    const values = [
       row.id,
       row.subject,
       row.predicate,
@@ -966,27 +1036,38 @@ export class WikiDO extends DurableObject<Env> {
       row.page,
       row.metadata_json,
       JSON.stringify(edge),
+    ];
+    if (!graphRowFits(values)) return;
+    this.sql.exec(
+      `INSERT OR IGNORE INTO ${next ? "graph_edges_next" : "graph_edges"} (id, subject, predicate, object, source, evidence, confidence, status, extraction_method,
+         page, metadata_json, edge_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ...values,
     );
   }
 
   private graphPages(): GraphPage[] {
-    return this.all<{ graph_json: string }>(
-      "SELECT graph_json FROM pages WHERE deleted = 0 AND searchable = 1 AND graph_json IS NOT NULL ORDER BY path",
-    ).map((row) => parseJson<GraphPage>(row.graph_json, { path: "", slug: "", meta: {}, links: [] }));
+    return [...this.pageData("graph", "p.deleted = 0 AND p.searchable = 1 AND p.has_graph = 1").values()].map((text) =>
+      parseJson<GraphPage>(text, { path: "", slug: "", meta: {}, links: [] }),
+    );
   }
 
-  /** Marks the graph for a full rebuild and restarts any rebuild in progress. */
+  /**
+   * Marks the graph for a full rebuild. A rebuild in progress is not restarted
+   * (continuous commits would starve it): it finishes, and `graph_again` makes
+   * the alarm run one more rebuild that reads the changes made meanwhile.
+   */
   private markGraphDirty(): void {
+    if (this.getMeta("graph_rebuild") !== null) this.setMeta("graph_again", "1");
     this.setMeta("graph_dirty", "1");
-    this.sql.exec("DELETE FROM meta WHERE key = 'graph_rebuild'");
   }
 
   /**
    * One bounded step of the full graph rebuild, run by the alarm. Same result
    * as `buildGraph` (path order, first node id wins, last slug wins), built in
    * staging tables: phase "nodes" then phase "edges", GRAPH_BATCH pages per
-   * step, then one swap into the live tables. A commit that changes graph
-   * input restarts the rebuild. Returns true when more steps remain.
+   * step, then one swap into the live tables. Commits during a rebuild set
+   * `graph_again`; after the swap the next rebuild starts. Each rebuild ends
+   * after 2 * ceil(pages / GRAPH_BATCH) + 1 steps. Returns true when more steps remain.
    */
   private graphRebuildStep(): boolean {
     if (this.getMeta("graph_dirty") !== "1") return false;
@@ -996,14 +1077,23 @@ export class WikiDO extends DurableObject<Env> {
         this.sql.exec("DELETE FROM graph_nodes_next");
         this.sql.exec("DELETE FROM graph_edges_next");
         this.sql.exec("DELETE FROM graph_slugs_next");
+        this.sql.exec("DELETE FROM meta WHERE key = 'graph_again'");
         state = { phase: "nodes", cursor: "" };
       }
-      const rows = this.all<{ path: string; graph_json: string }>(
-        "SELECT path, graph_json FROM pages WHERE deleted = 0 AND searchable = 1 AND graph_json IS NOT NULL AND path > ? ORDER BY path LIMIT ?",
+      const rows = this.all<{ path: string }>(
+        "SELECT path FROM pages WHERE deleted = 0 AND searchable = 1 AND has_graph = 1 AND path > ? ORDER BY path LIMIT ?",
         state.cursor,
         GRAPH_BATCH,
       );
-      const pages = rows.map((row) => parseJson<GraphPage>(row.graph_json, { path: row.path, slug: "", meta: {}, links: [] }));
+      const data = rows.length
+        ? this.pageData(
+            "graph",
+            "p.deleted = 0 AND p.searchable = 1 AND p.has_graph = 1 AND p.path > ? AND p.path <= ?",
+            state.cursor,
+            rows[rows.length - 1]!.path,
+          )
+        : new Map<string, string>();
+      const pages = rows.map((row) => parseJson<GraphPage>(data.get(row.path), { path: row.path, slug: "", meta: {}, links: [] }));
       if (state.phase === "nodes") {
         const { ontology } = this.ontology();
         for (const page of pages) {
@@ -1021,7 +1111,7 @@ export class WikiDO extends DurableObject<Env> {
             if (target.includes("/")) {
               return (
                 this.first<{ slug: string }>(
-                  "SELECT slug FROM pages WHERE path = ? AND deleted = 0 AND searchable = 1 AND graph_json IS NOT NULL",
+                  "SELECT slug FROM pages WHERE path = ? AND deleted = 0 AND searchable = 1 AND has_graph = 1",
                   `${target}.md`,
                 )?.slug ?? null
               );
@@ -1046,9 +1136,10 @@ export class WikiDO extends DurableObject<Env> {
       this.sql.exec("DELETE FROM graph_nodes_next");
       this.sql.exec("DELETE FROM graph_edges_next");
       this.sql.exec("DELETE FROM graph_slugs_next");
-      this.sql.exec("DELETE FROM meta WHERE key = 'graph_rebuild'");
-      this.setMeta("graph_dirty", "0");
-      return false;
+      const again = this.getMeta("graph_again") === "1";
+      this.sql.exec("DELETE FROM meta WHERE key IN ('graph_rebuild', 'graph_again')");
+      this.setMeta("graph_dirty", again ? "1" : "0");
+      return again;
     });
   }
 
@@ -1199,6 +1290,17 @@ export class WikiDO extends DurableObject<Env> {
         rows.push(row);
       }
     } else {
+      // Run the awaited vector calls first. A commit can run during an await and
+      // reuse section row ids, so every row read below happens in one synchronous block.
+      let vectorIds: string[] | null = null;
+      if (vectors) {
+        try {
+          const [vector] = await vectors.embed([req.query]);
+          vectorIds = (await vectors.query(wiki, vector!, VECTOR_QUERY_TOP_K)).filter((m) => m.score >= MIN_SIMILARITY).map((m) => m.id);
+        } catch {
+          // Vector leg failed: lexical results only, like wiki_search.py.
+        }
+      }
       const lexical = this.all<{ id: number; rank: number }>(
         `SELECT s.id AS id, bm25(sections_fts) AS rank FROM sections_fts
          JOIN sections s ON s.id = sections_fts.rowid JOIN pages p ON p.path = s.path
@@ -1212,32 +1314,25 @@ export class WikiDO extends DurableObject<Env> {
         score: -hit.rank,
         retrievers: ["bm25"],
       }));
-      if (vectors) {
-        try {
-          const [vector] = await vectors.embed([req.query]);
-          const matches = (await vectors.query(wiki, vector!, VECTOR_QUERY_TOP_K)).filter((m) => m.score >= MIN_SIMILARITY);
-          const ids = matches.map((m) => m.id);
-          const found = new Map<string, number>();
-          for (let i = 0; i < ids.length; i += 50) {
-            const chunk = ids.slice(i, i + 50);
-            for (const row of this.all<{ id: number; vector_id: string }>(
-              `SELECT s.id AS id, s.vector_id AS vector_id FROM sections s JOIN pages p ON p.path = s.path
-               WHERE s.vec_state = 1 AND p.deleted = 0 AND s.vector_id IN (${chunk.map(() => "?").join(",")})${filters.sql}`,
-              ...chunk,
-              ...filters.args,
-            )) {
-              found.set(row.vector_id, row.id);
-            }
+      if (vectorIds) {
+        const found = new Map<string, number>();
+        for (let i = 0; i < vectorIds.length; i += 50) {
+          const chunk = vectorIds.slice(i, i + 50);
+          for (const row of this.all<{ id: number; vector_id: string }>(
+            `SELECT s.id AS id, s.vector_id AS vector_id FROM sections s JOIN pages p ON p.path = s.path
+             WHERE s.vec_state = 1 AND p.deleted = 0 AND s.vector_id IN (${chunk.map(() => "?").join(",")})${filters.sql}`,
+            ...chunk,
+            ...filters.args,
+          )) {
+            found.set(row.vector_id, row.id);
           }
-          const embedding = ids.map((id) => found.get(id)).filter((id): id is number => id !== undefined);
-          ranked = fuseRrf(
-            lexical.map((hit) => hit.id),
-            embedding,
-          ).map((row) => ({ id: row.key, score: row.score, retrievers: row.retrievers }));
-          base.mode = "hybrid";
-        } catch {
-          // Vector leg failed: lexical results only, like wiki_search.py.
         }
+        const embedding = vectorIds.map((id) => found.get(id)).filter((id): id is number => id !== undefined);
+        ranked = fuseRrf(
+          lexical.map((hit) => hit.id),
+          embedding,
+        ).map((row) => ({ id: row.key, score: row.score, retrievers: row.retrievers }));
+        base.mode = "hybrid";
       }
       const counts = new Map<string, number>();
       const picked: { id: number; score: number; retrievers: string[]; path: string }[] = [];
@@ -1377,9 +1472,15 @@ export class WikiDO extends DurableObject<Env> {
   async revision(path: string, rev: number): Promise<Result<PageRecord>> {
     const current = this.first<PageRow>("SELECT * FROM pages WHERE path = ?", path);
     if (current && current.rev === rev && !current.deleted) return { ok: true, value: this.record(current) };
-    const old = this.first<PageRow>("SELECT * FROM revisions WHERE path = ? AND rev = ?", path, rev);
+    const old = this.first<{ path: string; rev: number; sha256: string; content: string; deleted: number; updated_at: string; updated_by: string }>(
+      "SELECT path, rev, sha256, content, deleted, updated_at, updated_by FROM revisions WHERE path = ? AND rev = ?",
+      path,
+      rev,
+    );
     if (!old || old.deleted) return fail(404, "not_found", `no revision ${rev} of ${path}`);
-    return { ok: true, value: this.record(old) };
+    // Revision rows do not store a size: derive it like the live page column.
+    const { path: p, rev: r, sha256, content, updated_at, updated_by } = old;
+    return { ok: true, value: { path: p, rev: r, sha256, bytes: byteLength(content), content, updated_at, updated_by } };
   }
 
   async diff(path: string, fromRev: number, toRev: number): Promise<Result<{ diff: string }>> {
@@ -1484,16 +1585,19 @@ export class WikiDO extends DurableObject<Env> {
   // -------------------------------------------------------------------------
 
   async lint(req: LintRequest): Promise<JsonBody> {
-    const lintRows = this.all<{ path: string; slug: string; meta_json: string; malformed: number; line_count: number; links: string }>(
-      "SELECT path, slug, meta_json, malformed, line_count, links FROM pages WHERE deleted = 0 AND searchable = 1 AND path != 'README.md' ORDER BY path",
+    const lintRows = this.all<{ path: string; slug: string; malformed: number; line_count: number }>(
+      "SELECT path, slug, malformed, line_count FROM pages WHERE deleted = 0 AND searchable = 1 AND path != 'README.md' ORDER BY path",
     );
+    const scope = "p.deleted = 0 AND p.searchable = 1 AND p.path != 'README.md'";
+    const metas = this.pageData("meta", scope);
+    const links = this.pageData("links", scope);
     const pages: LintPage[] = lintRows.map((row) => ({
       path: row.path,
       slug: row.slug,
-      meta: parseJson<Record<string, FrontmatterValue>>(row.meta_json, {}),
+      meta: parseJson<Record<string, FrontmatterValue>>(metas.get(row.path), {}),
       malformed: row.malformed === 1,
       lineCount: row.line_count,
-      links: parseJson<string[]>(row.links, []),
+      links: parseJson<string[]>(links.get(row.path), []),
     }));
     const structural = lintPages(pages, { staleDays: isInt(req?.stale_days) ? req.stale_days : 90 });
 
@@ -1581,7 +1685,8 @@ export class WikiDO extends DurableObject<Env> {
           model: verdict.model,
         };
         unsupported.push(item);
-        const detail = `Evidence for ${subject} ${predicate} ${object} is not supported by source ${item.source}.`;
+        // Graph values come from frontmatter and have no size bound: keep the flag row small.
+        const detail = clip(`Evidence for ${subject} ${predicate} ${object} is not supported by source ${item.source}.`, MAX_FLAG_DETAIL_CHARS);
         const exists = this.first<{ x: number }>(
           "SELECT 1 AS x FROM review_flags WHERE kind = 'evidence' AND path = ? AND detail = ? AND status = 'open'",
           page.path,
@@ -1606,9 +1711,10 @@ export class WikiDO extends DurableObject<Env> {
   }
 
   async stats(): Promise<JsonBody> {
-    const rows = this.all<{ path: string; line_count: number; word_count: number; stats_type: string | null; stats_links: string }>(
-      "SELECT path, line_count, word_count, stats_type, stats_links FROM pages WHERE deleted = 0 AND path LIKE '%.md' ORDER BY path",
+    const rows = this.all<{ path: string; line_count: number; word_count: number; stats_type: string | null }>(
+      "SELECT path, line_count, word_count, stats_type FROM pages WHERE deleted = 0 AND path LIKE '%.md' ORDER BY path",
     );
+    const statsLinks = this.pageData("stats_links", "p.deleted = 0 AND p.path LIKE '%.md'");
     let indexLines = 0;
     let hasIndexesDir = false;
     const pages: StatsPage[] = [];
@@ -1629,7 +1735,7 @@ export class WikiDO extends DurableObject<Env> {
         lineCount: row.line_count,
         wordCount: row.word_count,
         statsType: row.stats_type,
-        links: parseJson<string[]>(row.stats_links, []),
+        links: parseJson<string[]>(statsLinks.get(row.path), []),
       });
     }
     return json(computeStats(pages, indexLines, hasIndexesDir));

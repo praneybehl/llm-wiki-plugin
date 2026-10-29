@@ -14,18 +14,26 @@ export { Registry } from "./do/registry";
 /** Props the MCP handler receives: an OAuth grant, or a resolved external bearer token. */
 type McpProps = OAuthProps | { external: true; principal: Principal };
 
-function principalFromProps(props: McpProps): Principal {
+/** Local scope each OAuth scope grants. */
+const OAUTH_SCOPE_MAP: Record<string, Scope> = { "wiki:read": "read", "wiki:write": "write" };
+
+/**
+ * An OAuth principal holds the grant's scopes that the presented token also
+ * carries: a token narrowed at exchange or refresh keeps only its own scopes.
+ */
+function principalFromProps(props: McpProps, tokenScopes: readonly string[]): Principal {
   if ("external" in props) return props.principal;
+  const effective = new Set(tokenScopes.map((s) => OAUTH_SCOPE_MAP[s]).filter((s): s is Scope => !!s));
   // OAuth grants carry read and at most write; never admin.
-  const scopes = props.scopes.filter((s): s is Scope => s === "read" || s === "write");
+  const scopes = props.scopes.filter((s): s is Scope => (s === "read" || s === "write") && effective.has(s));
   return { wiki: props.wiki, label: props.label, scopes, deploymentAdmin: false };
 }
 
 const mcpApiHandler = {
   async fetch(request, env, ctx) {
-    const props = (ctx as ExecutionContext & { props?: McpProps }).props;
-    if (!props) return errorResponse(401, "unauthorized", "Missing credentials.");
-    return serveMcp(request, env, principalFromProps(props));
+    const c = ctx as ExecutionContext & { props?: McpProps; auth?: { scope?: string[] } };
+    if (!c.props) return errorResponse(401, "unauthorized", "Missing credentials.");
+    return serveMcp(request, env, principalFromProps(c.props, c.auth?.scope ?? []));
   },
 } satisfies ExportedHandler<Env>;
 

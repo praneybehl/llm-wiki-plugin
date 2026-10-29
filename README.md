@@ -16,7 +16,7 @@ Everything canonical stays in readable Markdown. Default semantic search is loca
 
 - **Optional hosted wiki.** Deploy one Cloudflare Worker to your own account with one click. Agents on any machine read and write the wiki over MCP or a JSON API. See [Hosted wiki](#hosted-wiki).
 - **Safe shared writes.** Every change is an atomic commit with an author and a revision. Surgical `edit` and `append` operations rarely conflict. A conflict tells the agent to read the page again and retry.
-- **Migration and mirror.** `/wiki:migrate` moves a local wiki and verifies every file by SHA-256. `wiki_remote.py pull --git` keeps a read-only local mirror for Git history and Obsidian.
+- **Migration and mirror.** `/wiki:migrate` moves a local wiki, verifies every uploaded file by SHA-256, and reports the files that the import skipped. `wiki_remote.py pull --git` keeps a read-only local mirror for Git history and Obsidian.
 - **Optional decision models.** Small models can gate search relevance, check graph evidence and flag untrusted text. Off by default. See [Decision layer](#decision-layer-optional).
 - **Local mode is unchanged.** Existing wikis, scripts and commands work as before.
 
@@ -157,7 +157,7 @@ This catches orphan pages, broken wikilinks, oversized pages, missing frontmatte
 | `/wiki:learn <task artifacts>` | Capture verified experience and consolidate reusable, evidence-linked patterns. |
 | `/wiki:evolve <goal or action>` | Propose, evaluate, inspect, apply or roll back a skill improvement; retain all trial results. |
 | `/wiki:init --hosted <url>` | Connect this agent to a hosted wiki: store the token, print the MCP configuration and propose the memory stanza. |
-| `/wiki:migrate [<wiki-dir>]` | Move a local wiki to a hosted wiki, verify every file by SHA-256, and keep a read-only `pull` mirror. |
+| `/wiki:migrate [<wiki-dir>]` | Move a local wiki to a hosted wiki, verify every uploaded file by SHA-256, check the skipped files, and keep a read-only `pull` mirror. |
 | `/wiki:upgrade` | Upgrade an existing wiki to the current plugin version (idempotent file ops + walked SCHEMA.md merge). |
 
 You don't have to use the commands: Claude triggers the underlying skill on natural-language requests too ("add this paper to my wiki", "what does the wiki say about diffusion", "lint the wiki"). The commands are there when you want explicit invocation.

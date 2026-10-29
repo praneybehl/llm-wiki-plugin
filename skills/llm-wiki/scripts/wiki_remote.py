@@ -64,6 +64,8 @@ CONFIG_ENV = "LLM_WIKI_CONFIG"
 MAX_PAGE_BYTES = 1_500_000
 MAX_COMMIT_OPS = 200
 MAX_COMMIT_BYTES = 4_000_000
+# Largest JSON request body the server API reads. JSON escapes make it larger than the content.
+MAX_JSON_BODY = 5 * 1024 * 1024
 MAX_PATH_BYTES = 512
 CHANGES_LIMIT = 200
 
@@ -73,7 +75,7 @@ MAX_RETRY_AFTER = 30.0
 TIMEOUT = 60
 
 TEMPLATE_RE = re.compile(r"^\.[a-z0-9-]+-template\.(md|json)$")
-LOCAL_COPY_RE = re.compile(r"\.local-\d{8}T\d{6}Z$")
+LOCAL_COPY_RE = re.compile(r"\.local-\d{8}T\d{6}Z(-\d+)?$")
 # Under top-level graph/ only the ontology and Markdown notes are source files.
 # wiki_graph_extract.py makes the other files there (jsonl, sqlite, graphml).
 GRAPH_SOURCE_RE = re.compile(r"^graph/(ontology\.ya?ml|.*\.md)$")
@@ -185,14 +187,34 @@ def path_problem(rel: str) -> str | None:
     return None
 
 
-def safe_join(root: str, rel: str) -> str:
-    """Join a server path to a local folder. Refuse paths that leave the folder."""
+def check_server_path(rel: str) -> list[str]:
+    """Return the parts of a server path. Refuse paths that can leave a folder."""
     if not rel or rel.startswith("/") or "\\" in rel or CONTROL_RE.search(rel):
         raise CliError(f"The server sent an unsafe path: {rel!r}")
     parts = rel.split("/")
     if any(p in ("", ".", "..") for p in parts):
         raise CliError(f"The server sent an unsafe path: {rel!r}")
-    return os.path.join(root, *parts)
+    return parts
+
+
+def safe_join(root: str, rel: str) -> str:
+    """Join a server path to a local folder. Refuse paths that leave the folder.
+
+    Every part of the path below `root` must not be a symbolic link, and the
+    real parent folder must stay inside the real `root`. Call this before each
+    read, write, rename, or delete in the folder.
+    """
+    parts = check_server_path(rel)
+    path = root
+    for part in parts:
+        path = os.path.join(path, part)
+        if os.path.islink(path):
+            raise CliError(f"Refused {rel}: {path} is a symbolic link.")
+    real_root = os.path.realpath(root)
+    real_parent = os.path.realpath(os.path.dirname(path))
+    if os.path.commonpath([real_root, real_parent]) != real_root:
+        raise CliError(f"Refused {rel}: the path leaves {root}.")
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -629,19 +651,53 @@ def scan_raw(raw_dir: str) -> tuple[list[dict], list[dict]]:
     return files, skipped
 
 
-def make_batches(pages: list[LocalPage], max_files: int, max_bytes: int) -> list[list[LocalPage]]:
-    batches: list[list[LocalPage]] = []
-    current: list[LocalPage] = []
+def upsert_op(page: LocalPage, expected: str | None) -> dict:
+    """An upsert with a precondition: None means the page must not exist yet."""
+    return {"op": "upsert", "path": page.path, "content": page.text, "expected_sha256": expected}
+
+
+def json_bytes(value) -> int:
+    # Same encoding as Client.open, so the count matches the request body.
+    return len(json.dumps(value, ensure_ascii=False).encode("utf-8"))
+
+
+def import_message(count: int, name: str) -> str:
+    return f"import: {count} pages from {name}"
+
+
+def make_batches(
+    items: list[tuple[LocalPage, dict]], max_files: int, max_bytes: int, name: str
+) -> tuple[list[list[tuple[LocalPage, dict]]], list[LocalPage]]:
+    """Split upserts into commits. Return (batches, pages too large for one request).
+
+    The server counts the message in its commit byte limit, so the content of
+    a batch gets at most `max_bytes` minus the message. The JSON body of each
+    request also stays below MAX_JSON_BODY.
+    """
+    message_bytes = len(import_message(max_files, name).encode("utf-8"))
+    content_limit = min(max_bytes, MAX_COMMIT_BYTES - message_bytes)
+    envelope = json_bytes({"message": import_message(max_files, name), "ops": []})
+    batches: list[list[tuple[LocalPage, dict]]] = []
+    too_large: list[LocalPage] = []
+    current: list[tuple[LocalPage, dict]] = []
     size = 0
-    for page in pages:
-        if current and (len(current) >= max_files or size + page.size > max_bytes):
+    body = envelope
+    for page, op in items:
+        op_body = json_bytes(op) + 2  # 2 bytes for the ", " separator
+        if envelope + op_body > MAX_JSON_BODY or page.size > MAX_COMMIT_BYTES - message_bytes:
+            too_large.append(page)
+            continue
+        if current and (
+            len(current) >= max_files or size + page.size > content_limit or body + op_body > MAX_JSON_BODY
+        ):
             batches.append(current)
-            current, size = [], 0
-        current.append(page)
+            current, size, body = [], 0, envelope
+        current.append((page, op))
         size += page.size
+        body += op_body
     if current:
         batches.append(current)
-    return batches
+    return batches, too_large
 
 
 def import_state_path(url: str, wiki: str, wiki_dir: str) -> str:
@@ -707,20 +763,28 @@ def cmd_import(args) -> int:
 
     manifest = client.get("/api/v1/manifest")
     remote = manifest.get("pages") or {}
-    to_send: list[LocalPage] = []
+    to_send: list[tuple[LocalPage, dict]] = []
     identical: list[str] = []
     divergent: list[dict] = []
     for page in pages:
         remote_sha = remote.get(page.path)
+        # The precondition is the remote state the import saw. A remote edit after
+        # this read makes the server refuse the upsert, so the import never hides it.
         if remote_sha == page.sha:
             identical.append(page.path)
         elif remote_sha is None or state["pages"].get(page.path) == remote_sha:
-            to_send.append(page)
+            to_send.append((page, upsert_op(page, remote_sha)))
         else:
             divergent.append({"path": page.path, "local_sha256": page.sha, "remote_sha256": remote_sha})
             if args.overwrite:
-                to_send.append(page)
-    batches = make_batches(to_send, args.batch_files, args.batch_bytes)
+                to_send.append((page, upsert_op(page, remote_sha)))
+    name = os.path.basename(wiki_dir.rstrip(os.sep)) or wiki_dir
+    batches, too_large = make_batches(to_send, args.batch_files, args.batch_bytes, name)
+    if too_large:
+        large = {p.path for p in too_large}
+        skipped.extend({"path": p.path, "reason": "too_large", "bytes": p.size} for p in too_large)
+        pages = [p for p in pages if p.path not in large]
+    to_upload = sum(len(b) for b in batches)
 
     raw_files: list[dict] = []
     raw_skipped: list[dict] = []
@@ -749,7 +813,7 @@ def cmd_import(args) -> int:
             "local": len(pages),
             "remote_before": len(remote),
             "identical": len(identical),
-            "to_upload": len(to_send),
+            "to_upload": to_upload,
             "uploaded": 0,
             "batches": len(batches),
             "divergent": divergent,
@@ -772,7 +836,7 @@ def cmd_import(args) -> int:
 
     if args.dry_run:
         report["plan"] = {
-            "batches": [[p.path for p in b] for b in batches],
+            "batches": [[p.path for p, _ in b] for b in batches],
             "raw_uploads": [r["path"] for r in raw_new] if raw_remote is not None else [],
         }
         if divergent and not args.overwrite:
@@ -789,33 +853,66 @@ def cmd_import(args) -> int:
         return EXIT_CONFLICT
 
     upload_mismatches: list[dict] = []
-    name = os.path.basename(wiki_dir.rstrip(os.sep)) or wiki_dir
-    for index, batch in enumerate(batches, 1):
-        body = {
-            "message": f"import: {len(batch)} pages from {name}",
-            "ops": [{"op": "upsert", "path": p.path, "content": p.text} for p in batch],
-        }
-        try:
-            # An upsert-only commit gives the same end state when sent again, so a retry is safe.
-            result = client.post("/api/v1/commit", body, idempotent=True)
-        except CliError as exc:
-            atomic_write_json(state_path, state, mode=0o600)
-            report["ok"] = False
-            report["interrupted"] = {"batch": index, "error": str(exc)}
-            print_json(report)
-            note(f"Batch {index} of {len(batches)} failed: {exc}")
-            note("Run the same command again to continue.")
-            return exc.exit_code
-        local = {p.path: p.sha for p in batch}
-        for ch in result.get("changed") or []:
-            path = ch.get("path")
-            if path in local:
-                state["pages"][path] = ch.get("sha256")
-                if ch.get("sha256") != local[path]:
-                    upload_mismatches.append({"path": path, "local_sha256": local[path], "remote_sha256": ch.get("sha256")})
+    changed_during_import: list[dict] = []
+    report["pages"]["changed_during_import"] = changed_during_import
+
+    def stop(index: int, exc: CliError) -> int:
         atomic_write_json(state_path, state, mode=0o600)
-        report["pages"]["uploaded"] += len(batch)
-        note(f"Batch {index}/{len(batches)}: {len(batch)} pages (seq {result.get('seq')}).")
+        report["ok"] = False
+        report["interrupted"] = {"batch": index, "error": str(exc)}
+        print_json(report)
+        note(f"Batch {index} of {len(batches)} failed: {exc}")
+        note("Run the same command again to continue.")
+        return exc.exit_code
+
+    for index, batch in enumerate(batches, 1):
+        pending = list(batch)
+        while pending:
+            body = {"message": import_message(len(pending), name), "ops": [op for _, op in pending]}
+            try:
+                # Each upsert carries the remote SHA-256 it expects, so a sent-again
+                # request cannot replace a newer remote edit.
+                result = client.post("/api/v1/commit", body, idempotent=True)
+            except ApiFailure as exc:
+                reason = exc.details.get("reason") if isinstance(exc.details, dict) else None
+                if exc.status != 409 or reason not in ("exists", "sha_mismatch"):
+                    return stop(index, exc)
+                # A commit is all or nothing. Read the remote state again and sort the pages.
+                try:
+                    current = client.get("/api/v1/manifest").get("pages") or {}
+                except CliError as read_exc:
+                    return stop(index, read_exc)
+                keep: list[tuple[LocalPage, dict]] = []
+                for page, op in pending:
+                    rsha = current.get(page.path)
+                    if rsha == page.sha:
+                        # An earlier request (for example a retry) already wrote this page.
+                        state["pages"][page.path] = page.sha
+                        report["pages"]["uploaded"] += 1
+                    elif rsha == op["expected_sha256"]:
+                        keep.append((page, op))
+                    else:
+                        changed_during_import.append(
+                            {"path": page.path, "local_sha256": page.sha, "remote_sha256": rsha}
+                        )
+                if len(keep) == len(pending):
+                    return stop(index, exc)
+                pending = keep
+                atomic_write_json(state_path, state, mode=0o600)
+                continue
+            except CliError as exc:
+                return stop(index, exc)
+            local = {p.path: p.sha for p, _ in pending}
+            for ch in result.get("changed") or []:
+                path = ch.get("path")
+                if path in local:
+                    state["pages"][path] = ch.get("sha256")
+                    if ch.get("sha256") != local[path]:
+                        upload_mismatches.append({"path": path, "local_sha256": local[path], "remote_sha256": ch.get("sha256")})
+            atomic_write_json(state_path, state, mode=0o600)
+            report["pages"]["uploaded"] += len(pending)
+            note(f"Batch {index}/{len(batches)}: {len(pending)} pages (seq {result.get('seq')}).")
+            pending = []
 
     if raw_dir and raw_remote is not None:
         for item in raw_new:
@@ -861,8 +958,12 @@ def cmd_import(args) -> int:
         "mismatches": mismatches,
         "seq": None,
     }
-    report["ok"] = not mismatches and not upload_mismatches and not report["raw"]["errors"]
+    report["ok"] = not mismatches and not upload_mismatches and not report["raw"]["errors"] and not changed_during_import
     print_json(report)
+    if changed_during_import:
+        note(f"Stopped: {len(changed_during_import)} remote pages changed during the import. They were not replaced.")
+        note("Pull them first, or run the import again with --overwrite.")
+        return EXIT_CONFLICT
     if not report["ok"]:
         note(f"Verification failed: {len(mismatches)} files do not match the server.")
         return EXIT_FAIL
@@ -923,7 +1024,8 @@ def cmd_pull(args) -> int:
     client = make_client(args)
     who = client.get("/api/v1/whoami")
     wiki = who.get("wiki") or client.wiki or "main"
-    state_path = os.path.join(target, PULL_STATE_FILE)
+    # The state file gets the same symlink check as pages: never read or replace a link.
+    state_path = safe_join(target, PULL_STATE_FILE)
     state = load_json_file(state_path)
     if state is None:
         state = {"url": client.base, "wiki": wiki, "seq": 0, "files": {}}
@@ -941,31 +1043,69 @@ def cmd_pull(args) -> int:
     warnings: list[str] = []
 
     def keep_local(path: str, rel: str) -> None:
-        copy = f"{path}.local-{stamp}"
+        # Reserve a new name with O_EXCL so a copy never replaces an older copy.
+        n = 0
+        while True:
+            copy = f"{path}.local-{stamp}" + (f"-{n}" if n else "")
+            try:
+                fd = os.open(copy, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            except FileExistsError:
+                n += 1
+                continue
+            os.close(fd)
+            break
         os.replace(path, copy)
         local_copies.append({"path": rel, "saved_as": os.path.relpath(copy, target).replace(os.sep, "/")})
 
-    def apply(ch: dict) -> None:
+    def local_file_sha(path: str) -> str | None:
+        return sha256_file(path) if os.path.isfile(path) else None
+
+    def apply_delete(ch: dict) -> None:
+        rel = ch["path"]
+        path = safe_join(target, rel)
+        if os.path.abspath(path) == os.path.abspath(state_path):
+            return
+        known = state["files"].get(rel)
+        local_sha = local_file_sha(path)
+        if local_sha is not None:
+            if local_sha != known:
+                keep_local(path, rel)
+            else:
+                os.remove(path)
+                _prune_empty_dirs(target, path)
+            deleted.append(rel)
+        state["files"].pop(rel, None)
+
+    def blocked_by_local(rel: str, path: str) -> str | None:
+        """Return why local content blocks this write. Removes only an empty folder."""
+        if os.path.isdir(path):
+            try:
+                os.rmdir(path)
+            except OSError:
+                return f"Skipped {rel}: a local folder with this name holds other files."
+        folder = os.path.dirname(path)
+        while os.path.abspath(folder) != target:
+            if os.path.lexists(folder) and not os.path.isdir(folder):
+                where = os.path.relpath(folder, target).replace(os.sep, "/")
+                return f"Skipped {rel}: the local file {where} has the name of a folder in this path."
+            folder = os.path.dirname(folder)
+        return None
+
+    def apply_write(ch: dict) -> None:
         rel = ch["path"]
         path = safe_join(target, rel)
         if os.path.abspath(path) == os.path.abspath(state_path):
             warnings.append(f"Skipped {rel}: the name is reserved for the pull state.")
             return
         known = state["files"].get(rel)
-        local_sha = sha256_file(path) if os.path.isfile(path) else None
-        if ch.get("deleted"):
-            if local_sha is not None:
-                if local_sha != known:
-                    keep_local(path, rel)
-                else:
-                    os.remove(path)
-                    _prune_empty_dirs(target, path)
-                deleted.append(rel)
-            state["files"].pop(rel, None)
-            return
+        local_sha = local_file_sha(path)
         new_sha = ch.get("sha256")
         if local_sha is not None and local_sha == new_sha:
             state["files"][rel] = new_sha
+            return
+        problem = blocked_by_local(rel, path)
+        if problem:
+            warnings.append(problem)
             return
         content = ch.get("content")
         if content is None:
@@ -982,8 +1122,15 @@ def cmd_pull(args) -> int:
 
     while True:
         resp = client.get("/api/v1/changes", since=since, limit=CHANGES_LIMIT)
-        for ch in resp.get("changes") or []:
-            apply(ch)
+        changes = resp.get("changes") or []
+        # Each path shows only its latest state, so the order inside one page is free.
+        # Deletions go first: a move from notes/a.md to notes needs the folder gone.
+        for ch in changes:
+            if ch.get("deleted"):
+                apply_delete(ch)
+        for ch in changes:
+            if not ch.get("deleted"):
+                apply_write(ch)
         next_since = int(resp.get("next_since") or since)
         more = bool(resp.get("more"))
         if more and next_since <= since:
@@ -1056,7 +1203,7 @@ def cmd_export(args) -> int:
                     done_seq = rec.get("seq")
                     break
                 rel = rec["path"]
-                safe_join("/", rel)
+                check_server_path(rel)
                 data = rec.get("content", "").encode("utf-8")
                 sha = sha256_bytes(data)
                 if rec.get("sha256") and sha != rec["sha256"]:
@@ -1474,12 +1621,17 @@ def build_mcp_config(client: str, url: str, name: str, token: str | None, wiki: 
                 "notes": notes}
 
     if client in ("omp", "pi"):
+        # Both read {"mcpServers": ...} and expand ${VAR} in headers.
+        # Paths: omp docs (mcp-config.md) and https://pi.dev/docs/latest/mcp.
         server = {"type": "http", "url": mcp_url, "headers": {"Authorization": bearer("${%s}" % TOKEN_ENV), **extra}}
         if client == "pi":
-            notes.append("Pi reads MCP servers through an MCP adapter extension. Put this JSON in the adapter config.")
+            target = "~/.pi/agent/mcp.json (all projects) or .pi/mcp.json (one project)"
+            notes.append("Run /reload in a Pi session after you change the file.")
+        else:
+            target = "~/.omp/agent/mcp.json (all projects) or .omp/mcp.json (one project)"
         if not token:
             notes.append(f"Set {TOKEN_ENV} in the environment that starts the agent.")
-        return {"target": "~/.omp/agent/mcp.json or .omp/mcp.json", "format": "json",
+        return {"target": target, "format": "json",
                 "snippet": json_snippet({"mcpServers": {name: server}}), "notes": notes}
 
     server = {"type": "http", "url": mcp_url, "headers": {"Authorization": bearer("${%s}" % TOKEN_ENV), **extra}}

@@ -37,6 +37,34 @@ export interface DerivedPage {
   graph: GraphPage | null;
 }
 
+/**
+ * Bounds for text that derive copies out of the content into page and section
+ * columns. Together with the 1.5 MB content limit they keep each SQLite row
+ * under 2 MB. Normal pages never reach them.
+ */
+const FIELD_MAX_CHARS = 1000;
+const LIST_MAX_JSON_CHARS = 16_000;
+
+/** Cuts `value` to `max` UTF-16 units without splitting a surrogate pair. */
+export function clip(value: string, max = FIELD_MAX_CHARS): string {
+  if (value.length <= max) return value;
+  const code = value.charCodeAt(max - 1);
+  return value.slice(0, code >= 0xd800 && code <= 0xdbff ? max - 1 : max);
+}
+
+/** Keeps leading items (each clipped) while the JSON array stays within LIST_MAX_JSON_CHARS. */
+function boundList(items: string[]): string[] {
+  const out: string[] = [];
+  let size = 2;
+  for (const item of items) {
+    const kept = clip(item);
+    size += JSON.stringify(kept).length + 1;
+    if (size > LIST_MAX_JSON_CHARS) break;
+    out.push(kept);
+  }
+  return out;
+}
+
 function asList(value: FrontmatterValue | undefined): string[] {
   if (value === undefined) return [];
   if (Array.isArray(value)) return value;
@@ -66,29 +94,32 @@ export function derivePage(path: string, content: string): DerivedPage {
   const searchable = isSearchable(path);
   const { meta, body, malformed } = isMarkdown ? parseFrontmatter(content) : { meta: {}, body: content, malformed: false };
   const rawTitle = meta.title;
-  const title = typeof rawTitle === "string" ? rawTitle : null;
+  const title = typeof rawTitle === "string" ? clip(rawTitle) : null;
   const displayTitle = title || slug;
   const rawType = meta.type;
-  const updated = typeof meta.updated === "string" ? meta.updated : null;
+  const updated = typeof meta.updated === "string" ? clip(meta.updated) : null;
+  const sections = searchable ? splitSections(displayTitle, body) : [];
+  const statsType = isMarkdown ? parseStatsType(content) : null;
+  for (const section of sections) section.headingPath = section.headingPath.map((heading) => clip(heading));
   return {
     searchable,
     slug,
     meta,
     malformed,
-    type: typeof rawType === "string" ? rawType : null,
+    type: typeof rawType === "string" ? clip(rawType) : null,
     title,
     displayTitle,
-    tags: asList(meta.tags),
-    sources: asList(meta.sources),
+    tags: boundList(asList(meta.tags)),
+    sources: boundList(asList(meta.sources)),
     updated,
     updatedDate: validDatePrefix(updated),
     lineCount: lineCount(content),
     wordCount: isMarkdown ? wordCount(content) : 0,
-    statsType: isMarkdown ? parseStatsType(content) : null,
+    statsType: statsType === null ? null : clip(statsType),
     statsLinks: isMarkdown ? statsLinks(content) : [],
     links: searchable ? extractWikilinks(body) : [],
     body,
-    sections: searchable ? splitSections(displayTitle, body) : [],
+    sections,
     graph: searchable && !isTopLevelReadme(path) ? graphPageFromText(path, slug, content) : null,
   };
 }

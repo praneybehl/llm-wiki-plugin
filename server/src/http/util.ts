@@ -3,6 +3,9 @@ import type { ApiError, ErrorCode, Result } from "../types";
 /** Largest JSON request body the API reads (bytes). Commits are capped at 4 MB of content. */
 export const MAX_JSON_BODY = 5 * 1024 * 1024;
 
+/** Largest HTML form body the UI and consent page read (bytes). */
+export const MAX_FORM_BODY = 64 * 1024;
+
 const NO_STORE = { "Cache-Control": "no-store" };
 
 export class HttpError extends Error {
@@ -48,14 +51,14 @@ export function unwrap<T>(r: Result<T>): T {
   throw new HttpError(r.status, r.error.code, r.error.message, r.error.details);
 }
 
-/** Read and parse a JSON body with a byte cap. Throws HttpError on failure. An optional empty body yields `{}`. */
-export async function readJson(request: Request, max = MAX_JSON_BODY, optional = false): Promise<unknown> {
+/**
+ * Read a request body with a byte cap, also when Content-Length is missing.
+ * Throws a 413 HttpError before the whole body is read. No body yields null.
+ */
+async function readCapped(request: Request, max: number): Promise<Uint8Array | null> {
   const declared = Number(request.headers.get("Content-Length") ?? "NaN");
   if (Number.isFinite(declared) && declared > max) throw new HttpError(413, "too_large", `Request body exceeds ${max} bytes.`);
-  if (!request.body) {
-    if (optional) return {};
-    throw new HttpError(400, "bad_request", "Request body is required.");
-  }
+  if (!request.body) return null;
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -74,6 +77,28 @@ export async function readJson(request: Request, max = MAX_JSON_BODY, optional =
   for (const c of chunks) {
     buf.set(c, off);
     off += c.byteLength;
+  }
+  return buf;
+}
+
+/** Read and parse a form body with a byte cap. Throws HttpError on failure. */
+export async function readForm(request: Request, max = MAX_FORM_BODY): Promise<FormData> {
+  const buf = await readCapped(request, max);
+  const type = request.headers.get("Content-Type") ?? "";
+  if (!buf || buf.byteLength === 0) return new FormData();
+  try {
+    return await new Response(buf, { headers: { "Content-Type": type } }).formData();
+  } catch {
+    throw new HttpError(400, "bad_request", "Request body is not a valid form.");
+  }
+}
+
+/** Read and parse a JSON body with a byte cap. Throws HttpError on failure. An optional empty body yields `{}`. */
+export async function readJson(request: Request, max = MAX_JSON_BODY, optional = false): Promise<unknown> {
+  const buf = await readCapped(request, max);
+  if (!buf) {
+    if (optional) return {};
+    throw new HttpError(400, "bad_request", "Request body is required.");
   }
   const text = new TextDecoder().decode(buf);
   if (text.trim() === "") {

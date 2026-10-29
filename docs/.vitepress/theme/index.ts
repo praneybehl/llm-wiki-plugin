@@ -1,5 +1,7 @@
+import { h } from 'vue'
 import type { Theme } from 'vitepress'
 import DefaultTheme from 'vitepress/theme'
+import LegacyBanner from './LegacyBanner.vue'
 import './custom.css'
 
 function syncCurrentSidebarLink() {
@@ -60,6 +62,8 @@ function installAccessibilityEnhancements() {
 
 export default {
   extends: DefaultTheme,
+  // Show the old-version warning at the top of every docs/v3/ page.
+  Layout: () => h(DefaultTheme.Layout, null, { 'doc-before': () => h(LegacyBanner) }),
   enhanceApp() {
     if (typeof document !== 'undefined') installAccessibilityEnhancements()
   },

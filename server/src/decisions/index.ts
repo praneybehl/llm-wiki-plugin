@@ -297,15 +297,29 @@ export function readChoice(answers: Record<string, unknown>, name: string, keys:
   if (isRecord(answer.probabilities)) {
     let total = 0;
     for (const k of keys) {
+      if (!(k in answer.probabilities)) continue;
       const p = answer.probabilities[k];
-      if (typeof p === "number" && Number.isFinite(p) && p >= 0) {
-        probabilities[k] = p;
-        total += p;
+      if (typeof p !== "number" || !Number.isFinite(p) || p < 0) {
+        throw new DecisionError("invalid_answer", `answer for ${name} has an invalid probability for ${k}`);
       }
+      probabilities[k] = p;
+      total += p;
     }
-    if (total > 0) for (const k of Object.keys(probabilities)) probabilities[k] = probabilities[k]! / total;
+    if (Object.keys(probabilities).length > 0) {
+      if (!(total > 0) || !Number.isFinite(total)) {
+        throw new DecisionError("invalid_answer", `answer for ${name} has probabilities that do not sum to a positive value`);
+      }
+      for (const k of Object.keys(probabilities)) probabilities[k] = probabilities[k]! / total;
+    }
   }
-  let confidence = typeof answer.confidence === "number" && Number.isFinite(answer.confidence) ? answer.confidence : NaN;
+  let confidence = NaN;
+  if (answer.confidence !== undefined && answer.confidence !== null) {
+    const c = answer.confidence;
+    if (typeof c !== "number" || !Number.isFinite(c) || c < 0 || c > 1) {
+      throw new DecisionError("invalid_answer", `answer for ${name} has a confidence outside 0 to 1`);
+    }
+    confidence = c;
+  }
   if (Object.keys(probabilities).length === 0) {
     if (Number.isNaN(confidence)) throw new DecisionError("invalid_answer", `answer for ${name} has no probabilities`);
     probabilities[choice] = confidence;

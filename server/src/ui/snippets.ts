@@ -42,13 +42,19 @@ export function mcpSnippets(origin: string): Snippet[] {
       }),
     },
     {
-      client: "omp / Pi",
-      where: "~/.omp/agent/mcp.json",
+      client: "omp",
+      where: "~/.omp/agent/mcp.json (all projects) or .omp/mcp.json (one project)",
+      code: j({ mcpServers: { "llm-wiki": { type: "http", url, headers: { Authorization: `Bearer \${${TOKEN_ENV}}` } } } }),
+    },
+    {
+      client: "Pi",
+      where: "~/.pi/agent/mcp.json (all projects) or .pi/mcp.json (one project). Pi has built-in MCP support. Run /reload in a Pi session after you change the file.",
       code: j({ mcpServers: { "llm-wiki": { type: "http", url, headers: { Authorization: `Bearer \${${TOKEN_ENV}}` } } } }),
     },
     {
       client: "Generic MCP client",
-      where: "Any client with Streamable HTTP. Clients with OAuth can omit the header and sign in at /authorize.",
+      where:
+        "Any client with Streamable HTTP. A client with OAuth support can omit the header: it starts its own sign-in and opens the /authorize page for you.",
       code: `URL:    ${url}\nHeader: Authorization: Bearer <token>`,
     },
   ];

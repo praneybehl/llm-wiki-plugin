@@ -181,6 +181,22 @@ describe("readChoice", () => {
     expect(() => readChoice({ q: { choice: "C", confidence: 1 } }, "q", ["A", "B"])).toThrow(DecisionError);
     expect(() => readChoice({}, "q", ["A", "B"])).toThrow(/no answer/);
   });
+
+  it("rejects non-finite values, zero-total maps and confidence outside 0 to 1", () => {
+    const bad: Record<string, unknown>[] = [
+      { choice: "A", probabilities: { A: 0, B: 0 } },
+      { choice: "A", probabilities: { A: Number.NaN, B: 0.5 } },
+      { choice: "A", probabilities: { A: Number.POSITIVE_INFINITY, B: 0.5 } },
+      { choice: "A", probabilities: { A: "0.9", B: 0.1 } },
+      { choice: "A", probabilities: { A: -0.1, B: 0.5 } },
+      { choice: "A", confidence: 1.5, probabilities: { A: 0.9, B: 0.1 } },
+      { choice: "A", confidence: -0.2 },
+      { choice: "A", confidence: Number.NaN },
+    ];
+    for (const answer of bad) {
+      expect(() => readChoice({ q: answer }, "q", ["A", "B"]), JSON.stringify(answer)).toThrow(DecisionError);
+    }
+  });
 });
 
 describe("gateSearchRows (D1)", () => {
@@ -213,6 +229,19 @@ describe("gateSearchRows (D1)", () => {
     expect(out.rows.map((r) => r.slug)).toEqual(rows.slice(0, 5).map((r) => r.slug));
     expect(out.rows[0]!.decision).toBeUndefined();
     expect(out.decision).toMatchObject({ failed_open: true, error: "invalid_answer", kept: 5, dropped: 0 });
+  });
+
+  it("fails open on a zero-total distribution or an out-of-range confidence", async () => {
+    const rows = Array.from({ length: 4 }, (_, i) => row(i, "x"));
+    for (const answer of [
+      { choice: "A", confidence: 0, probabilities: { A: 0, B: 0 } },
+      { choice: "A", confidence: 7 },
+    ]) {
+      const run = vi.fn<RunFn>(async () => ({ answers: { relevant: answer } }));
+      const out = await gateSearchRows(fakeEnv(run), ON, "q", rows, { top: 3 });
+      expect(out.rows.map((r) => r.slug)).toEqual(rows.slice(0, 3).map((r) => r.slug));
+      expect(out.decision).toMatchObject({ failed_open: true, error: "invalid_answer", kept: 3, dropped: 0 });
+    }
   });
 
   it("fails open on missing credits and when disabled", async () => {

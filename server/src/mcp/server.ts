@@ -86,7 +86,16 @@ const commitOp = z.discriminatedUnion("op", [
     .describe("Add text at the end of a page or of one section. Use it for log.md and index lines. Never conflicts."),
   z.object({ op: z.literal("delete"), path, base_rev: z.number().int().min(1) }).describe("Delete a page."),
   z.object({ op: z.literal("move"), from: path, to: path, base_rev: z.number().int().min(1) }).describe("Rename a page."),
-  z.object({ op: z.literal("upsert"), path, content: z.string() }).describe("Create or replace without a base revision. Use only for imports."),
+  z
+    .object({
+      op: z.literal("upsert"),
+      path,
+      content: z.string(),
+      expected_sha256: z.string().regex(/^[0-9a-f]{64}$/).nullable().optional(),
+    })
+    .describe(
+      "Create or replace without a base revision. Use only for imports. expected_sha256: null means the page must not exist; a sha256 means the page must have that content.",
+    ),
 ]);
 
 /** Build the per-request MCP server for one principal. */

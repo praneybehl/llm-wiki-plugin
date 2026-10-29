@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ADMIN, ORIGIN, api, call, cookiesFrom, csrfFrom, form, mcp, setupWiki, toolJson } from "./helpers";
+import { wikiStub } from "../../src/http/auth";
+import { ADMIN, ORIGIN, api, call, cookiesFrom, csrfFrom, env, form, mcp, setupWiki, toolJson } from "./helpers";
 
 const REDIRECT = "https://client.example/cb";
 
@@ -56,16 +57,44 @@ function submit(s: Started, fields: Record<string, string>) {
   });
 }
 
-async function exchange(clientId: string, location: string, verifier: string): Promise<string> {
-  const code = new URL(location).searchParams.get("code")!;
+async function tokenRequest(fields: Record<string, string>): Promise<{ access_token: string; refresh_token?: string; scope: string }> {
   const res = await call("/oauth/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: form({ grant_type: "authorization_code", code, redirect_uri: REDIRECT, client_id: clientId, code_verifier: verifier, resource: `${ORIGIN}/mcp` }),
+    body: form({ resource: `${ORIGIN}/mcp`, ...fields }),
   });
-  const body = (await res.json()) as { access_token: string; scope: string };
+  const body = (await res.json()) as { access_token: string; refresh_token?: string; scope: string };
   expect(res.status, JSON.stringify(body)).toBe(200);
-  return body.access_token;
+  return body;
+}
+
+function exchange(clientId: string, location: string, verifier: string, scope?: string) {
+  const code = new URL(location).searchParams.get("code")!;
+  return tokenRequest({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: REDIRECT,
+    client_id: clientId,
+    code_verifier: verifier,
+    ...(scope ? { scope } : {}),
+  });
+}
+
+/** A token can call neither wiki_commit nor a revert. */
+async function expectNoWrites(access: string, wiki: string) {
+  const seed = await api(`/commit?wiki=${wiki}`, { body: { message: "seed", ops: [{ op: "create", path: "seed.md", content: "# S\n" }] } });
+  expect(seed.status, JSON.stringify(seed.body)).toBe(200);
+  const ov = await mcp(access, "tools/call", { name: "wiki_overview", arguments: {} });
+  expect(toolJson(ov.body.result).wiki).toBe(wiki);
+  const commit = await mcp(access, "tools/call", {
+    name: "wiki_commit",
+    arguments: { message: "x", ops: [{ op: "create", path: "nope.md", content: "x" }] },
+  });
+  expect(commit.body.result.isError, JSON.stringify(commit.body)).toBe(true);
+  expect(toolJson(commit.body.result).error.code).toBe("forbidden");
+  const revert = await mcp(access, "tools/call", { name: "wiki_history", arguments: { revert: seed.body.commit_id } });
+  expect(revert.body.result.isError, JSON.stringify(revert.body)).toBe(true);
+  expect(toolJson(revert.body.result).error.code).toBe("forbidden");
 }
 
 describe("OAuth authorize", () => {
@@ -103,7 +132,7 @@ describe("OAuth authorize", () => {
     expect(location.startsWith(REDIRECT)).toBe(true);
     expect(new URL(location).searchParams.get("state")).toBe("st-123");
 
-    const access = await exchange(clientId, location, s.verifier);
+    const access = (await exchange(clientId, location, s.verifier)).access_token;
     const ov = await mcp(access, "tools/call", { name: "wiki_overview", arguments: {} });
     expect(ov.status, JSON.stringify(ov.body)).toBe(200);
     expect(toolJson(ov.body.result).wiki).toBe("oa-b");
@@ -123,7 +152,7 @@ describe("OAuth authorize", () => {
     const s = await startAuthorize(clientId);
     const ok = await submit(s, { decision: "approve", wiki: "oa-c", access: "write", proof: code });
     expect(ok.status).toBe(302);
-    const access = await exchange(clientId, ok.headers.get("Location")!, s.verifier);
+    const access = (await exchange(clientId, ok.headers.get("Location")!, s.verifier)).access_token;
     const commit = await mcp(access, "tools/call", {
       name: "wiki_commit",
       arguments: { message: "x", ops: [{ op: "create", path: "x.md", content: "x" }] },
@@ -135,6 +164,53 @@ describe("OAuth authorize", () => {
     const s2 = await startAuthorize(clientId);
     const again = await submit(s2, { decision: "approve", wiki: "oa-c", access: "read", proof: code });
     expect(again.status).toBe(401);
+  });
+
+  it("limits a token narrowed to wiki:read at exchange to read access", async () => {
+    await setupWiki("oa-e");
+    const clientId = await register("Narrow App");
+    const s = await startAuthorize(clientId);
+    const ok = await submit(s, { decision: "approve", wiki: "oa-e", access: "write", proof: ADMIN });
+    expect(ok.status).toBe(302);
+    const access = (await exchange(clientId, ok.headers.get("Location")!, s.verifier, "wiki:read")).access_token;
+    await expectNoWrites(access, "oa-e");
+  });
+
+  it("limits a token narrowed to wiki:read at refresh to read access", async () => {
+    await setupWiki("oa-f");
+    const clientId = await register("Refresh App");
+    const s = await startAuthorize(clientId);
+    const ok = await submit(s, { decision: "approve", wiki: "oa-f", access: "write", proof: ADMIN });
+    const full = await exchange(clientId, ok.headers.get("Location")!, s.verifier);
+    expect(full.refresh_token).toBeTruthy();
+    const narrowed = await tokenRequest({ grant_type: "refresh_token", refresh_token: full.refresh_token!, client_id: clientId, scope: "wiki:read" });
+    await expectNoWrites(narrowed.access_token, "oa-f");
+  });
+
+  it("refuses pairing codes that do not grant read", async () => {
+    await setupWiki("oa-g");
+    for (const scopes of [["raw:write"], ["write"]]) {
+      const r = await api("/admin/pairing-codes", { body: { wiki: "oa-g", label: "bad", scopes } });
+      expect(r.status, JSON.stringify(scopes)).toBe(400);
+    }
+    const clientId = await register("No Read App");
+    for (const scopes of [["raw:write"], ["write"]] as const) {
+      // Codes stored before this rule existed.
+      const { code } = await wikiStub(env, "oa-g").createPairingCode("old", [...scopes], 600);
+      const s = await startAuthorize(clientId);
+      const res = await submit(s, { decision: "approve", wiki: "oa-g", access: "write", proof: code });
+      expect(res.status, JSON.stringify(scopes)).toBe(403);
+      expect(res.headers.get("Location")).toBeNull();
+    }
+  });
+
+  it("refuses consent form bodies over 64 KiB", async () => {
+    await setupWiki("oa-h");
+    const clientId = await register("Big Form App");
+    const s = await startAuthorize(clientId);
+    const res = await submit(s, { decision: "approve", wiki: "oa-h", access: "write", proof: ADMIN, pad: "x".repeat(70 * 1024) });
+    expect(res.status).toBe(413);
+    expect(res.headers.get("Location")).toBeNull();
   });
 
   it("redirects with access_denied on Deny", async () => {

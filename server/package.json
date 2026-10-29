@@ -32,5 +32,8 @@
         "description": "Owner secret for /setup, admin API calls and OAuth approval. Use a long random value and keep it private."
       }
     }
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

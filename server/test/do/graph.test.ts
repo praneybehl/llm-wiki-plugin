@@ -112,6 +112,44 @@ describe("graph", () => {
     const facts = await wiki.graph({ op: "facts", node: "firm:openai" });
     expect(facts.ok).toBe(true);
   });
+
+  it("finishes a rebuild while commits keep arriving between alarm steps", async () => {
+    // More pages than one rebuild step (GRAPH_BATCH = 200): one rebuild takes 6 steps.
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 450; i++) {
+      const id = String(i).padStart(4, "0");
+      files[`concepts/p-${id}.md`] = `---\ntype: concept\n---\nSee [[p-${String((i * 7) % 450).padStart(4, "0")}]].\n`;
+    }
+    const commitAll = async (wiki: DurableObjectStub<WikiDO>, entries: [string, string][]): Promise<void> => {
+      for (let i = 0; i < entries.length; i += 150) {
+        const ops = entries.slice(i, i + 150).map(([path, content]): CommitOp => ({ op: "create", path, content }));
+        const result = await wiki.commit("a", { message: "batch", ops });
+        if (!result.ok) throw new Error(JSON.stringify(failure(result).error));
+      }
+    };
+    const { wiki } = await freshWiki("gs");
+    await commitAll(wiki, Object.entries(files));
+
+    // A graph-changing commit (a new page) before every alarm step.
+    for (let i = 0; i < 10; i++) {
+      const path = `concepts/new-${i}.md`;
+      files[path] = `---\ntype: concept\n---\nLinks [[p-0001]] and [[new-${Math.max(0, i - 1)}]].\n`;
+      await commitAll(wiki, [[path, files[path]!]]);
+      expect(await runDurableObjectAlarm(wiki)).toBe(true);
+    }
+    // The first rebuild swapped in within those 10 steps: it holds the page made before it started.
+    const early = await wiki.graph({ op: "facts", node: "concept:new-0" });
+    expect(early.ok).toBe(true);
+
+    await settle(wiki);
+    const fresh = await freshWiki("gs2");
+    await commitAll(fresh.wiki, Object.entries(files));
+    await settle(fresh.wiki);
+    const live = await value<{ nodes: string; edges: string }>(wiki.graph({ op: "export", format: "jsonl" }));
+    const rebuilt = await value<{ nodes: string; edges: string }>(fresh.wiki.graph({ op: "export", format: "jsonl" }));
+    expect(live.nodes.split("\n")).toHaveLength(461);
+    expect(live).toEqual(rebuilt);
+  });
 });
 
 /**

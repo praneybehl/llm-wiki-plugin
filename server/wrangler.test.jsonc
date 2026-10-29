@@ -1,0 +1,17 @@
+{
+  // Test-only configuration: no remote-only bindings (Vectorize, Workers AI).
+  // Tests inject fakes for those through the code seams in src/.
+  "name": "llm-wiki-test",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      { "name": "WIKI", "class_name": "WikiDO" },
+      { "name": "REGISTRY", "class_name": "Registry" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WikiDO", "Registry"] }],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "test-oauth-kv" }],
+  "r2_buckets": [{ "binding": "RAW", "bucket_name": "llm-wiki-raw-test" }]
+}

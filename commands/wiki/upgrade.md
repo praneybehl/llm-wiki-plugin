@@ -11,11 +11,11 @@ Arguments (if any): $ARGUMENTS
 2. Run `init_wiki.py` against the base directory and relative wiki/raw paths that resolve to those exact roots. For the standard global layout, use `python "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/init_wiki.py" "<absolute-home-directory>" --wiki-dir wiki --raw-dir wiki/raw --upgrade`. For the project default, use the absolute project root with `--upgrade`. Never run it against the plugin directory. Do not report the upgrade complete unless its runtime JSON says `"status": "ready"`.
 3. Read the script's "Upgrade required: <SCHEMA.md>" output. For each missing SCHEMA.md section it lists:
    - Open `skills/llm-wiki/assets/SCHEMA.md.template` and locate the section with the matching heading.
-   - Show me the section content and propose appending it to my SCHEMA.md via `str_replace`. Wait for my approval per section. Never modify SCHEMA.md silently — it is co-evolved with me.
+   - Show me the section content and propose appending it to my SCHEMA.md via `str_replace`. Wait for my approval per section. Never modify SCHEMA.md silently: it is co-evolved with me.
    - If my SCHEMA.md has been customized in a way that would conflict, surface the conflict and ask me how to resolve it (skip, append at end, or hand-merge).
 4. After all sections are merged or skipped, mention that:
    - The graph layer is opt-in. Existing pages without `graph:` frontmatter remain valid; nothing breaks.
-   - To start using it on a page, add typed `graph.relationships[]` only when an explicit source supports them — see `skills/llm-wiki/references/graph-workflow.md`.
+   - To start using it on a page, add typed `graph.relationships[]` only when an explicit source supports them: see `skills/llm-wiki/references/graph-workflow.md`.
    - Graph lint and extraction carry pinned PyYAML metadata and run through `uv run --script`; no manual `pip install` is needed.
 
    **v3.0.0 notes** (mention these too):
@@ -31,6 +31,13 @@ Arguments (if any): $ARGUMENTS
    > Relational queries can also consult `wiki/graph/graph.sqlite` via `wiki_graph_query.py` from the `llm-wiki` skill.
 
    Show the proposed addition, get approval, then `str_replace` it in. Honour a "skip" without pushing.
-6. Do not run `wiki_graph_extract.py` automatically — it does nothing useful until at least one page has `graph:` metadata. Mention it as the next step when I'm ready.
+6. Do not run `wiki_graph_extract.py` automatically: it does nothing useful until at least one page has `graph:` metadata. Mention it as the next step when I'm ready.
 
 7. **v3.2.0:** init/upgrade adds `.experience-template.json`, `.pattern-template.md`, and `.evolution/README.md` without overwriting existing files. Offer the `## Skill evolution` schema section as an optional merge. Experience capture and evolution are opt-in; existing pages and commands need no migration. The experiment archive is durable, unlike `.wiki-cache/`. Point to `references/evolution-workflow.md` for `/wiki:learn`, `/wiki:evolve`, the pilot suite and explicit validation/apply/rollback flow.
+
+8. **v4.0.0 notes** (mention these too):
+   - Local wikis need no migration. Local files, scripts, search and commands work as before.
+   - A hosted backend is now optional: one Cloudflare Worker with MCP, a JSON API, OAuth and a web reader. To move this wiki there, run `/wiki:migrate`. To connect another agent, run `/wiki:init --hosted <url>`. See `skills/llm-wiki/references/hosted-mode.md`.
+   - An optional decision layer can gate search relevance and flag weak graph evidence or untrusted text. It is off by default and sends no text anywhere until I enable a backend. See `skills/llm-wiki/references/decision-models.md`.
+   - The Paperclip companion (`integrations/paperclip/`) is removed. Users who need it stay on v3.2.x. The skill and the wiki files are not affected.
+   - If this wiki is a `pull` mirror of a hosted wiki (it contains `.llm-wiki-remote.json`), do not run init or upgrade writes on it. Upgrade the hosted wiki through the server, then pull again.

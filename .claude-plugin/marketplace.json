@@ -4,15 +4,15 @@
     "name": "Praney Behl"
   },
   "metadata": {
-    "description": "Durable agent knowledge with local hybrid retrieval and optional experience-driven, evaluated skill improvements.",
-    "version": "3.2.0"
+    "description": "Durable agent knowledge with local hybrid retrieval, an optional one-click hosted wiki on Cloudflare, and optional experience-driven, evaluated skill improvements.",
+    "version": "4.0.0"
   },
   "plugins": [
     {
       "name": "llm-wiki",
       "source": "./",
-      "description": "Build a shared Markdown wiki with local hybrid search, cited evidence and a compiled graph. Capture task experience and evaluate skill improvements with explicit apply/rollback. Includes the llm-wiki skill and nine /wiki:* commands.",
-      "version": "3.2.0",
+      "description": "Build a shared Markdown wiki with local hybrid search, cited evidence and a compiled graph. Capture task experience and evaluate skill improvements with explicit apply/rollback. Optional hosted wiki on Cloudflare with MCP access for every agent. Includes the llm-wiki skill and ten /wiki:* commands.",
+      "version": "4.0.0",
       "author": {
         "name": "Praney Behl"
       },

@@ -1,5 +1,5 @@
 ---
-description: Query the LLM Wiki — answer a question from accumulated knowledge with citations.
+description: Query the LLM Wiki and answer a question from accumulated knowledge with citations.
 argument-hint: "<question>"
 ---
 
@@ -12,11 +12,22 @@ Follow the full query procedure documented in the skill:
 0. Resolve `<WIKI_ROOT>` from an explicit user path, the nearest project instructions, global agent instructions, or finally the current project's `wiki/`. Never assume `${PWD}/wiki` when instructions name another wiki, and never combine two wikis silently.
 1. Read `<WIKI_ROOT>/SCHEMA.md` first if you haven't this session.
 2. Read `<WIKI_ROOT>/index.md` (or the relevant `<WIKI_ROOT>/indexes/<type>.md` shard if the index has been sharded) to identify candidate pages.
-3. Read the candidate pages. Follow `[[wikilinks]]` selectively — don't recursively chase every link.
+3. Read the candidate pages. Follow `[[wikilinks]]` selectively: don't recursively chase every link.
 4. If the index does not surface good candidates, run local hybrid search. Do not inspect or request API keys: the backend is FastEmbed + sqlite-vec and sends no wiki or query text off-device. If dependencies fail, the command returns lexical BM25 automatically.
 4b. Run `uv run --script "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/wiki_search.py" "<query terms>" --wiki "<WIKI_ROOT>" --top 10 --cache --json`. When deterministic dependency-free lexical retrieval is desired, run `python "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/wiki_search.py" "<query terms>" --wiki "<WIKI_ROOT>" --top 10 --cache --json --no-embed` instead; do not append `--no-embed` to the `uv run --script` form because uv still resolves the declared semantic packages. Use `--type concept` / `--tag <tag>` when helpful and `--granularity page` for whole-page ranking.
 5. If the question asks "what links to X", use `python "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/wiki_search.py" "" --wiki "<WIKI_ROOT>" --backlinks <slug>` instead of grep.
-5b. If the question is relational ("what's connected to X", "who proposed Y", "trace the path from A to B") and `<WIKI_ROOT>/graph/graph.sqlite` exists, run `python "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/wiki_graph_query.py" "<WIKI_ROOT>" neighbors --node <id>` (or `facts` / `edges` / `path`) to get structured neighbors before reading pages. Use the typed-edge results to choose which wiki pages to open — do not answer from graph rows alone for high-stakes claims.
+5b. If the question is relational ("what's connected to X", "who proposed Y", "trace the path from A to B") and `<WIKI_ROOT>/graph/graph.sqlite` exists, run `python "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/wiki_graph_query.py" "<WIKI_ROOT>" neighbors --node <id>` (or `facts` / `edges` / `path`) to get structured neighbors before reading pages. Use the typed-edge results to choose which wiki pages to open: do not answer from graph rows alone for high-stakes claims.
 6. Synthesize the answer with `[[wikilink]]` citations to the wiki pages used. Surface contradictions explicitly rather than picking a side.
-7. If the wiki has no relevant content, say so plainly — do not confabulate. Suggest sources I might want to ingest to fill the gap.
+7. If the wiki has no relevant content, say so plainly: do not confabulate. Suggest sources I might want to ingest to fill the gap.
 8. If the answer represents new connection-making, offer to file it back into `<WIKI_ROOT>/synthesis/` so future queries benefit. Default to offering; let me decline for trivial answers.
+
+**Hosted wiki.** If the resolved wiki is a hosted URL (or the instructions name one), use hosted mode from `skills/llm-wiki/references/hosted-mode.md`: the MCP tools, or `python3 "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/wiki_remote.py"` when MCP is not available. Use these forms of the steps above:
+
+- Steps 1 and 2: call `wiki_overview`. It returns `SCHEMA.md` and `index.md`. Read shards with `wiki_read`.
+- Step 3: `wiki_read` with `paths`.
+- Step 4: `wiki_search` with `query`, `top` and the optional `type`, `tag`, `since` and `granularity` filters. Do not run local search scripts.
+- Step 5: `wiki_search` with `backlinks: "<slug>"`.
+- Step 5b: `wiki_graph` with the same operation.
+- Step 8: one `wiki_commit` with a `create` operation for the synthesis page and `append` operations for the index line and the `log.md` line.
+
+If I enabled the optional decision layer, add `--decide` to local search or `decide: true` to `wiki_search`. If all rows are removed, tell me that the wiki probably has no answer. See `skills/llm-wiki/references/decision-models.md`.

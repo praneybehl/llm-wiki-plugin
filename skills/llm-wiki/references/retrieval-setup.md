@@ -66,6 +66,25 @@ Require all of the following before reporting readiness:
 
 If setup fails, report the exact failed command and safe exception. Check `uv`, model-download access, local disk space, and sqlite extension loading. Do not describe initialization or upgrade as complete.
 
+## Hosted wikis
+
+A hosted wiki needs no local runtime setup. The server makes its own search index:
+
+- Keyword search uses SQLite FTS5 in the wiki Durable Object. A commit is searchable by keyword at once.
+- Semantic search uses Workers AI `@cf/baai/bge-small-en-v1.5` (CLS pooling, L2-normalized, 384 dimensions) and a Vectorize index. A personal wiki fits in the Workers AI free allocation of 10,000 neurons a day.
+- Rank fusion is RRF with the same constants as `wiki_search.py`. Results are equivalent to local results, not identical, because the BM25 constants and the embedding runtime are different.
+- The server embeds changed sections in batches after each commit. `vector_lag` in `wiki_overview` and in search responses shows the sections that wait for a vector.
+- Without the Vectorize or Workers AI binding, search is lexical only. Search responses show the mode.
+- Wiki text and queries go to your Cloudflare account. They do not go to another provider unless the owner enables a hosted decision backend (`decision-models.md`).
+
+Do not copy `.wiki-cache/` to a hosted wiki. The import command skips it. Local and hosted vectors never mix. A `pull` mirror can run local `setup_wiki.py` for offline search.
+
+Record this state in the `SCHEMA.md` retrieval block of a hosted wiki:
+
+```markdown
+- Semantic backend: hosted (Workers AI `@cf/baai/bge-small-en-v1.5` + Vectorize, 384 dimensions). Wiki text stays in the owner's Cloudflare account.
+```
+
 ## Upgrade from v2 provider caches
 
 `wiki/.wiki-cache/embeddings.jsonl` is obsolete, ignored, and may contain historical provider metadata. It is fully derived, so offer to delete it; deletion requires the user's approval because it is an existing file. No content migration or remote re-send is needed. Mandatory v3 setup builds `embeddings.sqlite` locally.

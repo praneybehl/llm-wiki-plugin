@@ -1,0 +1,337 @@
+{
+ "files": {
+  "graph/ontology.yaml": "# Wiki Graph Ontology\n#\n# Declares the node types and predicates that the compiled graph layer\n# (wiki/graph/) recognises. Edit this file when you introduce a new\n# domain-specific predicate or node type — wiki_graph_lint.py reads it\n# to validate every typed edge declared in page frontmatter.\n#\n# Markdown remains canonical. This file is just the contract that makes\n# the graph layer machine-checkable.\n\nnode_types:\n  person:\n    maps_from:\n      type: entity\n      kind: person\n  company:\n    maps_from:\n      type: entity\n      kind: company\n  product:\n    maps_from:\n      type: entity\n      kind: product\n  paper:\n    maps_from:\n      type: entity\n      kind: paper\n  place:\n    maps_from:\n      type: entity\n      kind: place\n  organization:\n    maps_from:\n      type: entity\n      kind: organization\n  concept:\n    maps_from:\n      type: concept\n  source:\n    maps_from:\n      type: source\n  synthesis:\n    maps_from:\n      type: synthesis\n  decision:\n    explicit_only: true\n  claim:\n    explicit_only: true\n  raw:\n    explicit_only: true\n\npredicates:\n  # --- Implicit predicates emitted by the extractor. ---\n  mentions:\n    subject_types: [\"*\"]\n    object_types: [\"*\"]\n    requires_evidence: false\n    description: |\n      Low-specificity edge derived from body wikilinks. Use it for\n      navigation, not as evidence of a typed relationship.\n  sourced_from:\n    subject_types: [\"*\"]\n    object_types: [source]\n    requires_evidence: false\n    description: |\n      Derived from each non-source page's frontmatter `sources:` list.\n  summarizes_raw:\n    subject_types: [source]\n    object_types: [\"*\"]\n    requires_evidence: false\n    description: |\n      Derived from a source page's frontmatter `raw:` field. Object is\n      the raw file path string, not a wiki node id.\n\n  # --- Typed semantic predicates. Add domain-specific ones below. ---\n  founded:\n    subject_types: [person]\n    object_types: [company, organization]\n    requires_evidence: true\n  owns:\n    subject_types: [person, company, organization]\n    object_types: [company, product, organization]\n    requires_evidence: true\n  contains_product:\n    subject_types: [company, organization]\n    object_types: [product]\n    requires_evidence: true\n  works_on:\n    subject_types: [person]\n    object_types: [product, concept]\n    requires_evidence: true\n  chose:\n    subject_types: [person, company, organization]\n    object_types: [product, concept]\n    requires_evidence: true\n  proposed:\n    subject_types: [person]\n    object_types: [decision, claim]\n    requires_evidence: true\n  competes_with:\n    subject_types: [product, company, organization]\n    object_types: [product, company, organization]\n    requires_evidence: true\n  depends_on:\n    subject_types: [product, concept]\n    object_types: [product, concept]\n    requires_evidence: true\n  authored:\n    subject_types: [person, organization]\n    object_types: [paper, source]\n    requires_evidence: true\n  cites:\n    subject_types: [paper, source, synthesis]\n    object_types: [paper, source]\n    requires_evidence: true\n  contradicts:\n    subject_types: [claim, source, synthesis]\n    object_types: [claim, source, synthesis]\n    requires_evidence: true\n  supersedes:\n    subject_types: [claim, source, decision]\n    object_types: [claim, source, decision]\n    requires_evidence: true\n",
+  "entities/ilya.md": "---\ntype: entity\nkind: person\ntitle: Ilya Sutskever\ntags: [people]\ncreated: 2026-01-01\nupdated: 2026-02-01\nsources: [attention-paper]\ngraph:\n  aliases: [Ilya]\n  relationships:\n    - predicate: founded\n      object: company:openai\n      source: attention-paper\n      evidence: \"co-founded OpenAI in 2015\"\n      confidence: high\n      status: current\n    - predicate: founded\n      object: company:ghost\n      source: attention-paper\n      confidence: certain\n      status: rumoured\n    - predicate: invented\n      object: concept:kv-cache\n    - predicate: works_on\n      object: concept:kv-cache\n      source: no-such-source\n      evidence: \"worked on caches\"\n      confidence: low\n      status: current\n      valid_from: 2020-01-01\n      supersedes: claim:old\n---\n# Ilya\n\nWorks at [[openai]] and wrote about [[concepts/kv-cache]] and [[raw/foo]].\n",
+  "entities/openai.md": "---\ntype: entity\nkind: company\ntitle: OpenAI\ngraph:\n  canonical: true\n  aliases: [OAI, Ilya]\n---\n# OpenAI\n\nFounded by [[ilya]]. See [[openai]] (self link).\n",
+  "concepts/kv-cache.md": "---\ntype: concept\ntitle: KV Cache\ngraph:\n  relationships:\n    - predicate: depends_on\n      object: concept:attention\n      source: attention-paper\n      evidence: \"uses attention\"\n      confidence: medium\n      status: current\n---\nUses [[entities/ilya]] twice [[ilya]].\n",
+  "concepts/orphan-typed.md": "---\ntype: concept\ntitle: Orphan Typed\ngraph:\n  aliases: []\n  canonical: false\n---\nNo typed edges here.\n",
+  "sources/attention-paper.md": "---\ntype: source\ntitle: Attention Is All You Need\nraw: raw/attention.pdf\n---\nIlya co-founded   OpenAI in 2015 per this source.\n",
+  "sources/dup.md": "---\ntype: source\ntitle: Dup\ngraph:\n  node_id: company:openai\n---\ndup node id\n"
+ },
+ "nodes_jsonl": "{\"aliases\": [\"OAI\", \"Ilya\"], \"canonical\": true, \"created\": \"\", \"id\": \"company:openai\", \"kind\": \"company\", \"node_type\": \"company\", \"page_type\": \"entity\", \"path\": \"entities/openai.md\", \"slug\": \"openai\", \"tags\": [], \"title\": \"OpenAI\", \"updated\": \"\"}\n{\"aliases\": [], \"canonical\": false, \"created\": \"\", \"id\": \"concept:kv-cache\", \"kind\": \"\", \"node_type\": \"concept\", \"page_type\": \"concept\", \"path\": \"concepts/kv-cache.md\", \"slug\": \"kv-cache\", \"tags\": [], \"title\": \"KV Cache\", \"updated\": \"\"}\n{\"aliases\": [], \"canonical\": false, \"created\": \"\", \"id\": \"concept:orphan-typed\", \"kind\": \"\", \"node_type\": \"concept\", \"page_type\": \"concept\", \"path\": \"concepts/orphan-typed.md\", \"slug\": \"orphan-typed\", \"tags\": [], \"title\": \"Orphan Typed\", \"updated\": \"\"}\n{\"aliases\": [\"Ilya\"], \"canonical\": false, \"created\": \"2026-01-01\", \"id\": \"person:ilya\", \"kind\": \"person\", \"node_type\": \"person\", \"page_type\": \"entity\", \"path\": \"entities/ilya.md\", \"slug\": \"ilya\", \"tags\": [\"people\"], \"title\": \"Ilya Sutskever\", \"updated\": \"2026-02-01\"}\n{\"aliases\": [], \"canonical\": false, \"created\": \"\", \"id\": \"source:attention-paper\", \"kind\": \"\", \"node_type\": \"source\", \"page_type\": \"source\", \"path\": \"sources/attention-paper.md\", \"slug\": \"attention-paper\", \"tags\": [], \"title\": \"Attention Is All You Need\", \"updated\": \"\"}\n",
+ "edges_jsonl": "{\"confidence\": \"low\", \"evidence\": \"\", \"extraction_method\": \"body_wikilink\", \"extras\": {}, \"id\": \"003c11b6e73c5de8718ccd70\", \"object\": \"company:openai\", \"page\": \"entities/ilya.md\", \"predicate\": \"mentions\", \"source\": \"\", \"status\": \"current\", \"subject\": \"person:ilya\"}\n{\"confidence\": \"\", \"evidence\": \"\", \"extraction_method\": \"explicit_graph_frontmatter\", \"extras\": {}, \"id\": \"02bdc3f56fb352c4683df892\", \"object\": \"concept:kv-cache\", \"page\": \"entities/ilya.md\", \"predicate\": \"invented\", \"source\": \"\", \"status\": \"\", \"subject\": \"person:ilya\"}\n{\"confidence\": \"certain\", \"evidence\": \"\", \"extraction_method\": \"explicit_graph_frontmatter\", \"extras\": {}, \"id\": \"12744070f66c1b03771cc149\", \"object\": \"company:ghost\", \"page\": \"entities/ilya.md\", \"predicate\": \"founded\", \"source\": \"attention-paper\", \"status\": \"rumoured\", \"subject\": \"person:ilya\"}\n{\"confidence\": \"low\", \"evidence\": \"\", \"extraction_method\": \"body_wikilink\", \"extras\": {}, \"id\": \"1309b7fbd471fdc94d71f092\", \"object\": \"person:ilya\", \"page\": \"concepts/kv-cache.md\", \"predicate\": \"mentions\", \"source\": \"\", \"status\": \"current\", \"subject\": \"concept:kv-cache\"}\n{\"confidence\": \"high\", \"evidence\": \"\", \"extraction_method\": \"frontmatter_raw\", \"extras\": {}, \"id\": \"17dc3bdd69a6853b15784e49\", \"object\": \"raw:raw/attention.pdf\", \"page\": \"sources/attention-paper.md\", \"predicate\": \"summarizes_raw\", \"source\": \"\", \"status\": \"current\", \"subject\": \"source:attention-paper\"}\n{\"confidence\": \"medium\", \"evidence\": \"uses attention\", \"extraction_method\": \"explicit_graph_frontmatter\", \"extras\": {}, \"id\": \"4dff040cc6cbc53c815d6abd\", \"object\": \"concept:attention\", \"page\": \"concepts/kv-cache.md\", \"predicate\": \"depends_on\", \"source\": \"attention-paper\", \"status\": \"current\", \"subject\": \"concept:kv-cache\"}\n{\"confidence\": \"low\", \"evidence\": \"worked on caches\", \"extraction_method\": \"explicit_graph_frontmatter\", \"extras\": {\"supersedes\": \"claim:old\", \"valid_from\": \"2020-01-01\"}, \"id\": \"6ea3eb97a0372b583393dfdf\", \"object\": \"concept:kv-cache\", \"page\": \"entities/ilya.md\", \"predicate\": \"works_on\", \"source\": \"no-such-source\", \"status\": \"current\", \"subject\": \"person:ilya\"}\n{\"confidence\": \"low\", \"evidence\": \"\", \"extraction_method\": \"body_wikilink\", \"extras\": {}, \"id\": \"6ea8f817ab8115f1af30ad15\", \"object\": \"person:ilya\", \"page\": \"entities/openai.md\", \"predicate\": \"mentions\", \"source\": \"\", \"status\": \"current\", \"subject\": \"company:openai\"}\n{\"confidence\": \"low\", \"evidence\": \"\", \"extraction_method\": \"body_wikilink\", \"extras\": {}, \"id\": \"9263164f2ca070711b0f2913\", \"object\": \"concept:kv-cache\", \"page\": \"entities/ilya.md\", \"predicate\": \"mentions\", \"source\": \"\", \"status\": \"current\", \"subject\": \"person:ilya\"}\n{\"confidence\": \"high\", \"evidence\": \"co-founded OpenAI in 2015\", \"extraction_method\": \"explicit_graph_frontmatter\", \"extras\": {}, \"id\": \"d2b3aaf68c312b500062d87a\", \"object\": \"company:openai\", \"page\": \"entities/ilya.md\", \"predicate\": \"founded\", \"source\": \"attention-paper\", \"status\": \"current\", \"subject\": \"person:ilya\"}\n{\"confidence\": \"high\", \"evidence\": \"\", \"extraction_method\": \"frontmatter_sources\", \"extras\": {}, \"id\": \"d47c95b8c644be07c3241f86\", \"object\": \"source:attention-paper\", \"page\": \"entities/ilya.md\", \"predicate\": \"sourced_from\", \"source\": \"attention-paper\", \"status\": \"current\", \"subject\": \"person:ilya\"}\n",
+ "graphml": "<?xml version='1.0' encoding='utf-8'?>\n<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\">\n  <key id=\"d_title\" for=\"node\" attr.name=\"title\" attr.type=\"string\" />\n  <key id=\"d_node_type\" for=\"node\" attr.name=\"node_type\" attr.type=\"string\" />\n  <key id=\"d_page_type\" for=\"node\" attr.name=\"page_type\" attr.type=\"string\" />\n  <key id=\"d_path\" for=\"node\" attr.name=\"path\" attr.type=\"string\" />\n  <key id=\"d_predicate\" for=\"edge\" attr.name=\"predicate\" attr.type=\"string\" />\n  <key id=\"d_confidence\" for=\"edge\" attr.name=\"confidence\" attr.type=\"string\" />\n  <key id=\"d_status\" for=\"edge\" attr.name=\"status\" attr.type=\"string\" />\n  <key id=\"d_source\" for=\"edge\" attr.name=\"source\" attr.type=\"string\" />\n  <graph id=\"wiki\" edgedefault=\"directed\">\n    <node id=\"company:openai\">\n      <data key=\"d_title\">OpenAI</data>\n      <data key=\"d_node_type\">company</data>\n      <data key=\"d_page_type\">entity</data>\n      <data key=\"d_path\">entities/openai.md</data>\n    </node>\n    <node id=\"concept:kv-cache\">\n      <data key=\"d_title\">KV Cache</data>\n      <data key=\"d_node_type\">concept</data>\n      <data key=\"d_page_type\">concept</data>\n      <data key=\"d_path\">concepts/kv-cache.md</data>\n    </node>\n    <node id=\"concept:orphan-typed\">\n      <data key=\"d_title\">Orphan Typed</data>\n      <data key=\"d_node_type\">concept</data>\n      <data key=\"d_page_type\">concept</data>\n      <data key=\"d_path\">concepts/orphan-typed.md</data>\n    </node>\n    <node id=\"person:ilya\">\n      <data key=\"d_title\">Ilya Sutskever</data>\n      <data key=\"d_node_type\">person</data>\n      <data key=\"d_page_type\">entity</data>\n      <data key=\"d_path\">entities/ilya.md</data>\n    </node>\n    <node id=\"source:attention-paper\">\n      <data key=\"d_title\">Attention Is All You Need</data>\n      <data key=\"d_node_type\">source</data>\n      <data key=\"d_page_type\">source</data>\n      <data key=\"d_path\">sources/attention-paper.md</data>\n    </node>\n    <edge id=\"003c11b6e73c5de8718ccd70\" source=\"person:ilya\" target=\"company:openai\">\n      <data key=\"d_predicate\">mentions</data>\n      <data key=\"d_confidence\">low</data>\n      <data key=\"d_status\">current</data>\n      <data key=\"d_source\" />\n    </edge>\n    <edge id=\"02bdc3f56fb352c4683df892\" source=\"person:ilya\" target=\"concept:kv-cache\">\n      <data key=\"d_predicate\">invented</data>\n      <data key=\"d_confidence\" />\n      <data key=\"d_status\" />\n      <data key=\"d_source\" />\n    </edge>\n    <edge id=\"12744070f66c1b03771cc149\" source=\"person:ilya\" target=\"company:ghost\">\n      <data key=\"d_predicate\">founded</data>\n      <data key=\"d_confidence\">certain</data>\n      <data key=\"d_status\">rumoured</data>\n      <data key=\"d_source\">attention-paper</data>\n    </edge>\n    <edge id=\"1309b7fbd471fdc94d71f092\" source=\"concept:kv-cache\" target=\"person:ilya\">\n      <data key=\"d_predicate\">mentions</data>\n      <data key=\"d_confidence\">low</data>\n      <data key=\"d_status\">current</data>\n      <data key=\"d_source\" />\n    </edge>\n    <edge id=\"17dc3bdd69a6853b15784e49\" source=\"source:attention-paper\" target=\"raw:raw/attention.pdf\">\n      <data key=\"d_predicate\">summarizes_raw</data>\n      <data key=\"d_confidence\">high</data>\n      <data key=\"d_status\">current</data>\n      <data key=\"d_source\" />\n    </edge>\n    <edge id=\"4dff040cc6cbc53c815d6abd\" source=\"concept:kv-cache\" target=\"concept:attention\">\n      <data key=\"d_predicate\">depends_on</data>\n      <data key=\"d_confidence\">medium</data>\n      <data key=\"d_status\">current</data>\n      <data key=\"d_source\">attention-paper</data>\n    </edge>\n    <edge id=\"6ea3eb97a0372b583393dfdf\" source=\"person:ilya\" target=\"concept:kv-cache\">\n      <data key=\"d_predicate\">works_on</data>\n      <data key=\"d_confidence\">low</data>\n      <data key=\"d_status\">current</data>\n      <data key=\"d_source\">no-such-source</data>\n    </edge>\n    <edge id=\"6ea8f817ab8115f1af30ad15\" source=\"company:openai\" target=\"person:ilya\">\n      <data key=\"d_predicate\">mentions</data>\n      <data key=\"d_confidence\">low</data>\n      <data key=\"d_status\">current</data>\n      <data key=\"d_source\" />\n    </edge>\n    <edge id=\"9263164f2ca070711b0f2913\" source=\"person:ilya\" target=\"concept:kv-cache\">\n      <data key=\"d_predicate\">mentions</data>\n      <data key=\"d_confidence\">low</data>\n      <data key=\"d_status\">current</data>\n      <data key=\"d_source\" />\n    </edge>\n    <edge id=\"d2b3aaf68c312b500062d87a\" source=\"person:ilya\" target=\"company:openai\">\n      <data key=\"d_predicate\">founded</data>\n      <data key=\"d_confidence\">high</data>\n      <data key=\"d_status\">current</data>\n      <data key=\"d_source\">attention-paper</data>\n    </edge>\n    <edge id=\"d47c95b8c644be07c3241f86\" source=\"person:ilya\" target=\"source:attention-paper\">\n      <data key=\"d_predicate\">sourced_from</data>\n      <data key=\"d_confidence\">high</data>\n      <data key=\"d_status\">current</data>\n      <data key=\"d_source\">attention-paper</data>\n    </edge>\n  </graph>\n</graphml>",
+ "node_rows": [
+  {
+   "id": "company:openai",
+   "slug": "openai",
+   "title": "OpenAI",
+   "page_type": "entity",
+   "node_type": "company",
+   "kind": "company",
+   "path": "entities/openai.md",
+   "created": null,
+   "updated": null,
+   "metadata_json": "{\"aliases\": [\"OAI\", \"Ilya\"], \"canonical\": true, \"tags\": []}"
+  },
+  {
+   "id": "concept:kv-cache",
+   "slug": "kv-cache",
+   "title": "KV Cache",
+   "page_type": "concept",
+   "node_type": "concept",
+   "kind": null,
+   "path": "concepts/kv-cache.md",
+   "created": null,
+   "updated": null,
+   "metadata_json": "{\"aliases\": [], \"canonical\": false, \"tags\": []}"
+  },
+  {
+   "id": "concept:orphan-typed",
+   "slug": "orphan-typed",
+   "title": "Orphan Typed",
+   "page_type": "concept",
+   "node_type": "concept",
+   "kind": null,
+   "path": "concepts/orphan-typed.md",
+   "created": null,
+   "updated": null,
+   "metadata_json": "{\"aliases\": [], \"canonical\": false, \"tags\": []}"
+  },
+  {
+   "id": "person:ilya",
+   "slug": "ilya",
+   "title": "Ilya Sutskever",
+   "page_type": "entity",
+   "node_type": "person",
+   "kind": "person",
+   "path": "entities/ilya.md",
+   "created": "2026-01-01",
+   "updated": "2026-02-01",
+   "metadata_json": "{\"aliases\": [\"Ilya\"], \"canonical\": false, \"tags\": [\"people\"]}"
+  },
+  {
+   "id": "source:attention-paper",
+   "slug": "attention-paper",
+   "title": "Attention Is All You Need",
+   "page_type": "source",
+   "node_type": "source",
+   "kind": null,
+   "path": "sources/attention-paper.md",
+   "created": null,
+   "updated": null,
+   "metadata_json": "{\"aliases\": [], \"canonical\": false, \"tags\": []}"
+  }
+ ],
+ "edge_rows": [
+  {
+   "id": "003c11b6e73c5de8718ccd70",
+   "subject": "person:ilya",
+   "predicate": "mentions",
+   "object": "company:openai",
+   "source": null,
+   "evidence": null,
+   "confidence": "low",
+   "status": "current",
+   "extraction_method": "body_wikilink",
+   "page": "entities/ilya.md",
+   "metadata_json": "{}"
+  },
+  {
+   "id": "02bdc3f56fb352c4683df892",
+   "subject": "person:ilya",
+   "predicate": "invented",
+   "object": "concept:kv-cache",
+   "source": null,
+   "evidence": null,
+   "confidence": null,
+   "status": null,
+   "extraction_method": "explicit_graph_frontmatter",
+   "page": "entities/ilya.md",
+   "metadata_json": "{}"
+  },
+  {
+   "id": "12744070f66c1b03771cc149",
+   "subject": "person:ilya",
+   "predicate": "founded",
+   "object": "company:ghost",
+   "source": "attention-paper",
+   "evidence": null,
+   "confidence": "certain",
+   "status": "rumoured",
+   "extraction_method": "explicit_graph_frontmatter",
+   "page": "entities/ilya.md",
+   "metadata_json": "{}"
+  },
+  {
+   "id": "1309b7fbd471fdc94d71f092",
+   "subject": "concept:kv-cache",
+   "predicate": "mentions",
+   "object": "person:ilya",
+   "source": null,
+   "evidence": null,
+   "confidence": "low",
+   "status": "current",
+   "extraction_method": "body_wikilink",
+   "page": "concepts/kv-cache.md",
+   "metadata_json": "{}"
+  },
+  {
+   "id": "17dc3bdd69a6853b15784e49",
+   "subject": "source:attention-paper",
+   "predicate": "summarizes_raw",
+   "object": "raw:raw/attention.pdf",
+   "source": null,
+   "evidence": null,
+   "confidence": "high",
+   "status": "current",
+   "extraction_method": "frontmatter_raw",
+   "page": "sources/attention-paper.md",
+   "metadata_json": "{}"
+  },
+  {
+   "id": "4dff040cc6cbc53c815d6abd",
+   "subject": "concept:kv-cache",
+   "predicate": "depends_on",
+   "object": "concept:attention",
+   "source": "attention-paper",
+   "evidence": "uses attention",
+   "confidence": "medium",
+   "status": "current",
+   "extraction_method": "explicit_graph_frontmatter",
+   "page": "concepts/kv-cache.md",
+   "metadata_json": "{}"
+  },
+  {
+   "id": "6ea3eb97a0372b583393dfdf",
+   "subject": "person:ilya",
+   "predicate": "works_on",
+   "object": "concept:kv-cache",
+   "source": "no-such-source",
+   "evidence": "worked on caches",
+   "confidence": "low",
+   "status": "current",
+   "extraction_method": "explicit_graph_frontmatter",
+   "page": "entities/ilya.md",
+   "metadata_json": "{\"supersedes\": \"claim:old\", \"valid_from\": \"2020-01-01\"}"
+  },
+  {
+   "id": "6ea8f817ab8115f1af30ad15",
+   "subject": "company:openai",
+   "predicate": "mentions",
+   "object": "person:ilya",
+   "source": null,
+   "evidence": null,
+   "confidence": "low",
+   "status": "current",
+   "extraction_method": "body_wikilink",
+   "page": "entities/openai.md",
+   "metadata_json": "{}"
+  },
+  {
+   "id": "9263164f2ca070711b0f2913",
+   "subject": "person:ilya",
+   "predicate": "mentions",
+   "object": "concept:kv-cache",
+   "source": null,
+   "evidence": null,
+   "confidence": "low",
+   "status": "current",
+   "extraction_method": "body_wikilink",
+   "page": "entities/ilya.md",
+   "metadata_json": "{}"
+  },
+  {
+   "id": "d2b3aaf68c312b500062d87a",
+   "subject": "person:ilya",
+   "predicate": "founded",
+   "object": "company:openai",
+   "source": "attention-paper",
+   "evidence": "co-founded OpenAI in 2015",
+   "confidence": "high",
+   "status": "current",
+   "extraction_method": "explicit_graph_frontmatter",
+   "page": "entities/ilya.md",
+   "metadata_json": "{}"
+  },
+  {
+   "id": "d47c95b8c644be07c3241f86",
+   "subject": "person:ilya",
+   "predicate": "sourced_from",
+   "object": "source:attention-paper",
+   "source": "attention-paper",
+   "evidence": null,
+   "confidence": "high",
+   "status": "current",
+   "extraction_method": "frontmatter_sources",
+   "page": "entities/ilya.md",
+   "metadata_json": "{}"
+  }
+ ],
+ "lint": {
+  "duplicate_node_ids": [
+   {
+    "node_id": "company:openai",
+    "paths": [
+     "entities/openai.md",
+     "sources/dup.md"
+    ]
+   }
+  ],
+  "unknown_predicates": [
+   {
+    "page": "entities/ilya.md",
+    "predicate": "invented",
+    "object": "concept:kv-cache",
+    "index": 2
+   }
+  ],
+  "broken_object_refs": [
+   {
+    "page": "concepts/kv-cache.md",
+    "predicate": "depends_on",
+    "object": "concept:attention",
+    "index": 0
+   },
+   {
+    "page": "entities/ilya.md",
+    "predicate": "founded",
+    "object": "company:ghost",
+    "index": 1
+   }
+  ],
+  "subject_type_mismatch": [],
+  "object_type_mismatch": [],
+  "missing_evidence": [
+   {
+    "page": "entities/ilya.md",
+    "predicate": "founded",
+    "object": "company:ghost",
+    "index": 1
+   }
+  ],
+  "missing_source_field": [],
+  "broken_source_refs": [
+   {
+    "page": "entities/ilya.md",
+    "predicate": "works_on",
+    "object": "concept:kv-cache",
+    "index": 3,
+    "source": "no-such-source"
+   }
+  ],
+  "invalid_confidence": [
+   {
+    "page": "entities/ilya.md",
+    "predicate": "founded",
+    "object": "company:ghost",
+    "index": 1,
+    "confidence": "certain"
+   }
+  ],
+  "invalid_status": [
+   {
+    "page": "entities/ilya.md",
+    "predicate": "founded",
+    "object": "company:ghost",
+    "index": 1,
+    "status": "rumoured"
+   }
+  ],
+  "duplicate_canonical": [],
+  "alias_collisions": [
+   {
+    "alias": "Ilya",
+    "owners": [
+     "company:openai",
+     "person:ilya"
+    ]
+   }
+  ],
+  "broken_contradicts": [],
+  "broken_supersedes": [
+   {
+    "page": "entities/ilya.md",
+    "predicate": "works_on",
+    "object": "concept:kv-cache",
+    "index": 3,
+    "supersedes": "claim:old"
+   }
+  ],
+  "orphan_typed_nodes": [
+   {
+    "node_id": "concept:orphan-typed",
+    "path": "concepts/orphan-typed.md"
+   }
+  ],
+  "summary": {
+   "pages_scanned": 6,
+   "nodes": 5,
+   "duplicate_node_ids": 1,
+   "unknown_predicates": 1,
+   "broken_object_refs": 2,
+   "subject_type_mismatch": 0,
+   "object_type_mismatch": 0,
+   "missing_evidence": 1,
+   "missing_source_field": 0,
+   "broken_source_refs": 1,
+   "invalid_confidence": 1,
+   "invalid_status": 1,
+   "duplicate_canonical": 0,
+   "alias_collisions": 1,
+   "broken_contradicts": 0,
+   "broken_supersedes": 1,
+   "orphan_typed_nodes": 1
+  }
+ }
+}

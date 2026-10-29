@@ -1,10 +1,14 @@
 # Ingest Workflow
 
-When a new source arrives, this is the procedure. The order matters — each step builds context for the next.
+When a new source arrives, this is the procedure. The order matters: each step builds context for the next.
+
+Each step shows the local form first. For a hosted wiki, use the **Hosted** form (see `hosted-mode.md`). In hosted mode, collect the page writes of Steps 5 to 9 into one `wiki_commit` when possible. One commit applies all changes, or none.
 
 ## Step 0: Check the schema
 
 Before anything else, read `wiki/SCHEMA.md`. The user may have customized the page-type structure, the tag taxonomy, the naming conventions, or the ingest workflow itself. Schema overrides everything documented here.
+
+**Hosted:** call `wiki_overview`. It returns `SCHEMA.md` and `index.md`.
 
 ## Step 1: Place the raw source
 
@@ -12,29 +16,37 @@ If the source isn't already in `raw/`, place it there. Use a slugified filename:
 
 The slug you pick here will become the slug of the source-summary page in `wiki/sources/`, so make it descriptive and stable.
 
+**Hosted:** upload the file with `python3 scripts/wiki_remote.py raw put <file> --as <slug>.<ext>`. Without a shell, save text sources with `wiki_raw` `put_text`. If the server has no raw storage, keep the file on this machine and record its path and SHA-256 in the source page frontmatter.
+
 ## Step 2: Read the source
 
 For short sources (under ~5,000 words / ~25,000 tokens), read the whole thing in one pass.
 
-For long sources (papers over ~30 pages, book chapters, multi-hour transcripts), **chunk-read**: read the table of contents or section headers first to build a mental map, then read sections sequentially, summarizing each section in working memory before moving to the next. Do not load the entire raw source into context at once if it would consume more than ~25% of your context window — that leaves no room for the rest of the operation.
+For long sources (papers over ~30 pages, book chapters, multi-hour transcripts), **chunk-read**: read the table of contents or section headers first to build a mental map, then read sections sequentially, summarizing each section in working memory before moving to the next. Do not load the entire raw source into context at once if it would consume more than ~25% of your context window: that leaves no room for the rest of the operation.
+
+**Hosted:** read a raw file in parts with `wiki_raw` `read`, `offset` and `length`.
 
 For PDFs specifically, prefer the `pdf-reading` skill if available (it handles the chunking automatically). Otherwise extract text first with `pdftotext` or `pdfminer` and then chunk-read the extracted text.
 
-For images embedded in the source: read the surrounding text first, then view only the images that the text suggests are load-bearing (a chart referenced in an argument, a diagram of a system, a figure the source explicitly walks through). Don't blindly load every image — many are decorative.
+For images embedded in the source: read the surrounding text first, then view only the images that the text suggests are load-bearing (a chart referenced in an argument, a diagram of a system, a figure the source explicitly walks through). Don't blindly load every image: many are decorative.
 
 ## Step 3: Discuss the takeaways with the user
 
-Briefly — three or four sentences. Surface what struck you as important, what was surprising, what connects to existing wiki content, and what's worth flagging. The user's reaction shapes the next steps. They might say "skip the methodology section, only the results matter for me" or "we already have a page on this — just update it" or "this contradicts the page on X, flag that prominently".
+Briefly: three or four sentences. Surface what struck you as important, what was surprising, what connects to existing wiki content, and what's worth flagging. The user's reaction shapes the next steps. They might say "skip the methodology section, only the results matter for me" or "we already have a page on this: just update it" or "this contradicts the page on X, flag that prominently".
 
-If the user is operating in a hands-off mode (batch ingest, "just process these 20 papers"), skip the discussion but be more conservative on the wiki edits — make smaller, safer updates and surface anything ambiguous in the log.
+If the user is operating in a hands-off mode (batch ingest, "just process these 20 papers"), skip the discussion but be more conservative on the wiki edits: make smaller, safer updates and surface anything ambiguous in the log.
 
 ## Step 4: Identify what's touched
 
 Before writing anything, do a survey pass against the wiki to determine the impact:
 
 1. Read `wiki/index.md` (or the relevant shard under `wiki/indexes/`) to identify existing pages this source touches. Look for entity names, concept names, and topical overlap.
-2. For each potentially-touched page, read the page to confirm. (Read, don't grep — the index summaries can mislead.)
+2. For each potentially-touched page, read the page to confirm. (Read, don't grep: the index summaries can mislead.)
 3. List, in working memory: existing pages to update, new pages to create, contradictions to flag.
+
+If the user enabled the optional decision layer, `python scripts/wiki_decide.py shortlist raw/<source-file> --wiki wiki/` ranks the pages to read first. Use it as a hint only (`decision-models.md`).
+
+**Hosted:** use `index.md` from `wiki_overview`, then `wiki_read` for the candidate pages. Keep the `rev` of each page that you will change.
 
 This survey is what prevents duplication. Without it, you'll create a new page on a topic that already has one under a slightly different name.
 
@@ -56,17 +68,19 @@ concepts: [concept-page-1, concept-page-2]
 ---
 ```
 
-Frontmatter list values are bare slugs — the `[[wikilink]]` syntax goes in the body, not in YAML.
+Frontmatter list values are bare slugs: the `[[wikilink]]` syntax goes in the body, not in YAML.
 
-The body should be the LLM's summary of the source — the key claims, the methodology if relevant, the conclusions, the open questions. Do not paraphrase the entire source; that defeats the purpose. Aim for a summary that captures what a future query would need to know without re-reading the raw file.
+The body should be the LLM's summary of the source: the key claims, the methodology if relevant, the conclusions, the open questions. Do not paraphrase the entire source; that defeats the purpose. Aim for a summary that captures what a future query would need to know without re-reading the raw file.
 
-Keep the page atomic — under the 400-line soft cap. If the source is so dense that a single summary page can't capture it, split: one page per major section, each linking to the others, with a parent page that gives the overview.
+Keep the page atomic: under the 400-line soft cap. If the source is so dense that a single summary page can't capture it, split: one page per major section, each linking to the others, with a parent page that gives the overview.
 
 End the body with a "Where this fits" section listing `[[wikilinks]]` to the entity and concept pages this source touches. This is the bidirectional link from source → existing structure.
 
 ## Step 6: Update touched pages
 
 For each existing page identified in Step 4, surgically edit it to incorporate what the new source adds. Use `str_replace`, not full rewrites. The goal is to add a sentence or paragraph in the relevant section, with a `[[wikilinks]]` citation to the new source-summary page.
+
+**Hosted:** use a `wiki_commit` `edit` operation with the page `base_rev`. Each `old` text must occur once in the page. After a conflict, read the page again and retry (`hosted-mode.md`).
 
 Common update patterns:
 
@@ -84,35 +98,43 @@ For each new entity or concept the source introduces that doesn't have a page ye
 New pages need:
 - Frontmatter with `type`, `tags`, `sources: [[[<source-slug>]]]`, `created`, `updated`.
 - A body that introduces the entity/concept with what this source said about it.
-- Inbound links — at least one existing page should `[[wikilink]]` to the new page, otherwise it's an instant orphan. Update the existing page to add the link.
+- Inbound links: at least one existing page should `[[wikilink]]` to the new page, otherwise it's an instant orphan. Update the existing page to add the link.
 
 A new page that nothing links to is a bug in the ingest, not just a lint finding.
 
+**Hosted:** use a `create` operation for each new page. It fails if the path exists. Then read the existing page and edit it.
+
 ## Step 8: Update the index
 
-Add entries for any new pages to `wiki/index.md` (or the appropriate shard). Each entry is one line: a wikilink to the page and a one-sentence summary. Keep the summary tight — the index is engineered to be cheap to read, and a fat index defeats the index-first navigation principle.
+Add entries for any new pages to `wiki/index.md` (or the appropriate shard). Each entry is one line: a wikilink to the page and a one-sentence summary. Keep the summary tight: the index is engineered to be cheap to read, and a fat index defeats the index-first navigation principle.
 
-If `index.md` exceeds 300 lines after this update, that's the signal to shard. Do it now while the structure is fresh — see `scaling-playbook.md` for the procedure.
+**Hosted:** use an `append` operation on the index page, with `after_heading` for the correct section.
+
+If `index.md` exceeds 300 lines after this update, that's the signal to shard. Do it now while the structure is fresh: see `scaling-playbook.md` for the procedure.
 
 ## Step 8b: Refresh the graph layer (only if `wiki/graph/ontology.yaml` exists)
 
 If the wiki has the optional graph layer:
 
-1. Add typed `graph.relationships[]` only when the source explicitly supports them (predicate, source-page slug, evidence quote, confidence, status). When uncertain, prefer a plain `[[wikilink]]` in the body — the body wikilink already produces a `mentions` edge.
+1. Add typed `graph.relationships[]` only when the source explicitly supports them (predicate, source-page slug, evidence quote, confidence, status). When uncertain, prefer a plain `[[wikilink]]` in the body: the body wikilink already produces a `mentions` edge.
 2. Run `uv run --script scripts/wiki_graph_lint.py wiki/`. Triage findings with the user before extracting; do not silently rewrite typed edges.
 3. Run `uv run --script scripts/wiki_graph_extract.py wiki/` to regenerate `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, `graph.graphml`.
 
-Skip this entire step if the ingest added no `graph:` metadata and created no new pages — the compiled artifacts are unchanged. Full reference: `references/graph-workflow.md`.
+Skip this entire step if the ingest added no `graph:` metadata and created no new pages: the compiled artifacts are unchanged. Full reference: `references/graph-workflow.md`.
+
+**Hosted:** do not run extract. The server updates the graph in the same commit. Run `wiki_lint` and triage the graph findings.
 
 ## Step 9: Append to the log
 
 One line in `wiki/log.md`, with the prefix `## [YYYY-MM-DD] ingest | <source-title>`. Optionally add a sub-line listing the pages touched. If the graph layer was refreshed, add a second sub-line: `   graph: +N nodes, +M typed edges`. The log is parsed by simple unix tools (`grep "^## \[" log.md | tail -10`), so the prefix matters.
 
+**Hosted:** add the same line with an `append` operation on `log.md`. Appends never conflict.
+
 ## Step 10: Close the loop with the user
 
 Tell the user what you did, briefly: "Ingested. Created the source page and a new entity page for X; updated the concept pages for Y and Z. Flagged a contradiction with [[paper-A]] regarding the claim about W."
 
-If the source revealed something worth following up on (an obvious gap, a question the source raised but didn't answer, a candidate next source to ingest), say so — this is where the wiki's compounding effect comes from.
+If the source revealed something worth following up on (an obvious gap, a question the source raised but didn't answer, a candidate next source to ingest), say so: this is where the wiki's compounding effect comes from.
 
 ## Anti-patterns to avoid
 

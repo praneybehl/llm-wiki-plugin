@@ -24,12 +24,17 @@ const faqItems = [
   {
     question: 'Does LLM Wiki require embeddings or a vector database?',
     answer:
-      'No hosted service is required. Default search uses local FastEmbed embeddings in a disposable sqlite-vec index and fuses them with BM25. Run the search script directly with Python and --no-embed for dependency-free lexical retrieval. The typed graph is also optional, while canonical Markdown remains the source of truth.',
+      'No hosted service is required. Default search uses local FastEmbed embeddings in a disposable sqlite-vec index and fuses them with BM25. Run the search script directly with Python and --no-embed for dependency-free lexical retrieval. The typed graph is also optional, while canonical Markdown remains the source of truth. An optional hosted backend on Cloudflare adds Workers AI embeddings and Vectorize for teams and remote agents.',
   },
   {
     question: 'Which coding agents support LLM Wiki?',
     answer:
       'The agentskills.io-compatible skill is verified with Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi, and OMP. Claude Code also receives /wiki:* slash commands through the plugin; other agents invoke the same workflows through natural language. See the agent support matrix.',
+  },
+  {
+    question: 'Can several agents share one LLM Wiki?',
+    answer:
+      'Yes. Agents on one machine can share a local folder. For agents on many machines, deploy the optional hosted wiki: one Cloudflare Worker with a Durable Object for each wiki, MCP and JSON API access, per-agent tokens or OAuth, atomic commits and conflict detection. Markdown stays canonical, and a pull mirror keeps a local copy.',
   },
   {
     question: 'How do I install and start using LLM Wiki?',
@@ -68,7 +73,7 @@ function structuredData(
           name: 'LLM Wiki',
           applicationCategory: 'DeveloperApplication',
           operatingSystem: 'Cross-platform',
-          softwareVersion: '3.2.0',
+          softwareVersion: '4.0.0',
           description,
           url,
           codeRepository: repo,
@@ -123,7 +128,7 @@ export default withMermaid(
     lang: 'en-US',
     title: 'LLM Wiki',
     description:
-      'An LLM-curated, continuously compiled knowledge base for your projects — the LLM Wiki plugin.',
+      'An LLM-curated, continuously compiled knowledge base for your projects: the LLM Wiki plugin.',
     // Keep default (non-clean) URLs so the build still emits *.html files and
     // legacy inbound links such as /llm-wiki-plugin/getting-started.html keep resolving.
     cleanUrls: false,
@@ -136,7 +141,7 @@ export default withMermaid(
       const url = canonicalUrl(pageData.relativePath)
       const title =
         pageData.relativePath === 'index.md'
-          ? 'LLM Wiki — LLM-curated knowledge base'
+          ? 'LLM Wiki: LLM-curated knowledge base'
           : `${pageData.title} | LLM Wiki`
       const description =
         pageData.description ||
@@ -208,14 +213,15 @@ export default withMermaid(
           activeMatch: '^/(search|graph)',
         },
         {
-          text: 'Ecosystem',
-          link: '/integrations',
-          activeMatch: '^/(integrations|agents)',
+          text: 'Hosted',
+          link: '/hosted',
+          activeMatch: '^/(hosted|decisions)',
         },
+        { text: 'Agents', link: '/agents', activeMatch: '^/agents' },
         {
-          text: 'v3.2.0',
+          text: 'v4.0.0',
           items: [
-            { text: 'Upgrade to v3.2', link: '/upgrade' },
+            { text: 'Upgrade to v4', link: '/upgrade' },
             { text: 'Changelog', link: `${repo}/blob/main/CHANGELOG.md` },
             { text: 'Releases', link: `${repo}/releases` },
           ],
@@ -241,15 +247,19 @@ export default withMermaid(
           ],
         },
         {
-          text: 'Ecosystem',
+          text: 'Hosted',
           items: [
-            { text: 'Integrations', link: '/integrations' },
-            { text: 'Agents', link: '/agents' },
+            { text: 'Hosted wiki', link: '/hosted' },
+            { text: 'Decision models', link: '/decisions' },
           ],
         },
         {
+          text: 'Ecosystem',
+          items: [{ text: 'Agents', link: '/agents' }],
+        },
+        {
           text: 'Release',
-          items: [{ text: 'Upgrade to v3.2', link: '/upgrade' }],
+          items: [{ text: 'Upgrade to v4', link: '/upgrade' }],
         },
       ],
 

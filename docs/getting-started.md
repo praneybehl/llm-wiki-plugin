@@ -15,7 +15,7 @@ There are two install paths. Claude Code gets the full plugin (skill + `/wiki:*`
 
 Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) first. It is the only prerequisite and creates isolated, pinned environments for the bundled tools.
 
-### Claude Code — full plugin {#a-claude}
+### Claude Code: full plugin {#a-claude}
 
 The native path: skill, slash commands, and manifest ship together.
 
@@ -26,7 +26,7 @@ The native path: skill, slash commands, and manifest ship together.
 
 Once installed, the plugin works in any project. Installation does not decide where your wiki lives.
 
-The agents below install the same skill through the `skills` CLI. Each uses the same command with a different `-a` value — add `-g` to install globally across all projects, or drop it to install into the current project only. Slash commands are Claude Code–only; elsewhere, invoke the skill by natural language.
+The agents below install the same skill through the `skills` CLI. Each uses the same command with a different `-a` value: add `-g` to install globally across all projects, or drop it to install into the current project only. Slash commands are Claude Code–only; elsewhere, invoke the skill by natural language.
 
 ### Codex (OpenAI) {#a-codex}
 
@@ -86,7 +86,7 @@ mkdir -p ~/.omp/agent/skills
 ln -s "$(pwd)/llm-wiki-plugin/skills/llm-wiki" ~/.omp/agent/skills/llm-wiki
 ```
 
-### Other runtimes — clone and symlink {#a-other}
+### Other runtimes: clone and symlink {#a-other}
 
 Hermes Agent and any other agentskills.io-compatible runtime not yet in the `npx skills` registry can use the skill by symlinking it into the agent's skills directory:
 
@@ -96,7 +96,7 @@ mkdir -p ~/.hermes/skills
 ln -s "$(pwd)/llm-wiki-plugin/skills/llm-wiki" ~/.hermes/skills/llm-wiki
 ```
 
-The wiki itself is agent-agnostic — it is just a directory of markdown files. You can ingest with one agent and query with another.
+The wiki itself is agent-agnostic: it is just a directory of markdown files. You can ingest with one agent and query with another.
 
 ## Choose the wiki location
 
@@ -104,6 +104,8 @@ Skill scope and wiki scope are independent:
 
 - **Personal global wiki:** one knowledge base at a stable user-level path such as `~/wiki/`, with raw sources at `~/wiki/raw/`. Add that path to your agent's global instructions. Any project can contribute durable findings and sources to this wiki.
 - **Project wiki:** `wiki/` and `raw/` live in one project. Add a relative-path pointer to that project's agent-memory file. This keeps knowledge isolated and makes it easy to version with the repository.
+
+- **Hosted wiki:** one wiki on a Cloudflare Worker in your account. Agents on any machine use it over MCP. Choose this when many agents or machines must share one wiki. See [Use a hosted wiki](#use-a-hosted-wiki).
 
 Installing the skill globally with `-g` only makes the skill available everywhere. It does not create a global wiki. Likewise, a global wiki does not automatically crawl projects; the agent ingests project material when asked or when its global instructions require durable findings to be preserved.
 
@@ -119,7 +121,7 @@ The commands below use Claude Code's `/wiki:*` slash syntax. In other agents, ph
 
    For a wiki isolated to the current project, run `/wiki:init` without `--global`.
 
-   > **Expected** — Bootstraps the wiki structure, then installs FastEmbed 0.8.0, sqlite-vec 0.1.9, and PyYAML 6.0.3; downloads the local `BAAI/bge-small-en-v1.5` model if absent; builds the parse cache; and embeds every current section. Setup is complete only when the runtime JSON reports `"status": "ready"`. The agent then walks through the schema and offers agent-memory integration; nothing is written there without approval.
+   > **Expected**: Bootstraps the wiki structure, then installs FastEmbed 0.8.0, sqlite-vec 0.1.9, and PyYAML 6.0.3; downloads the local `BAAI/bge-small-en-v1.5` model if absent; builds the parse cache; and embeds every current section. Setup is complete only when the runtime JSON reports `"status": "ready"`. The agent then walks through the schema and offers agent-memory integration; nothing is written there without approval.
 
    > **Already have a wiki** from an earlier version? Run [`/wiki:upgrade`](/upgrade) instead. It performs the same mandatory runtime setup and incremental full-corpus synchronization while leaving existing pages untouched.
 
@@ -129,7 +131,7 @@ The commands below use Claude Code's `/wiki:*` slash syntax. In other agents, ph
    /wiki:ingest ~/wiki/raw/your-source.pdf
    ```
 
-   > **Expected** — The agent resolves the configured wiki, reads the source (chunk-reading if it is large), discusses the takeaways with you, writes a source summary, surgically updates the entity and concept pages it touches, creates new pages (each with at least one inbound link), updates the index, and appends one line to `log.md`.
+   > **Expected**: The agent resolves the configured wiki, reads the source (chunk-reading if it is large), discusses the takeaways with you, writes a source summary, surgically updates the entity and concept pages it touches, creates new pages (each with at least one inbound link), updates the index, and appends one line to `log.md`.
 
 3. **Ask a question.** Once a few sources are in:
 
@@ -137,7 +139,7 @@ The commands below use Claude Code's `/wiki:*` slash syntax. In other agents, ph
    /wiki:query What does my wiki say about X?
    ```
 
-   > **Expected** — The agent reads the index to find candidate pages, reads them, synthesizes an answer with `[[wikilink]]` citations, and offers to file substantive answers back into `wiki/synthesis/` so the exploration compounds.
+   > **Expected**: The agent reads the index to find candidate pages, reads them, synthesizes an answer with `[[wikilink]]` citations, and offers to file substantive answers back into `wiki/synthesis/` so the exploration compounds.
 
 4. **Run a health check** periodically:
 
@@ -145,11 +147,29 @@ The commands below use Claude Code's `/wiki:*` slash syntax. In other agents, ph
    /wiki:lint
    ```
 
-   > **Expected** — Catches orphan pages, broken wikilinks, oversized pages, missing frontmatter, and stale claims. Findings are presented as proposed edits — the wiki is never rewritten silently.
+   > **Expected**: Catches orphan pages, broken wikilinks, oversized pages, missing frontmatter, and stale claims. Findings are presented as proposed edits: the wiki is never rewritten silently.
 
 ::: info
-You don't have to use the slash commands. The agent triggers the same skill on natural-language requests too. The commands are there when you want explicit invocation — see the [Commands reference](/commands).
+You don't have to use the slash commands. The agent triggers the same skill on natural-language requests too. The commands are there when you want explicit invocation: see the [Commands reference](/commands).
 :::
+
+## Use a hosted wiki
+
+The hosted wiki is optional. You still install the skill on each agent as above. Then:
+
+1. Deploy the server with the **Deploy to Cloudflare** button on the [Hosted wiki](/hosted) page. Enter an `ADMIN_TOKEN` when Cloudflare asks.
+2. Open `https://<your-worker>/setup`, sign in with `ADMIN_TOKEN`, create the wiki `main` and make one token for each agent.
+3. In each agent, connect:
+
+   ```bash
+   /wiki:init --hosted https://<your-worker>
+   ```
+
+   > **Expected**: The agent stores the URL and token, checks the connection, shows the MCP configuration for your client, and proposes a memory stanza. It writes nothing without your approval.
+
+4. To move an existing local wiki, run `/wiki:migrate`. It uploads, verifies every file, and can keep the local folder as a read-only mirror.
+
+After that, `/wiki:ingest`, `/wiki:query` and `/wiki:lint` work the same way. The agent uses the MCP tools instead of local files.
 
 ## Optional learning workflow
 

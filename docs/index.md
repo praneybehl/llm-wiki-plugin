@@ -1,5 +1,5 @@
 ---
-title: LLM Wiki — shared memory for AI agents
+title: 'LLM Wiki: shared memory for AI agents'
 titleTemplate: false
 description: Turn documents and project notes into a shared wiki that AI agents can search, cite, and keep up to date.
 ---
@@ -14,7 +14,7 @@ AI agents are good at the task in front of them, but a new session starts with l
 
 Add a source once. The agent turns it into linked Markdown pages. Later, it can find the right section, answer with citations, and save useful learning back into the wiki.
 
-Everything canonical stays in readable Markdown. Local semantic search uses a disposable SQLite vector index—never a hosted vector database or embedding service.
+Everything canonical stays in readable Markdown. Local semantic search uses a disposable SQLite vector index, with no hosted vector database or embedding service. When many agents or machines must share one wiki, deploy the optional [hosted wiki](/hosted) to your own Cloudflare account in one click.
 
 ## Why this exists
 
@@ -30,8 +30,8 @@ Use it when knowledge should outlive one conversation: long-running research, cu
 
 *Add sources once, retrieve cited evidence later, and save useful learning back so the next session starts with more than the last one did.*
 
-::: tip New in v3.2.0
-Capture verified task experience, consolidate reusable lessons and evaluate evidence-linked skill changes with explicit apply/rollback. Existing local search and wiki pages remain compatible. See [Learning and skill evolution](/evolution) and [Upgrade](/upgrade).
+::: tip New in v4
+An optional [hosted wiki](/hosted) on Cloudflare: one-click deploy, MCP and JSON API access for every agent, per-agent tokens or OAuth, atomic commits with history, hybrid search with Workers AI, a browser reader and a pull mirror. Optional [decision models](/decisions) can gate search relevance and flag weak evidence. Local wikis need no migration. See [Upgrade](/upgrade).
 :::
 
 ## How it works
@@ -60,7 +60,7 @@ flowchart LR
 
    Use `/wiki:init` without `--global` when the wiki should belong only to the current project.
 
-2. **Ingest** your first source — a PDF, an article, a transcript.
+2. **Ingest** your first source: a PDF, an article, a transcript.
 
    ```bash
    /wiki:ingest ~/wiki/raw/your-source.pdf
@@ -72,18 +72,19 @@ flowchart LR
    /wiki:query What does my wiki say about X?
    ```
 
-Not a Claude Code user? The same skill runs in Codex, Cursor, Pi, OMP, and more — see [Getting started](/getting-started) and the [agent support matrix](/agents).
+Not a Claude Code user? The same skill runs in Codex, Cursor, Pi, OMP, and more: see [Getting started](/getting-started) and the [agent support matrix](/agents).
 
 ## Explore the docs
 
-- **[Getting started](/getting-started)** — Install for your agent, then walk through init, ingest, query, and lint.
-- **[Commands](/commands)** — Every `/wiki:*` slash command with usage and examples.
-- **[Workflows](/workflows)** — Step-by-step ingest, query, and lint walkthroughs for end users.
-- **[Search & retrieval](/search)** — Local hybrid retrieval, section-level BM25, JSON evidence, and incremental caches.
-- **[Graph layer](/graph)** — The optional compiled graph for typed, provenance-backed relationships.
-- **[Integrations](/integrations)** — The Paperclip plugin that surfaces the wiki inside a team UI.
-- **[Agents](/agents)** — Which coding agents are supported and how to install for each.
-- **[Upgrade to v3](/upgrade)** — Move provider-backed setups to local vectors with no content migration.
+- **[Getting started](/getting-started)**: Install for your agent, then walk through init, ingest, query, and lint.
+- **[Commands](/commands)**: Every `/wiki:*` slash command with usage and examples.
+- **[Workflows](/workflows)**: Step-by-step ingest, query, and lint walkthroughs for end users.
+- **[Search & retrieval](/search)**: Local hybrid retrieval, section-level BM25, JSON evidence, and incremental caches.
+- **[Graph layer](/graph)**: The optional compiled graph for typed, provenance-backed relationships.
+- **[Hosted wiki](/hosted)**: Deploy to Cloudflare, connect agents over MCP, migrate a local wiki and keep a mirror.
+- **[Decision models](/decisions)**: Optional small models that gate search and flag weak evidence or untrusted text.
+- **[Agents](/agents)**: Which coding agents are supported and how to install for each.
+- **[Upgrade to v4](/upgrade)**: What changes in v4 and how to upgrade from v3 or earlier.
 
 ## Frequently asked questions
 
@@ -97,7 +98,11 @@ RAG usually searches raw document chunks each time you ask a question. LLM Wiki 
 
 ### Does LLM Wiki require a hosted embedding service or vector database?
 
-No. Default semantic search runs locally with FastEmbed and sqlite-vec, and Markdown remains canonical. If you want no model or optional packages at all, run the search script directly with Python and `--no-embed` for pure-Python BM25.
+No. Default semantic search runs locally with FastEmbed and sqlite-vec, and Markdown remains canonical. If you want no model or optional packages at all, run the search script directly with Python and `--no-embed` for pure-Python BM25. The optional [hosted wiki](/hosted) uses Workers AI and Vectorize in your own Cloudflare account.
+
+### Can several agents share one wiki?
+
+Yes. Agents on one machine can share a local folder. For agents on many machines, or agents without file access, deploy the [hosted wiki](/hosted). Each agent gets its own token, every change is a commit with an author, and conflicting edits are detected and retried.
 
 ### Which coding agents support LLM Wiki?
 

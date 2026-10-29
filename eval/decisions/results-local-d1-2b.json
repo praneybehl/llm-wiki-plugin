@@ -1,0 +1,400 @@
+{
+  "generated_at": "2026-10-29T03:38:47+00:00",
+  "backend": "local",
+  "endpoint": "http://127.0.0.1:8080/v1/systemone",
+  "model_requested": "LiquidAI/d1-2B-GGUF:Q8_0",
+  "models_reported": [
+    "LiquidAI/d1-2B-GGUF:Q8_0"
+  ],
+  "meta": {
+    "llama_cpp_build": "b11976",
+    "model_id": "LiquidAI/d1-2B-GGUF:Q8_0",
+    "server": "llama-server http://127.0.0.1:8080/v1/systemone",
+    "search": "lexical"
+  },
+  "requests": 1179,
+  "errors": {},
+  "latency_ms": {
+    "p50": 624,
+    "p90": 2490,
+    "mean": 1041.6
+  },
+  "wall_seconds": 206.4,
+  "checks": {
+    "D1": {
+      "search_mode": "lexical",
+      "pool_size": 20,
+      "positives_without_target_in_pool": [],
+      "queries_failed": 0,
+      "threshold": 0.65,
+      "tune": {
+        "queries": 33,
+        "negatives": 18,
+        "positives": 15,
+        "fp_rate": {
+          "baseline": 1.0,
+          "gated": 0.0
+        },
+        "recall@5": {
+          "baseline": 1.0,
+          "gated": 1.0
+        },
+        "rows_read_top5": {
+          "baseline": 162,
+          "gated": 17
+        },
+        "pairs": {
+          "precision": 0.9412,
+          "recall": 0.9412,
+          "f1": 0.9412,
+          "tp": 16,
+          "fp": 1,
+          "fn": 1,
+          "n": 557
+        },
+        "auroc": 0.9941
+      },
+      "test": {
+        "queries": 32,
+        "negatives": 17,
+        "positives": 15,
+        "fp_rate": {
+          "baseline": 1.0,
+          "gated": 0.0
+        },
+        "recall@5": {
+          "baseline": 1.0,
+          "gated": 1.0
+        },
+        "rows_read_top5": {
+          "baseline": 156,
+          "gated": 17
+        },
+        "pairs": {
+          "precision": 0.9412,
+          "recall": 0.9412,
+          "f1": 0.9412,
+          "tp": 16,
+          "fp": 1,
+          "fn": 1,
+          "n": 550
+        },
+        "auroc": 0.9991
+      },
+      "all": {
+        "queries": 65,
+        "negatives": 35,
+        "positives": 30,
+        "fp_rate": {
+          "baseline": 1.0,
+          "gated": 0.0
+        },
+        "recall@5": {
+          "baseline": 1.0,
+          "gated": 1.0
+        },
+        "rows_read_top5": {
+          "baseline": 318,
+          "gated": 34
+        },
+        "pairs": {
+          "precision": 0.9412,
+          "recall": 0.9412,
+          "f1": 0.9412,
+          "tp": 32,
+          "fp": 2,
+          "fn": 2,
+          "n": 1107
+        },
+        "auroc": 0.997
+      },
+      "all_at_0.5": {
+        "queries": 65,
+        "negatives": 35,
+        "positives": 30,
+        "fp_rate": {
+          "baseline": 1.0,
+          "gated": 0.0857
+        },
+        "recall@5": {
+          "baseline": 1.0,
+          "gated": 1.0
+        },
+        "rows_read_top5": {
+          "baseline": 318,
+          "gated": 40
+        },
+        "pairs": {
+          "precision": 0.8,
+          "recall": 0.9412,
+          "f1": 0.8649,
+          "tp": 32,
+          "fp": 8,
+          "fn": 2,
+          "n": 1107
+        },
+        "auroc": 0.997
+      }
+    },
+    "D2": {
+      "failed": 0,
+      "threshold": 0.55,
+      "tune": {
+        "precision": 0.7143,
+        "recall": 1.0,
+        "f1": 0.8333,
+        "tp": 5,
+        "fp": 2,
+        "fn": 0,
+        "n": 11
+      },
+      "test": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 6,
+        "fp": 0,
+        "fn": 0,
+        "n": 11
+      },
+      "all": {
+        "precision": 0.8462,
+        "recall": 1.0,
+        "f1": 0.9167,
+        "tp": 11,
+        "fp": 2,
+        "fn": 0,
+        "n": 22
+      },
+      "all_at_0.5": {
+        "precision": 0.8333,
+        "recall": 0.9091,
+        "f1": 0.8696,
+        "tp": 10,
+        "fp": 2,
+        "fn": 1,
+        "n": 22
+      },
+      "positive_class": "unsupported (flag)",
+      "cases": [
+        {
+          "id": "e01",
+          "gold_unsupported": false,
+          "choice": "none",
+          "confidence": 0.5387
+        },
+        {
+          "id": "e02",
+          "gold_unsupported": false,
+          "choice": "s7",
+          "confidence": 0.6473
+        },
+        {
+          "id": "e03",
+          "gold_unsupported": false,
+          "choice": "s5",
+          "confidence": 0.7496
+        },
+        {
+          "id": "e04",
+          "gold_unsupported": false,
+          "choice": "s4",
+          "confidence": 0.6146
+        },
+        {
+          "id": "e05",
+          "gold_unsupported": false,
+          "choice": "s6",
+          "confidence": 0.779
+        },
+        {
+          "id": "e06",
+          "gold_unsupported": false,
+          "choice": "s2",
+          "confidence": 0.6228
+        },
+        {
+          "id": "e07",
+          "gold_unsupported": false,
+          "choice": "s5",
+          "confidence": 0.8844
+        },
+        {
+          "id": "e08",
+          "gold_unsupported": false,
+          "choice": "s2",
+          "confidence": 0.6644
+        },
+        {
+          "id": "e09",
+          "gold_unsupported": false,
+          "choice": "s6",
+          "confidence": 0.3816
+        },
+        {
+          "id": "e10",
+          "gold_unsupported": false,
+          "choice": "s2",
+          "confidence": 0.8544
+        },
+        {
+          "id": "e11",
+          "gold_unsupported": false,
+          "choice": "s7",
+          "confidence": 0.6569
+        },
+        {
+          "id": "e12",
+          "gold_unsupported": true,
+          "choice": "none",
+          "confidence": 0.323
+        },
+        {
+          "id": "e13",
+          "gold_unsupported": true,
+          "choice": "none",
+          "confidence": 0.5576
+        },
+        {
+          "id": "e14",
+          "gold_unsupported": true,
+          "choice": "none",
+          "confidence": 0.316
+        },
+        {
+          "id": "e15",
+          "gold_unsupported": true,
+          "choice": "none",
+          "confidence": 0.784
+        },
+        {
+          "id": "e16",
+          "gold_unsupported": true,
+          "choice": "none",
+          "confidence": 0.5276
+        },
+        {
+          "id": "e17",
+          "gold_unsupported": true,
+          "choice": "none",
+          "confidence": 0.506
+        },
+        {
+          "id": "e18",
+          "gold_unsupported": true,
+          "choice": "s6",
+          "confidence": 0.3909
+        },
+        {
+          "id": "e19",
+          "gold_unsupported": true,
+          "choice": "none",
+          "confidence": 0.4928
+        },
+        {
+          "id": "e20",
+          "gold_unsupported": true,
+          "choice": "none",
+          "confidence": 0.3855
+        },
+        {
+          "id": "e21",
+          "gold_unsupported": true,
+          "choice": "s1",
+          "confidence": 0.5356
+        },
+        {
+          "id": "e22",
+          "gold_unsupported": true,
+          "choice": "none",
+          "confidence": 0.7972
+        }
+      ]
+    },
+    "D3": {
+      "failed": 0,
+      "threshold": 0.2,
+      "tune": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "n": 12
+      },
+      "test": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "n": 12
+      },
+      "all": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 10,
+        "fp": 0,
+        "fn": 0,
+        "n": 24
+      },
+      "all_at_0.5": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 10,
+        "fp": 0,
+        "fn": 0,
+        "n": 24
+      },
+      "auroc": 1.0,
+      "positive_class": "contradicts",
+      "relation_accuracy": 0.7917
+    },
+    "D5": {
+      "failed": 0,
+      "threshold": 0.6,
+      "tune": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 6,
+        "fp": 0,
+        "fn": 0,
+        "n": 13
+      },
+      "test": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 6,
+        "fp": 0,
+        "fn": 0,
+        "n": 13
+      },
+      "all": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 12,
+        "fp": 0,
+        "fn": 0,
+        "n": 26
+      },
+      "all_at_0.5": {
+        "precision": 0.8571,
+        "recall": 1.0,
+        "f1": 0.9231,
+        "tp": 12,
+        "fp": 2,
+        "fn": 0,
+        "n": 26
+      },
+      "auroc": 1.0,
+      "positive_class": "A"
+    }
+  }
+}

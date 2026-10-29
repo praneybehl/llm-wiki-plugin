@@ -1,0 +1,2 @@
+# Owner secret. Use a long random value, for example: openssl rand -base64 32
+ADMIN_TOKEN=

@@ -10,13 +10,21 @@ Source: $ARGUMENTS
 Follow the full ingest procedure documented in the skill:
 
 0. Resolve `<WIKI_ROOT>` and `<RAW_ROOT>` from an explicit user path, the nearest project instructions, global agent instructions, or finally the current project's `wiki/` and `raw/`. Never assume `${PWD}/wiki` when instructions name another wiki, and never combine two wikis silently.
-1. Read `<WIKI_ROOT>/SCHEMA.md` first if you haven't this session — it may override default conventions.
+1. Read `<WIKI_ROOT>/SCHEMA.md` first if you haven't this session: it may override default conventions.
 2. Place the raw source in `<RAW_ROOT>/` if it isn't already there. Use a slugified filename.
-3. Read the source. Chunk-read if it's large (over ~5000 words / a long PDF) — never load the whole thing into context if it would consume more than ~25% of the context window.
-4. Briefly discuss the key takeaways with me before writing anything to the wiki — what stands out, what connects to existing pages, what's surprising.
+3. Read the source. Chunk-read if it's large (over ~5000 words / a long PDF): never load the whole thing into context if it would consume more than ~25% of the context window.
+4. Briefly discuss the key takeaways with me before writing anything to the wiki: what stands out, what connects to existing pages, what's surprising.
 5. Survey the wiki to identify which existing pages this source touches; read each candidate to confirm.
 6. Write the source-summary page in `<WIKI_ROOT>/sources/`, surgically update touched entity/concept pages with `str_replace`, create new pages for new entities/concepts (each with at least one inbound link), update the index, append one line to `log.md`.
 7. If `<WIKI_ROOT>/graph/ontology.yaml` exists and the ingest added or could add typed `graph.relationships[]`: add typed edges only when the source explicitly supports them (predicate, source-page slug, evidence quote, confidence, status). Then run `uv run --script "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/wiki_graph_lint.py" "<WIKI_ROOT>"`, triage findings with me, and run `uv run --script "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/wiki_graph_extract.py" "<WIKI_ROOT>"`. Append a `   graph: +N nodes, +M typed edges` sub-line under the ingest entry in `log.md`.
 8. Tell me what you did when you're done: pages touched, pages created, contradictions flagged, follow-ups worth investigating.
 
-If the wiki doesn't exist yet, suggest `/wiki:init --global` for one personal cross-project wiki or `/wiki:init` for a project wiki.
+**Hosted wiki.** If the resolved wiki is a hosted URL (or the instructions name one), use hosted mode from `skills/llm-wiki/references/hosted-mode.md`: the MCP tools, or `python3 "${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki/scripts/wiki_remote.py"` when MCP is not available. Use these forms of the steps above:
+
+- Step 1: call `wiki_overview`. It returns `SCHEMA.md` and `index.md`.
+- Step 2: upload the file with `wiki_remote.py raw put <file>`, or save a text source with `wiki_raw` `put_text`. If the server has no raw storage, keep the file local and record its path and SHA-256 in the source page.
+- Step 3: read large raw files in parts with `wiki_raw` `read`, `offset` and `length`.
+- Step 6: send one `wiki_commit`. Use `create` for new pages, `edit` (the hosted `str_replace`) with `base_rev` for touched pages, and `append` for the index line and the `log.md` line. After a conflict, read the page again and retry. Never replace another agent's change.
+- Step 7: do not run extract. The server updates the graph in the same commit. Run `wiki_lint` and triage the graph findings with me.
+
+If the wiki doesn't exist yet, suggest `/wiki:init --global` for one personal cross-project wiki, `/wiki:init` for a project wiki, or `/wiki:init --hosted <url>` for a hosted wiki.

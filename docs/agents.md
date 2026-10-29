@@ -36,7 +36,7 @@ Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/) first. E
 /plugin install llm-wiki@llm-wiki
 ```
 
-**Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi** install the skill through the `skills` CLI — substitute the matrix's `--agent` value:
+**Codex, Cursor, Gemini CLI, OpenCode, OpenClaw, Pi** install the skill through the `skills` CLI. Substitute the matrix's `--agent` value:
 
 ```bash
 npx skills add praneybehl/llm-wiki-plugin -a codex -g
@@ -49,7 +49,7 @@ npx skills add praneybehl/llm-wiki-plugin -a pi -g
 
 Drop `-g` to install into the current project only.
 
-**OMP ("Oh My Pi")** and **Hermes Agent** aren't yet in the `npx skills` registry — clone the repo and symlink the skill into the agent's skills directory. OMP reads managed/user skills from `~/.omp/agent/skills/` and surfaces them via `skill://`:
+**OMP ("Oh My Pi")** and **Hermes Agent** aren't yet in the `npx skills` registry: clone the repo and symlink the skill into the agent's skills directory. OMP reads managed/user skills from `~/.omp/agent/skills/` and surfaces them via `skill://`:
 
 ```bash
 git clone https://github.com/praneybehl/llm-wiki-plugin.git
@@ -76,8 +76,24 @@ After a wiki is bootstrapped, add a short stanza so the agent remembers its loca
 Running multiple agents? Prefer `AGENTS.md` as the canonical file where supported and symlink `CLAUDE.md` to it. The skill never writes a memory file without your approval. Global and project stanza variants live in `skills/llm-wiki/references/agent-memory-integration.md`.
 
 ::: info
-Slash commands are Claude Code–only. Everywhere else, invoke the skill by natural language: "add this paper to the wiki", "what does the wiki say about X", "lint the wiki". The wiki itself is agent-agnostic — ingest with one agent, query with another.
+Slash commands are Claude Code–only. Everywhere else, invoke the skill by natural language: "add this paper to the wiki", "what does the wiki say about X", "lint the wiki". The wiki itself is agent-agnostic: ingest with one agent, query with another.
 :::
+
+## Hosted wiki access
+
+Every agent in the matrix can also use a [hosted wiki](/hosted) over MCP (Streamable HTTP at `https://<your-worker>/mcp`). Each agent gets its own token, so commit history shows which agent made each change. Agents without MCP can use the JSON API or `wiki_remote.py`.
+
+| Agent | MCP configuration |
+| --- | --- |
+| Claude Code | `claude mcp add --transport http ...` or `.mcp.json` |
+| Codex (OpenAI) | `[mcp_servers.llm-wiki]` in `~/.codex/config.toml` |
+| Cursor | `~/.cursor/mcp.json` |
+| Gemini CLI | `~/.gemini/settings.json` (`httpUrl`) |
+| OpenCode | `opencode.json` (`type: "remote"`) |
+| OMP and Pi | `~/.omp/agent/mcp.json` |
+| Hermes, OpenClaw, other | URL plus `Authorization: Bearer <token>` header |
+
+The exact text for each client is on the [Hosted wiki](/hosted#connect-agents-over-mcp) page, on your server's `/setup` page, and in the output of `python3 skills/llm-wiki/scripts/wiki_remote.py mcp-config <client>`. Clients that support OAuth can connect without a token. For the memory file, use the hosted-wiki stanza in `skills/llm-wiki/references/agent-memory-integration.md`.
 
 ## Experience and procedure improvements
 

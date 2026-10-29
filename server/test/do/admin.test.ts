@@ -2,6 +2,7 @@ import { env, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { freshWiki, sql, statusOf } from "./helpers";
 import type { WikiDO } from "../../src/do/wiki";
+import { SERVER_VERSION } from "../../src/types";
 
 describe("tokens", () => {
   it("creates, verifies, lists and revokes tokens", async () => {
@@ -106,7 +107,7 @@ describe("settings, review flags, raw metadata, overview", () => {
     await wiki.commit("a", { message: "s", ops: [{ op: "create", path: "SCHEMA.md", content: "# Schema" }, { op: "create", path: "c.md", content: "# C\n\ntext" }] });
     expect(await wiki.overview()).toMatchObject({
       wiki: id,
-      server_version: "4.0.0",
+      server_version: SERVER_VERSION,
       seq: 1,
       pages: 2,
       sections: 2,

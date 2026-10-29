@@ -78,7 +78,7 @@ function structuredData(
           name: 'LLM Wiki',
           applicationCategory: 'DeveloperApplication',
           operatingSystem: 'Cross-platform',
-          softwareVersion: '4.0.0',
+          softwareVersion: '4.0.1',
           description,
           url,
           codeRepository: repo,
@@ -237,11 +237,11 @@ export default withMermaid(
         },
         { text: 'Agents', link: '/agents', activeMatch: '^/agents' },
         {
-          text: 'v4.0.0',
+          text: 'v4.0.1',
           items: [
             {
               items: [
-                { text: 'v4.0.0 (latest)', link: '/' },
+                { text: 'v4.0.1 (latest)', link: '/' },
                 { text: 'v3.2.0 (legacy)', link: '/v3/' },
               ],
             },
@@ -287,7 +287,7 @@ export default withMermaid(
             text: 'Release',
             items: [
               { text: 'Upgrade to v3.2', link: '/v3/upgrade' },
-              { text: 'Current version (v4.0.0)', link: '/' },
+              { text: 'Current version (v4.0.1)', link: '/' },
             ],
           },
         ],

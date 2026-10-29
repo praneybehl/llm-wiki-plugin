@@ -210,7 +210,7 @@ Failure modes to know about, all discussed in `skills/llm-wiki/SKILL.md`: silent
 
 The hosted wiki is optional. It puts your wiki on a Cloudflare Worker in your own account, so agents on many machines, remote agents and agents without file access can share one wiki.
 
-- **One click, one secret.** The button creates the Worker, a SQLite Durable Object for each wiki, KV, R2, Vectorize and Workers AI. You enter one `ADMIN_TOKEN`. No other step is necessary. The server runs on the Workers Free plan.
+- **One click to deploy.** The button creates the Worker, a SQLite Durable Object for each wiki, KV, R2, Vectorize and Workers AI. On the form, you enter `ADMIN_TOKEN` and the Vectorize settings (`384` dimensions, `cosine` metric). No step is necessary after the deploy. The server runs on the Workers Free plan.
 - **MCP for every agent.** Eight tools at `/mcp`: `wiki_overview`, `wiki_read`, `wiki_search`, `wiki_commit`, `wiki_history`, `wiki_graph`, `wiki_lint`, `wiki_raw`. A JSON API at `/api/v1` serves scripts and CI.
 - **Per-agent access.** Each agent gets its own token with scopes, and its label is the commit author. MCP clients that support OAuth can connect without a token.
 - **Markdown stays canonical.** Hybrid search (FTS5 BM25 plus Workers AI `bge-small-en-v1.5` vectors, fused with RRF), links and the graph update on each commit.

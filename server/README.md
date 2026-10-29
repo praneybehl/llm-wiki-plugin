@@ -9,13 +9,14 @@ Agents connect over MCP (`/mcp`) or the JSON API (`/api/v1`). People use the web
 ## Deploy with the button
 
 1. Click **Deploy to Cloudflare** above.
-2. Sign in to Cloudflare.
-3. Enter a value for `ADMIN_TOKEN`. Use a long random value, for example the output of `openssl rand -base64 32`.
-4. Keep the default resource names, or change them.
-5. Click **Deploy**.
-6. Open `https://<your-worker>.workers.dev/setup` when the deploy is complete.
+2. Sign in to Cloudflare. Select a GitHub or GitLab account. Cloudflare copies the `server/` folder to a new repository in that account. Select **Create private Git repository** if you want a private copy.
+3. Keep **Create new** for the KV namespace and the R2 bucket. You can change the names.
+4. Keep **Create new** for the Vectorize index. Enter `384` for **Dimensions** and select `cosine` for **Metric**.
+5. Enter a value for `ADMIN_TOKEN`. Use a long random value, for example the output of `openssl rand -base64 32`. Keep a copy.
+6. Keep the deploy command `npm run deploy`. Click **Deploy**.
+7. Open `https://<your-worker>.workers.dev/setup` when the build log shows `Success! Build completed`.
 
-The button creates the Durable Objects, the KV namespace, the R2 bucket, the Vectorize index and the Workers AI binding. You do not need to do a step after the deploy.
+The button creates the Durable Objects, the KV namespace, the R2 bucket, the Vectorize index and the Workers AI binding. You do not need to do a step after the deploy. A test deploy with the button on 2026-10-29 took about one minute from **Deploy** to a working `/setup` page.
 
 ## Deploy from the command line
 

@@ -40,9 +40,11 @@ flowchart LR
 ### With the button
 
 1. Click **Deploy to Cloudflare** above.
-2. Sign in to Cloudflare and connect GitHub or GitLab. Cloudflare copies the `server/` folder to a new repository in your account.
-3. Enter a value for `ADMIN_TOKEN`. Use a long random value, for example the output of `openssl rand -hex 32`. Keep it in a password manager.
-4. Cloudflare creates the Worker, the Durable Objects, the KV namespace, the R2 bucket, the Vectorize index and the Workers AI binding, then deploys.
+2. Sign in to Cloudflare and select a GitHub or GitLab account. Cloudflare copies the `server/` folder to a new repository in your account. Select **Create private Git repository** for a private copy.
+3. Keep **Create new** for the KV namespace and the R2 bucket.
+4. Keep **Create new** for the Vectorize index. Enter `384` for **Dimensions** and select `cosine` for **Metric**. Hybrid search needs these values.
+5. Enter a value for `ADMIN_TOKEN`. Use a long random value, for example the output of `openssl rand -hex 32`. Keep it in a password manager.
+6. Click **Deploy**. Cloudflare creates the Worker, the Durable Objects, the KV namespace, the R2 bucket, the Vectorize index and the Workers AI binding, then runs `npm run deploy`. This takes about one minute.
 
 No other step is necessary. Your wiki is at `https://llm-wiki.<your-subdomain>.workers.dev`.
 

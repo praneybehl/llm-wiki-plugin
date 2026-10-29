@@ -18,6 +18,8 @@ export interface Env {
   TYPESAFE_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
   LIQUID_API_KEY?: string;
+  /** Optional override of the delay between alarm steps, in milliseconds. */
+  LLM_WIKI_ALARM_DELAY_MS?: string;
   /** Injected by OAuthProvider for the default handler. */
   OAUTH_PROVIDER?: OAuthHelpers;
 }

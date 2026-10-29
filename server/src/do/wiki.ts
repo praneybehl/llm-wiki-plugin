@@ -110,7 +110,7 @@ import {
   type VectorBackend,
 } from "../core/vectors";
 import { clip, derivePage, validDatePrefix, type DerivedPage } from "./derive";
-import { WIKI_SCHEMA } from "./schema";
+import { WIKI_SCHEMA, WIKI_SCHEMA_VERSION } from "./schema";
 
 export const WIKI_ID_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const SCOPES: Scope[] = ["read", "write", "raw:write", "admin"];
@@ -380,6 +380,10 @@ export class WikiDO extends DurableObject<Env> {
     this.sql = ctx.storage.sql;
     void ctx.blockConcurrencyWhile(async () => {
       for (const statement of WIKI_SCHEMA) this.sql.exec(statement);
+      this.sql.exec(
+        "INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', ?)",
+        String(WIKI_SCHEMA_VERSION),
+      );
     });
   }
 
@@ -933,7 +937,17 @@ export class WikiDO extends DurableObject<Env> {
       Boolean(this.first<{ x: number }>("SELECT 1 AS x FROM sections WHERE vec_state = 0 UNION ALL SELECT 1 FROM vector_deletes LIMIT 1"));
     if (!needsGraph && !needsVectors) return;
     const at = await this.ctx.storage.getAlarm();
-    if (at === null) await this.ctx.storage.setAlarm(Date.now() + 1000);
+    if (at === null) await this.ctx.storage.setAlarm(Date.now() + this.alarmDelay(1000));
+  }
+
+  /**
+   * Delay before a scheduled alarm step. `LLM_WIKI_ALARM_DELAY_MS` overrides
+   * every step delay (not the failure backoff). Tests set it high so alarms run
+   * only through `runDurableObjectAlarm` and never on their own.
+   */
+  private alarmDelay(base: number): number {
+    const override = Number(this.env.LLM_WIKI_ALARM_DELAY_MS);
+    return Number.isFinite(override) && override >= 0 ? override : base;
   }
 
   private async screenWrites(commitId: string, pages: { path: string; text: string }[]): Promise<number> {
@@ -2008,7 +2022,7 @@ export class WikiDO extends DurableObject<Env> {
     const graphMore = this.graphRebuildStep();
     const backend = this.vectors();
     if (!backend || this.getMeta("wiki") === null) {
-      if (graphMore) await this.ctx.storage.setAlarm(Date.now() + 100);
+      if (graphMore) await this.ctx.storage.setAlarm(Date.now() + this.alarmDelay(100));
       return;
     }
     const wiki = this.wikiId();
@@ -2041,7 +2055,7 @@ export class WikiDO extends DurableObject<Env> {
       }
       this.setMeta("vector_failures", "0");
       const more = this.first("SELECT 1 AS x FROM sections WHERE vec_state = 0 UNION ALL SELECT 1 FROM vector_deletes LIMIT 1");
-      if (more || graphMore) await this.ctx.storage.setAlarm(Date.now() + (more ? 1000 : 100));
+      if (more || graphMore) await this.ctx.storage.setAlarm(Date.now() + this.alarmDelay(more ? 1000 : 100));
     } catch {
       const failures = Number(this.getMeta("vector_failures") ?? "0") + 1;
       this.setMeta("vector_failures", String(failures));

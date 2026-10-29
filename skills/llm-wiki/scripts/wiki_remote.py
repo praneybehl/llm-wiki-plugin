@@ -1034,6 +1034,9 @@ def cmd_pull(args) -> int:
             f"{target} mirrors {state.get('url')} wiki '{state.get('wiki')}'. Use another folder.", EXIT_USAGE
         )
     state.setdefault("files", {})
+    # Paths whose write a local file or folder blocked. The cursor moves on, so
+    # these are retried from the current page on every later pull.
+    pending: set[str] = set(state.get("pending") or [])
     start_seq = int(state.get("seq") or 0)
     since = start_seq
     stamp = utc_stamp()
@@ -1075,6 +1078,7 @@ def cmd_pull(args) -> int:
                 _prune_empty_dirs(target, path)
             deleted.append(rel)
         state["files"].pop(rel, None)
+        pending.discard(rel)
 
     def blocked_by_local(rel: str, path: str) -> str | None:
         """Return why local content blocks this write. Removes only an empty folder."""
@@ -1102,10 +1106,12 @@ def cmd_pull(args) -> int:
         new_sha = ch.get("sha256")
         if local_sha is not None and local_sha == new_sha:
             state["files"][rel] = new_sha
+            pending.discard(rel)
             return
         problem = blocked_by_local(rel, path)
         if problem:
             warnings.append(problem)
+            pending.add(rel)
             return
         content = ch.get("content")
         if content is None:
@@ -1118,7 +1124,27 @@ def cmd_pull(args) -> int:
             keep_local(path, rel)
         atomic_write_bytes(path, data)
         state["files"][rel] = actual
+        pending.discard(rel)
         written.append(rel)
+
+    def save_state() -> None:
+        if pending:
+            state["pending"] = sorted(pending)
+        else:
+            state.pop("pending", None)
+        atomic_write_json(state_path, state)
+
+    # Retry writes that local content blocked on an earlier pull.
+    for rel in sorted(pending):
+        try:
+            page = client.get("/api/v1/page", path=rel)
+        except ApiFailure as e:
+            if e.status == 404:
+                pending.discard(rel)
+                continue
+            raise
+        apply_write({"path": rel, "sha256": page.get("sha256"), "content": page.get("content", "")})
+    save_state()
 
     while True:
         resp = client.get("/api/v1/changes", since=since, limit=CHANGES_LIMIT)
@@ -1136,7 +1162,7 @@ def cmd_pull(args) -> int:
         if more and next_since <= since:
             raise CliError("The server did not move the change cursor forward. Stopped to prevent a loop.")
         state["seq"] = max(next_since, int(resp.get("seq") or 0)) if not more else next_since
-        atomic_write_json(state_path, state)
+        save_state()
         if not more:
             break
         since = next_since
@@ -1149,6 +1175,7 @@ def cmd_pull(args) -> int:
         "written": written,
         "deleted": deleted,
         "local_copies": local_copies,
+        "pending": sorted(pending),
         "warnings": warnings,
         "git": None,
     }

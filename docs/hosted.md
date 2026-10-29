@@ -326,3 +326,4 @@ Page paths that start with `.` are not accepted, except top-level template files
 | Search mode is `lexical` | The deployment has no Vectorize or Workers AI binding. Deploy again with the button or `npm run deploy`. |
 | `vector_lag` stays above 0 | Workers AI is at its daily limit or failed. The server tries again later. Keyword search still works. |
 | `vector_lag` is 0, but a new section does not match by meaning | Vectorize can need about one minute more after `vector_lag` reaches 0. Wait, then search again. |
+| A new deploy stops with `a namespace with this account ID and title already exists` | An earlier deploy made the `OAUTH_KV` namespace, but `wrangler.jsonc` has no id for it. Run `npx wrangler kv namespace list`, then put the `id` of `<worker-name>-oauth-kv` in the `OAUTH_KV` entry. |

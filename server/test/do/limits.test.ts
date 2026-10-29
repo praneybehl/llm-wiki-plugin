@@ -104,6 +104,31 @@ describe("file size limits", () => {
     }
   });
 
+  it("stores pages whose one wikilink is almost the whole file", async () => {
+    const { wiki } = await freshWiki();
+    const long = "a".repeat(1_400_000);
+    const result = await wiki.commit("a", {
+      message: "links",
+      ops: [
+        { op: "create", path: "concepts/bare.md", content: `[[${long}]]\n` },
+        { op: "create", path: "concepts/slash.md", content: `[[x/${long}]]\n` },
+      ],
+    });
+    expect(result.ok).toBe(true);
+    const inbound = await wiki.backlinks(long);
+    expect(inbound.inbound.map((p) => p.rel_path)).toEqual(["concepts/bare.md"]);
+    for (const [table, bytes] of Object.entries(await rowSizes(wiki))) {
+      expect(bytes, table).toBeLessThan(SQLITE_MAX_ROW_BYTES);
+    }
+  });
+
+  it("rejects a commit message that would not fit one row", async () => {
+    const { wiki } = await freshWiki();
+    const result = await wiki.commit("a", { message: "m".repeat(1_000_000), ops: [{ op: "create", path: "p.md", content: "p" }] });
+    expect(statusOf(result)).toBe(413);
+    expect((await wiki.read({ paths: ["p.md"] })).missing).toEqual(["p.md"]);
+  });
+
   it("rejects a replace_all that would pass the file limit before it builds the text", async () => {
     const { wiki } = await freshWiki();
     const content = "a".repeat(1_000_000);

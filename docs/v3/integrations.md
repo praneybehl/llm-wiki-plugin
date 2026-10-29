@@ -11,7 +11,7 @@ The skill is the agent-side install: every agent in the [support matrix](/v3/age
 
 ## Paperclip: `paperclip-plugin-llm-wiki`
 
-An optional plugin at [`integrations/paperclip/plugin/`](https://github.com/praneybehl/llm-wiki-plugin/tree/main/integrations/paperclip/plugin) surfaces the wiki inside Paperclip's UI. Five surfaces, all read-only:
+An optional plugin at [`integrations/paperclip/plugin/`](https://github.com/praneybehl/llm-wiki-plugin/tree/v3.2.0/integrations/paperclip/plugin) surfaces the wiki inside Paperclip's UI. Five surfaces, all read-only:
 
 | Surface | What it does |
 | --- | --- |
@@ -48,7 +48,7 @@ The plugin stays lexical (BM25): the Paperclip sandbox holds no API keys, so the
 
 ## Further reading
 
-- [Plugin user guide](https://github.com/praneybehl/llm-wiki-plugin/blob/main/integrations/paperclip/plugin/README.md): install walkthrough, per-surface usage, configuration reference, agent-tool JSON shape, security notes, troubleshooting, FAQ.
-- [Operator decision page](https://github.com/praneybehl/llm-wiki-plugin/blob/main/integrations/paperclip/README.md): when to install the plugin vs. just the skill, first-time setup, multi-Company guidance.
-- [v0.1 design spec](https://github.com/praneybehl/llm-wiki-plugin/blob/main/integrations/paperclip/SPEC.md): with verbatim references to the live Paperclip plugin SDK source.
-- [Feasibility report](https://github.com/praneybehl/llm-wiki-plugin/blob/main/integrations/paperclip/FEASIBILITY.md): Phase 0 validation against the SDK.
+- [Plugin user guide](https://github.com/praneybehl/llm-wiki-plugin/blob/v3.2.0/integrations/paperclip/plugin/README.md): install walkthrough, per-surface usage, configuration reference, agent-tool JSON shape, security notes, troubleshooting, FAQ.
+- [Operator decision page](https://github.com/praneybehl/llm-wiki-plugin/blob/v3.2.0/integrations/paperclip/README.md): when to install the plugin vs. just the skill, first-time setup, multi-Company guidance.
+- [v0.1 design spec](https://github.com/praneybehl/llm-wiki-plugin/blob/v3.2.0/integrations/paperclip/SPEC.md): with verbatim references to the live Paperclip plugin SDK source.
+- [Feasibility report](https://github.com/praneybehl/llm-wiki-plugin/blob/v3.2.0/integrations/paperclip/FEASIBILITY.md): Phase 0 validation against the SDK.

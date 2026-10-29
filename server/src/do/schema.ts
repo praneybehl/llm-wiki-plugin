@@ -2,6 +2,13 @@
 
 const FTS_TOKENIZER = "tokenize='unicode61 remove_diacritics 2'";
 
+/**
+ * Version of WIKI_SCHEMA. The constructor stores it in `meta.schema_version`
+ * for new objects. A future schema change bumps it and migrates objects that
+ * carry an older value.
+ */
+export const WIKI_SCHEMA_VERSION = 1;
+
 export const WIKI_SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
   // One row per path ever written. Deleted files keep a tombstone row (deleted = 1)

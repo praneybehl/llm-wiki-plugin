@@ -905,6 +905,13 @@ class PullTests(RemoteTestCase):
         self.assertEqual((target / "notes" / "mine.txt").read_text(), "my file\n")
         self.assertFalse((target / "notes" / "a.md").exists())
         self.assertTrue(any("notes" in w for w in report["warnings"]))
+        self.assertEqual(report["pending"], ["notes"])
+        # The cursor moved on, but the blocked write is retried once the folder is free.
+        (target / "notes" / "mine.txt").unlink()
+        report = self.pull(target)
+        self.assertEqual(report["written"], ["notes"])
+        self.assertEqual(report["pending"], [])
+        self.assertEqual((target / "notes").read_text(), "A1\n")
 
     def test_local_copies_in_the_same_second_do_not_replace_each_other(self):
         original = wiki_remote.utc_stamp

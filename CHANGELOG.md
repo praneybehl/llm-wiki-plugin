@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-10-29
+
+### Fixed
+
+- Deploy button: the form asks for the dimensions and metric of a new Vectorize index and gives no default. `server/package.json` now shows guidance on the form (`384` dimensions, `cosine` metric) and for the KV namespace, R2 bucket and `ADMIN_TOKEN`. The server README and the hosted wiki guide describe each field of the form. A full test deploy with the button passed: resource creation, the `ADMIN_TOKEN` prompt, the build, `/setup` sign-in, import and hybrid search.
+- Correct the 4.0.0 claim that the button needs no input other than `ADMIN_TOKEN`: a new Vectorize index also needs the two values above.
+- Tests read the server and CLI versions from their constants.
+
 ## [4.0.0] - 2026-10-29
 
 Major release: the Paperclip companion is removed. Local wikis, scripts and command flags need no migration.
@@ -243,7 +251,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v4.0.1...HEAD
+[4.0.1]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v4.0.1
 [4.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v4.0.0
 [3.2.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.2.0
 [3.1.1]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.1.1

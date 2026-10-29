@@ -48,7 +48,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-VERSION = "4.0.0"
+VERSION = "4.0.1"
 USER_AGENT = f"llm-wiki-remote/{VERSION}"
 
 EXIT_OK = 0

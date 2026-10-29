@@ -12,7 +12,7 @@ const legacy = computed(() => page.value.relativePath.startsWith('v3/'))
     <div class="custom-block warning" role="note">
       <p class="custom-block-title">Old version</p>
       <p>
-        This is the documentation for v3.2.0. The current version is v4.0.0. v4 removes the Paperclip integration and
+        This is the documentation for v3.2.0. The current major version is v4. v4 removes the Paperclip integration and
         adds an optional hosted wiki. Read the <a :href="withBase('/upgrade')">upgrade guide</a>, or go to the
         <a :href="withBase('/')">current documentation</a>.
       </p>

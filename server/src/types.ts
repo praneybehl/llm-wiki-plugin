@@ -4,7 +4,7 @@
  * structured-clone safe JSON. Change this file only together with both sides.
  */
 
-export const SERVER_VERSION = "4.0.0";
+export const SERVER_VERSION = "4.0.1";
 
 /** Token scopes. `admin` implies every other scope for its wiki. */
 export type Scope = "read" | "write" | "raw:write" | "admin";

@@ -597,7 +597,7 @@ class ImportTests(RemoteTestCase):
         self.assertEqual(len(puts), 1)
         headers = {k.lower(): v for k, v in puts[0][3].items()}
         self.assertEqual(headers["x-content-sha256"], sha(b"call notes\n"))
-        self.assertEqual(headers["user-agent"], "llm-wiki-remote/4.0.0")
+        self.assertEqual(headers["user-agent"], f"llm-wiki-remote/{wiki_remote.VERSION}")
 
     def test_raw_unavailable_fails_verification(self):
         root = self.make_wiki()

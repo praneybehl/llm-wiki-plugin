@@ -1,6 +1,6 @@
 {
   "name": "llm-wiki-server",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "private": true,
   "description": "Hosted LLM Wiki on Cloudflare Workers: one Durable Object per wiki, MCP, OAuth, hybrid search.",
   "license": "MIT",
@@ -29,7 +29,16 @@
   "cloudflare": {
     "bindings": {
       "ADMIN_TOKEN": {
-        "description": "Owner secret for /setup, admin API calls and OAuth approval. Use a long random value and keep it private."
+        "description": "Owner secret for `/setup`, admin API calls and OAuth approval. Use a long random value, for example the output of `openssl rand -base64 32`. Keep a copy in your password manager."
+      },
+      "VECTORIZE": {
+        "description": "Choose **Create new**. Enter `384` for **Dimensions** and choose `cosine` for **Metric**. Hybrid search needs these values."
+      },
+      "OAUTH_KV": {
+        "description": "Stores OAuth grants for MCP clients that sign in with a browser. Keep **Create new**."
+      },
+      "RAW": {
+        "description": "Stores raw source files. Keep **Create new**."
       }
     }
   },

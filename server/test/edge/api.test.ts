@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { api, call, setupWiki } from "./helpers";
+import { SERVER_VERSION } from "../../src/types";
 
 const ACME = `---
 type: entity
@@ -28,7 +29,7 @@ A widget made by [[acme]].
 describe("API round trip", () => {
   it("commits, reads, lists, searches and tracks history", async () => {
     const token = await setupWiki("api-a", ["read", "write"], "writer");
-    expect((await call("/healthz").then((r) => r.json())) as unknown).toMatchObject({ ok: true, version: "4.0.0" });
+    expect((await call("/healthz").then((r) => r.json())) as unknown).toMatchObject({ ok: true, version: SERVER_VERSION });
 
     const c1 = await api("/commit", {
       token,

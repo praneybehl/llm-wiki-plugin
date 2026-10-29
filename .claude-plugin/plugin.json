@@ -1,6 +1,6 @@
 {
   "name": "llm-wiki",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Build a shared Markdown knowledge base with local hybrid search or an optional hosted Cloudflare wiki over MCP, and an optional evidence-linked workflow to capture task lessons, evaluate skill improvements, and apply or roll back tested changes.",
   "author": {
     "name": "Praney Behl"

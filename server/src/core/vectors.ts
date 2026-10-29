@@ -11,6 +11,12 @@ export const EMBED_MAX_CHARS = 2000;
 /** `MAX_COSINE_DISTANCE = 0.35` in wiki_search.py: keep similarity >= 0.65. */
 export const MIN_SIMILARITY = 0.65;
 export const VECTOR_QUERY_TOP_K = 100;
+/**
+ * Ids per `getByIds` call. The limits page gives no batch size for this call,
+ * and it returns values and metadata, so stay well under the topK-with-values
+ * limit (50).
+ */
+const GET_BY_IDS_CHUNK = 20;
 
 export interface VectorMatch {
   id: string;
@@ -23,6 +29,8 @@ export interface VectorBackend {
   upsert(namespace: string, items: { id: string; values: number[]; metadata: Record<string, string | number> }[]): Promise<void>;
   deleteByIds(ids: string[]): Promise<void>;
   query(namespace: string, vector: number[], topK: number): Promise<VectorMatch[]>;
+  /** The subset of `ids` that the index serves now. */
+  getByIds(ids: string[]): Promise<string[]>;
 }
 
 export function l2Normalize(vector: number[]): number[] {
@@ -71,6 +79,13 @@ export function workersVectorBackend(env: Env): VectorBackend | null {
     async query(namespace, vector, topK) {
       const result = await index.query(vector, { topK, namespace });
       return result.matches.map((match) => ({ id: match.id, score: match.score }));
+    },
+    async getByIds(ids) {
+      const found: string[] = [];
+      for (let i = 0; i < ids.length; i += GET_BY_IDS_CHUNK) {
+        for (const vector of await index.getByIds(ids.slice(i, i + GET_BY_IDS_CHUNK))) found.push(vector.id);
+      }
+      return found;
     },
   };
 }

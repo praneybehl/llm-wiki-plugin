@@ -110,7 +110,7 @@ import {
   type VectorBackend,
 } from "../core/vectors";
 import { clip, derivePage, validDatePrefix, type DerivedPage } from "./derive";
-import { WIKI_SCHEMA, WIKI_SCHEMA_VERSION } from "./schema";
+import { WIKI_SCHEMA, WIKI_SCHEMA_VERSION, migrateWikiSchema } from "./schema";
 
 export const WIKI_ID_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const SCOPES: Scope[] = ["read", "write", "raw:write", "admin"];
@@ -130,6 +130,16 @@ const MAX_READ_PATHS = 100;
 const MAX_EVIDENCE_CHECKS = 25;
 const BACKOFF_BASE_MS = 30_000;
 const BACKOFF_MAX_MS = 3_600_000;
+/** Section vector states (see `sections.vec_state`). */
+const VEC_PENDING = 0;
+const VEC_SENT = 1;
+const VEC_CONFIRMED = 2;
+/** Sent vectors checked with getByIds per alarm run. */
+const VERIFY_BATCH = 100;
+/** Vectorize applies mutations asynchronously: check a sent vector only after this age, and again after this interval. */
+const VERIFY_MIN_AGE_MS = 30_000;
+/** A sent vector still missing after this age was lost (seen on new indexes): embed and upsert it again. */
+const RESEND_AFTER_MS = 600_000;
 const PAIRING_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const MAX_MESSAGE_BYTES = 65_536;
 const MAX_FLAG_DETAIL_CHARS = 4000;
@@ -155,6 +165,12 @@ interface PageRow extends Row {
   sources: string;
   updated: string | null;
   has_graph: number;
+}
+
+/** Vector state of a section kept across a rewrite of its page. */
+interface SentVector {
+  state: number;
+  sentAt: number | null;
 }
 
 interface SectionRow extends Row {
@@ -380,6 +396,7 @@ export class WikiDO extends DurableObject<Env> {
     this.sql = ctx.storage.sql;
     void ctx.blockConcurrencyWhile(async () => {
       for (const statement of WIKI_SCHEMA) this.sql.exec(statement);
+      migrateWikiSchema(this.sql);
       this.sql.exec(
         "INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', ?)",
         String(WIKI_SCHEMA_VERSION),
@@ -466,7 +483,8 @@ export class WikiDO extends DurableObject<Env> {
 
   private vectorLag(): number {
     if (this.vectors() === null) return 0;
-    return this.first<{ n: number }>("SELECT COUNT(*) AS n FROM sections WHERE vec_state = 0")?.n ?? 0;
+    // Sections not yet served by Vectorize: pending (0) and sent but not confirmed (1).
+    return this.first<{ n: number }>("SELECT COUNT(*) AS n FROM sections WHERE vec_state IN (?, ?)", VEC_PENDING, VEC_SENT)?.n ?? 0;
   }
 
   private openReviewCount(): number {
@@ -836,7 +854,7 @@ export class WikiDO extends DurableObject<Env> {
       this.writeDerived(wiki, w.path, pageId, derived, reuse);
     } else {
       // Deleted, or moved out of search: its embedded vectors are stale now.
-      for (const vectorId of reuse) this.sql.exec("INSERT OR IGNORE INTO vector_deletes (vector_id) VALUES (?)", vectorId);
+      for (const vectorId of reuse.keys()) this.sql.exec("INSERT OR IGNORE INTO vector_deletes (vector_id) VALUES (?)", vectorId);
     }
 
     // Graph rows: incremental for edits that keep the node identity, else a batched rebuild.
@@ -872,15 +890,18 @@ export class WikiDO extends DurableObject<Env> {
     return out;
   }
 
-  /** Deletes derived rows of a path. Returns vector ids already embedded, for reuse. */
-  private clearDerived(path: string, pageId: number | null): Set<string> {
-    const done = new Set<string>();
-    for (const row of this.all<{ id: number; vector_id: string; vec_state: number }>(
-      "SELECT id, vector_id, vec_state FROM sections WHERE path = ?",
+  /**
+   * Deletes derived rows of a path. Returns the vectors already sent (state 1)
+   * or confirmed (state 2), by vector id, so unchanged sections keep them.
+   */
+  private clearDerived(path: string, pageId: number | null): Map<string, SentVector> {
+    const done = new Map<string, SentVector>();
+    for (const row of this.all<{ id: number; vector_id: string; vec_state: number; vec_sent_at: number | null }>(
+      "SELECT id, vector_id, vec_state, vec_sent_at FROM sections WHERE path = ?",
       path,
     )) {
       this.sql.exec("DELETE FROM sections_fts WHERE rowid = ?", row.id);
-      if (row.vec_state === 1) done.add(row.vector_id);
+      if (row.vec_state !== VEC_PENDING) done.set(row.vector_id, { state: row.vec_state, sentAt: row.vec_sent_at });
     }
     this.sql.exec("DELETE FROM sections WHERE path = ?", path);
     if (pageId !== null) this.sql.exec("DELETE FROM pages_fts WHERE rowid = ?", pageId);
@@ -889,15 +910,16 @@ export class WikiDO extends DurableObject<Env> {
     return done;
   }
 
-  private writeDerived(wiki: string, path: string, pageId: number, derived: DerivedPage, done: Set<string>): void {
+  private writeDerived(wiki: string, path: string, pageId: number, derived: DerivedPage, done: Map<string, SentVector>): void {
     for (const section of derived.sections) {
       const searchable = searchableText(derived.displayTitle, section);
       const contentHash = sectionContentHash(searchable);
       const vectorId = sectionVectorId(wiki, path, section.sectionIndex, contentHash);
-      const state = done.delete(vectorId) ? 1 : 0;
+      const kept = done.get(vectorId);
+      done.delete(vectorId);
       const row = this.first<{ id: number }>(
-        `INSERT INTO sections (path, section_index, heading_path, level, text, content_hash, vector_id, vec_state)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+        `INSERT INTO sections (path, section_index, heading_path, level, text, content_hash, vector_id, vec_state, vec_sent_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
         path,
         section.sectionIndex,
         JSON.stringify(section.headingPath),
@@ -905,13 +927,14 @@ export class WikiDO extends DurableObject<Env> {
         section.text,
         contentHash,
         vectorId,
-        state,
+        kept?.state ?? VEC_PENDING,
+        kept?.sentAt ?? null,
       )!;
       this.sql.exec("INSERT INTO sections_fts (rowid, body) VALUES (?, ?)", row.id, searchable);
       // The id is live again: a delete queued by an earlier commit must not remove it.
       this.sql.exec("DELETE FROM vector_deletes WHERE vector_id = ?", vectorId);
     }
-    for (const vectorId of done) this.sql.exec("INSERT OR IGNORE INTO vector_deletes (vector_id) VALUES (?)", vectorId);
+    for (const vectorId of done.keys()) this.sql.exec("INSERT OR IGNORE INTO vector_deletes (vector_id) VALUES (?)", vectorId);
     this.sql.exec("INSERT INTO pages_fts (rowid, body) VALUES (?, ?)", pageId, `${derived.body} ${derived.title ?? ""}`);
     derived.links.forEach((link, ord) => {
       const clean = cleanLinkTarget(link);
@@ -934,7 +957,7 @@ export class WikiDO extends DurableObject<Env> {
     const vectors = this.vectors();
     const needsVectors =
       vectors !== null &&
-      Boolean(this.first<{ x: number }>("SELECT 1 AS x FROM sections WHERE vec_state = 0 UNION ALL SELECT 1 FROM vector_deletes LIMIT 1"));
+      Boolean(this.first<{ x: number }>("SELECT 1 AS x FROM sections WHERE vec_state IN (?, ?) UNION ALL SELECT 1 FROM vector_deletes LIMIT 1", VEC_PENDING, VEC_SENT));
     if (!needsGraph && !needsVectors) return;
     const at = await this.ctx.storage.getAlarm();
     if (at === null) await this.ctx.storage.setAlarm(Date.now() + this.alarmDelay(1000));
@@ -1334,7 +1357,7 @@ export class WikiDO extends DurableObject<Env> {
           const chunk = vectorIds.slice(i, i + 50);
           for (const row of this.all<{ id: number; vector_id: string }>(
             `SELECT s.id AS id, s.vector_id AS vector_id FROM sections s JOIN pages p ON p.path = s.path
-             WHERE s.vec_state = 1 AND p.deleted = 0 AND s.vector_id IN (${chunk.map(() => "?").join(",")})${filters.sql}`,
+             WHERE s.vec_state IN (${VEC_SENT}, ${VEC_CONFIRMED}) AND p.deleted = 0 AND s.vector_id IN (${chunk.map(() => "?").join(",")})${filters.sql}`,
             ...chunk,
             ...filters.args,
           )) {
@@ -2034,7 +2057,7 @@ export class WikiDO extends DurableObject<Env> {
       }
       const pending = this.all<SectionRow & { display_title: string }>(
         `SELECT s.id, s.path, s.section_index, s.heading_path, s.text, s.vector_id, p.display_title
-         FROM sections s JOIN pages p ON p.path = s.path WHERE s.vec_state = 0 ORDER BY s.id LIMIT ?`,
+         FROM sections s JOIN pages p ON p.path = s.path WHERE s.vec_state = ${VEC_PENDING} ORDER BY s.id LIMIT ?`,
         VECTOR_BATCH,
       );
       if (pending.length) {
@@ -2045,21 +2068,74 @@ export class WikiDO extends DurableObject<Env> {
           wiki,
           pending.map((s, i) => ({ id: s.vector_id, values: vectors[i]!, metadata: { path: s.path, section_index: s.section_index } })),
         );
+        const sentAt = Date.now();
         for (const s of pending) {
-          const updated = this.sql.exec("UPDATE sections SET vec_state = 1 WHERE id = ? AND vector_id = ?", s.id, s.vector_id).rowsWritten;
+          const updated = this.sql.exec(
+            "UPDATE sections SET vec_state = ?, vec_sent_at = ?, vec_checked_at = NULL WHERE id = ? AND vector_id = ?",
+            VEC_SENT,
+            sentAt,
+            s.id,
+            s.vector_id,
+          ).rowsWritten;
           // The section changed while the batch ran: the stored vector is stale.
           if (updated === 0 && !this.first("SELECT 1 AS x FROM sections WHERE vector_id = ?", s.vector_id)) {
             this.sql.exec("INSERT OR IGNORE INTO vector_deletes (vector_id) VALUES (?)", s.vector_id);
           }
         }
       }
+      const verifyMore = await this.verifySent(backend);
       this.setMeta("vector_failures", "0");
-      const more = this.first("SELECT 1 AS x FROM sections WHERE vec_state = 0 UNION ALL SELECT 1 FROM vector_deletes LIMIT 1");
-      if (more || graphMore) await this.ctx.storage.setAlarm(Date.now() + this.alarmDelay(more ? 1000 : 100));
+      const delays: number[] = [];
+      if (verifyMore || this.first("SELECT 1 AS x FROM sections WHERE vec_state = ? UNION ALL SELECT 1 FROM vector_deletes LIMIT 1", VEC_PENDING)) {
+        delays.push(1000);
+      }
+      if (graphMore) delays.push(100);
+      // Sent vectors wait for their next check: VERIFY_MIN_AGE_MS after the send or the last check.
+      const nextCheck = this.first<{ at: number | null }>(
+        "SELECT MIN(max(vec_sent_at, ifnull(vec_checked_at, 0))) AS at FROM sections WHERE vec_state = ?",
+        VEC_SENT,
+      )?.at;
+      if (typeof nextCheck === "number") delays.push(Math.max(1000, nextCheck + VERIFY_MIN_AGE_MS - Date.now()));
+      if (delays.length) await this.ctx.storage.setAlarm(Date.now() + this.alarmDelay(Math.min(...delays)));
     } catch {
       const failures = Number(this.getMeta("vector_failures") ?? "0") + 1;
       this.setMeta("vector_failures", String(failures));
       await this.ctx.storage.setAlarm(Date.now() + Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * 2 ** (failures - 1)));
     }
+  }
+
+  /**
+   * Confirms sent vectors with getByIds. Vectorize can accept an upsert and
+   * never apply it (seen right after an index is created), so a sent vector
+   * counts as served only once the index returns it. Found: confirmed. Missing
+   * after RESEND_AFTER_MS: pending again (embed and upsert once more). Else:
+   * checked again after VERIFY_MIN_AGE_MS. Returns true when more rows are due now.
+   */
+  private async verifySent(backend: VectorBackend): Promise<boolean> {
+    const due = Date.now() - VERIFY_MIN_AGE_MS;
+    const rows = this.all<{ id: number; vector_id: string; vec_sent_at: number }>(
+      `SELECT id, vector_id, vec_sent_at FROM sections
+       WHERE vec_state = ? AND vec_sent_at <= ? AND ifnull(vec_checked_at, 0) <= ?
+       ORDER BY ifnull(vec_checked_at, 0), vec_sent_at, id LIMIT ?`,
+      VEC_SENT,
+      due,
+      due,
+      VERIFY_BATCH,
+    );
+    if (rows.length === 0) return false;
+    const found = new Set(await backend.getByIds([...new Set(rows.map((row) => row.vector_id))]));
+    // A commit may have replaced rows during the await: update only rows that are unchanged.
+    const now = Date.now();
+    const unchanged = "WHERE id = ? AND vector_id = ? AND vec_state = ?";
+    for (const row of rows) {
+      if (found.has(row.vector_id)) {
+        this.sql.exec(`UPDATE sections SET vec_state = ?, vec_checked_at = ? ${unchanged}`, VEC_CONFIRMED, now, row.id, row.vector_id, VEC_SENT);
+      } else if (now - row.vec_sent_at >= RESEND_AFTER_MS) {
+        this.sql.exec(`UPDATE sections SET vec_state = ?, vec_sent_at = NULL, vec_checked_at = NULL ${unchanged}`, VEC_PENDING, row.id, row.vector_id, VEC_SENT);
+      } else {
+        this.sql.exec(`UPDATE sections SET vec_checked_at = ? ${unchanged}`, now, row.id, row.vector_id, VEC_SENT);
+      }
+    }
+    return rows.length === VERIFY_BATCH;
   }
 }

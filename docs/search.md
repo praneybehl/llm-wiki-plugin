@@ -174,7 +174,7 @@ A [hosted wiki](/hosted) runs the same kind of search on the server. Agents call
 | When vectors are missing | Lexical fallback | Lexical mode; `vector_lag` shows sections that wait for a vector |
 
 - Hosted results are equivalent to local results, not identical. The BM25 constants, the tokenizer and the embedding runtime are different. Local and hosted vectors are never mixed.
-- A commit is searchable by keyword at once. The server embeds changed sections in batches a few seconds later. `vector_lag` shows the sections that wait for a vector. After `vector_lag` reaches 0, Vectorize can need about one minute more before new sections match by meaning.
+- A commit is searchable by keyword at once. The server embeds changed sections in batches a few seconds later. `vector_lag` counts the sections that Vectorize does not serve yet. It usually reaches 0 about 30 to 60 seconds after a change. The server checks each vector, and sends a vector again when Vectorize did not store it.
 - Without the Vectorize or Workers AI binding, hosted search is lexical. Send `mode: "lexical"` to force it.
 - A personal wiki fits in the Workers AI free allocation of 10,000 neurons a day. See [Free and Paid plans](/hosted#free-and-paid-plans).
 - `backlinks` and `top_linked` modes replace `--backlinks` and `--top-linked`.

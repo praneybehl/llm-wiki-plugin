@@ -73,7 +73,7 @@ A hosted wiki needs no local runtime setup. The server makes its own search inde
 - Keyword search uses SQLite FTS5 in the wiki Durable Object. A commit is searchable by keyword at once.
 - Semantic search uses Workers AI `@cf/baai/bge-small-en-v1.5` (CLS pooling, L2-normalized, 384 dimensions) and a Vectorize index. A personal wiki fits in the Workers AI free allocation of 10,000 neurons a day.
 - Rank fusion is RRF with the same constants as `wiki_search.py`. Results are equivalent to local results, not identical, because the BM25 constants and the embedding runtime are different.
-- The server embeds changed sections in batches after each commit. `vector_lag` in `wiki_overview` and in search responses shows the sections that wait for a vector. After `vector_lag` reaches 0, Vectorize can need about one minute more before new sections match by meaning.
+- The server embeds changed sections in batches after each commit. `vector_lag` in `wiki_overview` and in search responses counts the sections that Vectorize does not serve yet. The server confirms each vector, and sends it again when Vectorize did not store it.
 - Without the Vectorize or Workers AI binding, search is lexical only. Search responses show the mode.
 - Wiki text and queries go to your Cloudflare account. They do not go to another provider unless the owner enables a hosted decision backend (`decision-models.md`).
 

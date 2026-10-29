@@ -26,7 +26,7 @@ uv run --script scripts/wiki_search.py "your query terms" --top 10 --cache --jso
 
 This returns section-level hybrid results by default: local FastEmbed semantic ranking and BM25 are fused with RRF, and each JSON row carries its `heading_path`, snippet, and retrieval provenance. The first semantic run downloads the pinned model; section vectors live in `wiki/.wiki-cache/embeddings.sqlite` and only changed sections are re-embedded. No wiki or query text leaves the machine. For dependency-free lexical BM25, run `python scripts/wiki_search.py "your query terms" --no-embed`; use optional frontmatter filters (`--type concept`, `--tag llms`, `--since 2026-01-01`) or pass `--granularity page` for whole-page lexical ranking.
 
-**Hosted:** call `wiki_search` with `query`, `top` and the same optional filters (`type`, `tag`, `since`, `granularity`). The rows have the same shape. A response with `vector_lag` above 0 means that some new sections are searchable by keyword only. After `vector_lag` reaches 0, Vectorize can need about one minute more before new sections match by meaning.
+**Hosted:** call `wiki_search` with `query`, `top` and the same optional filters (`type`, `tag`, `since`, `granularity`). The rows have the same shape. A response with `vector_lag` above 0 means that some new sections are searchable by keyword only.
 
 If the user enabled the optional decision layer, add `--decide` (local) or `decide: true` (hosted). The gate removes rows that only share words with the query. An empty gated result means that the wiki probably has no answer. If the result reports `failed_open: true`, the gate did not run. See `decision-models.md`.
 

@@ -1,6 +1,6 @@
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { FakeVectors, attachVectors, failure, freshWiki, importCorpus, sql } from "./helpers";
+import { FakeVectors, ageSentVectors, attachVectors, failure, freshWiki, importCorpus, sql } from "./helpers";
 import type { WikiDO } from "../../src/do/wiki";
 import type { SearchResponse } from "../../src/types";
 
@@ -117,7 +117,18 @@ describe("hybrid search", () => {
     const before = await wiki.overview();
     expect(before.vectors_enabled).toBe(true);
     expect(before.vector_lag).toBe(before.sections);
+    // Embed and send every section, then confirm them once the index serves them.
+    const states = async () => (await sql<{ s: number; n: number }>(wiki, "SELECT vec_state AS s, COUNT(*) AS n FROM sections GROUP BY vec_state ORDER BY s"));
+    while ((await states())[0]!.s === 0) expect(await runDurableObjectAlarm(wiki)).toBe(true);
+    expect(await states()).toEqual([{ s: 1, n: before.sections }]);
+    expect((await wiki.overview()).vector_lag).toBe(before.sections);
+    // Too young to check: the alarm leaves sent vectors alone.
+    expect(await runDurableObjectAlarm(wiki)).toBe(true);
+    expect(await states()).toEqual([{ s: 1, n: before.sections }]);
+    await ageSentVectors(wiki, 31_000);
     while ((await wiki.overview()).vector_lag > 0) expect(await runDurableObjectAlarm(wiki)).toBe(true);
+    expect(await states()).toEqual([{ s: 2, n: before.sections }]);
+    expect(await runDurableObjectAlarm(wiki)).toBe(false);
     expect(fake.store.size).toBe(before.sections);
     expect([...fake.store.values()].every((v) => v.namespace === id)).toBe(true);
 
@@ -170,8 +181,12 @@ describe("hybrid search", () => {
     await attachVectors(wiki, fake);
     await wiki.commit("a", { message: "c", ops: [{ op: "create", path: "concepts/v.md", content: "# V\n\n## Keep\n\nsame\n\n## Change\n\nold\n" }] });
     await runDurableObjectAlarm(wiki);
+    await ageSentVectors(wiki, 31_000);
+    await runDurableObjectAlarm(wiki);
+    expect((await wiki.overview()).vector_lag).toBe(0);
     const initial = new Set(fake.store.keys());
     await wiki.commit("a", { message: "e", ops: [{ op: "edit", path: "concepts/v.md", edits: [{ old: "old", new: "new" }] }] });
+    // Unchanged sections keep their confirmed vectors.
     expect((await wiki.overview()).vector_lag).toBe(1);
     await runDurableObjectAlarm(wiki);
     const after = new Set(fake.store.keys());
@@ -206,6 +221,107 @@ describe("hybrid search", () => {
     expect(live).toHaveLength(2);
     expect([...fake.store.keys()].sort()).toEqual(live);
     expect(await sql(wiki, "SELECT vector_id FROM vector_deletes")).toEqual([]);
+  });
+
+  it("re-sends a vector that Vectorize accepted but never stored, then confirms it", async () => {
+    const { wiki } = await freshWiki();
+    const fake = new FakeVectors();
+    await attachVectors(wiki, fake);
+    await wiki.commit("a", { message: "c", ops: [{ op: "create", path: "concepts/lost.md", content: "# Lost\n\nfirst batch\n" }] });
+    fake.dropUpserts = 1;
+    expect(await runDurableObjectAlarm(wiki)).toBe(true);
+    expect(fake.upsertCalls).toBe(1);
+    expect(fake.store.size).toBe(0);
+    const lag = async () => (await wiki.overview()).vector_lag;
+    expect(await lag()).toBe(2);
+
+    // Checked after 30 s: missing, but not old enough to re-send yet.
+    await ageSentVectors(wiki, 31_000);
+    expect(await runDurableObjectAlarm(wiki)).toBe(true);
+    expect(await sql(wiki, "SELECT vec_state FROM sections WHERE vec_state != 1")).toEqual([]);
+    expect(fake.upsertCalls).toBe(1);
+    expect(await lag()).toBe(2);
+
+    // Still missing after 10 minutes: pending again, then embedded and sent once more.
+    await ageSentVectors(wiki, 600_000);
+    expect(await runDurableObjectAlarm(wiki)).toBe(true);
+    expect(await sql(wiki, "SELECT vec_state FROM sections WHERE vec_state != 0")).toEqual([]);
+    expect(await runDurableObjectAlarm(wiki)).toBe(true);
+    expect(fake.upsertCalls).toBe(2);
+    expect(fake.store.size).toBe(2);
+    expect(await lag()).toBe(2);
+
+    await ageSentVectors(wiki, 31_000);
+    expect(await runDurableObjectAlarm(wiki)).toBe(true);
+    expect(await lag()).toBe(0);
+    expect(await sql(wiki, "SELECT vec_state FROM sections WHERE vec_state != 2")).toEqual([]);
+    expect(await runDurableObjectAlarm(wiki)).toBe(false);
+  });
+
+  it("searches sent and confirmed vectors, not pending ones", async () => {
+    const { wiki } = await freshWiki();
+    const fake = new FakeVectors();
+    await attachVectors(wiki, fake);
+    await wiki.commit("a", { message: "c", ops: [{ op: "create", path: "concepts/confirmed.md", content: "# Confirmed\n\none\n" }] });
+    await runDurableObjectAlarm(wiki);
+    await ageSentVectors(wiki, 31_000);
+    await runDurableObjectAlarm(wiki);
+    await wiki.commit("a", { message: "c", ops: [{ op: "create", path: "concepts/sent.md", content: "# Sent\n\ntwo\n" }] });
+    await runDurableObjectAlarm(wiki);
+    await wiki.commit("a", { message: "c", ops: [{ op: "create", path: "concepts/pending.md", content: "# Pending\n\nthree\n" }] });
+    const rows = await sql<{ path: string; vector_id: string; vec_state: number }>(wiki, "SELECT path, vector_id, vec_state FROM sections WHERE section_index = 1 ORDER BY path");
+    expect(rows.map((r) => [r.path, r.vec_state])).toEqual([
+      ["concepts/confirmed.md", 2],
+      ["concepts/pending.md", 0],
+      ["concepts/sent.md", 1],
+    ]);
+    fake.pinned = rows.map((r, i) => ({ id: r.vector_id, score: 0.9 - i * 0.01 }));
+    const res = await search(wiki, { query: "nomatch" });
+    expect(res.mode).toBe("hybrid");
+    expect(res.results.map((r) => [r.rel_path, r.retrievers])).toEqual([
+      ["concepts/confirmed.md", ["embedding"]],
+      ["concepts/sent.md", ["embedding"]],
+    ]);
+  });
+
+  it("migrates an object from the build without send times and checks its old vectors", async () => {
+    const { wiki } = await freshWiki();
+    const fake = new FakeVectors();
+    await attachVectors(wiki, fake);
+    await wiki.commit("a", { message: "c", ops: [{ op: "create", path: "concepts/old.md", content: "# Old\n\nkept\n\n## Lost\n\ndropped\n" }] });
+    await runDurableObjectAlarm(wiki);
+    // Simulate the earlier build: no send-time columns, every vector marked done (state 1),
+    // and one upsert that Vectorize never applied.
+    const lost = (await sql<{ vector_id: string }>(wiki, "SELECT vector_id FROM sections WHERE section_index = 2"))[0]!.vector_id;
+    fake.store.delete(lost);
+    await runInDurableObject(wiki, (_instance: WikiDO, state) => {
+      state.storage.sql.exec("ALTER TABLE sections DROP COLUMN vec_sent_at");
+      state.storage.sql.exec("ALTER TABLE sections DROP COLUMN vec_checked_at");
+      state.storage.sql.exec("UPDATE sections SET vec_state = 1");
+    });
+    // Reopen: a new instance runs the constructor (schema plus migration) on the old data.
+    await runInDurableObject(wiki, (_instance: WikiDO, state) => {
+      try {
+        state.abort("reopen");
+      } catch {
+        // abort() throws to end the current request; the next call gets a new instance.
+      }
+    }).catch(() => undefined);
+    await attachVectors(wiki, fake);
+    expect(await sql(wiki, "SELECT vec_state, vec_sent_at, vec_checked_at FROM sections ORDER BY section_index")).toEqual([
+      { vec_state: 1, vec_sent_at: 0, vec_checked_at: null },
+      { vec_state: 1, vec_sent_at: 0, vec_checked_at: null },
+      { vec_state: 1, vec_sent_at: 0, vec_checked_at: null },
+    ]);
+    expect((await wiki.overview()).vector_lag).toBe(3);
+
+    // The next alarm checks them at once: the served ones confirm, the lost one goes back to pending.
+    await wiki.commit("a", { message: "touch", ops: [{ op: "create", path: "concepts/new.md", content: "# New\n\nfresh\n" }] });
+    for (let i = 0; i < 3; i++) await runDurableObjectAlarm(wiki);
+    expect(fake.store.has(lost)).toBe(true);
+    await ageSentVectors(wiki, 31_000);
+    await runDurableObjectAlarm(wiki);
+    expect((await wiki.overview()).vector_lag).toBe(0);
   });
 
   it("reads search rows after the vector awaits, so a concurrent commit cannot swap section ids", async () => {
@@ -248,6 +364,9 @@ describe("hybrid search", () => {
     await runDurableObjectAlarm(wiki);
     expect((await wiki.overview()).vector_lag).toBe(2);
     expect((await sql<{ value: string }>(wiki, "SELECT value FROM meta WHERE key = 'vector_failures'"))[0]!.value).toBe("1");
+    await runDurableObjectAlarm(wiki);
+    expect((await wiki.overview()).vector_lag).toBe(2);
+    await ageSentVectors(wiki, 31_000);
     await runDurableObjectAlarm(wiki);
     expect((await wiki.overview()).vector_lag).toBe(0);
     fake.failNext = true;

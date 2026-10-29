@@ -54,7 +54,10 @@ function embedText(text: string): number[] {
 export class FakeVectors implements VectorBackend {
   readonly store = new Map<string, { namespace: string; values: number[] }>();
   embedCalls = 0;
+  upsertCalls = 0;
   failNext = false;
+  /** Accept the next upsert calls without storing them, like the lost Vectorize mutation. */
+  dropUpserts = 0;
   /** Optional override for query results (ids with scores), used to pin ranks. */
   pinned: VectorMatch[] | null = null;
 
@@ -68,11 +71,20 @@ export class FakeVectors implements VectorBackend {
   }
 
   async upsert(namespace: string, items: { id: string; values: number[] }[]): Promise<void> {
+    this.upsertCalls++;
+    if (this.dropUpserts > 0) {
+      this.dropUpserts--;
+      return;
+    }
     for (const item of items) this.store.set(item.id, { namespace, values: item.values });
   }
 
   async deleteByIds(ids: string[]): Promise<void> {
     for (const id of ids) this.store.delete(id);
+  }
+
+  async getByIds(ids: string[]): Promise<string[]> {
+    return ids.filter((id) => this.store.has(id));
   }
 
   async query(namespace: string, vector: number[], topK: number): Promise<VectorMatch[]> {
@@ -85,6 +97,13 @@ export class FakeVectors implements VectorBackend {
       .sort((a, b) => b.score - a.score)
       .slice(0, topK);
   }
+}
+
+/** Moves the send and check times of sent (unconfirmed) vectors back by `ms`, as if that time had passed. */
+export async function ageSentVectors(wiki: DurableObjectStub<WikiDO>, ms: number): Promise<void> {
+  await runInDurableObject(wiki, (_instance: WikiDO, state) => {
+    state.storage.sql.exec("UPDATE sections SET vec_sent_at = vec_sent_at - ?, vec_checked_at = vec_checked_at - ? WHERE vec_state = 1", ms, ms);
+  });
 }
 
 export async function attachVectors(wiki: DurableObjectStub<WikiDO>, backend: VectorBackend | null): Promise<void> {

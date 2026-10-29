@@ -5,9 +5,26 @@ const FTS_TOKENIZER = "tokenize='unicode61 remove_diacritics 2'";
 /**
  * Version of WIKI_SCHEMA. The constructor stores it in `meta.schema_version`
  * for new objects. A future schema change bumps it and migrates objects that
- * carry an older value.
+ * carry an older value. Changes made before the 4.0.0 release keep version 1
+ * and migrate in `migrateWikiSchema` by checking the columns that exist.
  */
 export const WIKI_SCHEMA_VERSION = 1;
+
+/**
+ * Brings an object created by an earlier 4.0.0 build up to WIKI_SCHEMA. Runs
+ * after WIKI_SCHEMA (CREATE IF NOT EXISTS does not add columns). Idempotent.
+ */
+export function migrateWikiSchema(sql: SqlStorage): void {
+  const sections = new Set(sql.exec<{ name: string }>("PRAGMA table_info(sections)").toArray().map((column) => column.name));
+  if (!sections.has("vec_sent_at")) {
+    sql.exec("ALTER TABLE sections ADD COLUMN vec_sent_at INTEGER");
+    sql.exec("ALTER TABLE sections ADD COLUMN vec_checked_at INTEGER");
+    // Earlier builds marked a vector done (state 1) right after the upsert, with no
+    // check. A send time of 0 makes the next alarm check each one at once:
+    // found -> confirmed, missing -> pending again (embed and upsert).
+    sql.exec("UPDATE sections SET vec_sent_at = 0 WHERE vec_state = 1");
+  }
+}
 
 export const WIKI_SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
@@ -88,7 +105,11 @@ export const WIKI_SCHEMA: string[] = [
     text TEXT NOT NULL,
     content_hash TEXT NOT NULL,
     vector_id TEXT NOT NULL,
+    -- 0 = pending (embed and upsert), 1 = sent (upsert accepted, not yet seen in
+    -- Vectorize), 2 = confirmed (getByIds returned it). Times are epoch ms.
     vec_state INTEGER NOT NULL DEFAULT 0,
+    vec_sent_at INTEGER,
+    vec_checked_at INTEGER,
     UNIQUE (path, section_index)
   )`,
   `CREATE INDEX IF NOT EXISTS sections_vector ON sections(vector_id)`,

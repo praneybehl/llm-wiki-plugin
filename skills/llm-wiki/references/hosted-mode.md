@@ -105,7 +105,7 @@ An `edit` operation applies on a newer page when its `old` text still occurs onc
 
 - `wiki_search` returns rows in the same shape as `wiki_search.py --json`.
 - The search is hybrid (FTS5 BM25 plus Workers AI vectors, fused with RRF). It is lexical when the deployment has no Vectorize or Workers AI binding, or when you send `mode: "lexical"`.
-- New text is searchable by keyword at once. Vectors follow after a short delay. `vector_lag` in the response shows the sections without a current vector. After `vector_lag` reaches 0, Vectorize can need about one minute more before new sections match by meaning. Do not treat a missing semantic match in that minute as an error.
+- New text is searchable by keyword at once. Vectors follow after a short delay. `vector_lag` in the response counts the sections that Vectorize does not serve yet. Do not treat a missing semantic match as an error while `vector_lag` is above 0.
 - Hosted and local results are equivalent, not identical. The BM25 constants and the embedding runtime are different.
 - `decide: true` applies the optional relevance gate. See `decision-models.md`.
 

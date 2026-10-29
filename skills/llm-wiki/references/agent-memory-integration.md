@@ -19,7 +19,7 @@ The memory-file convention varies by agent. Use this table to pick the right one
 
 If the user runs multiple agents in the same project, prefer `AGENTS.md` as the canonical file and symlink `CLAUDE.md` to it (or duplicate the content). Claude Code will read a symlinked `CLAUDE.md` without issue.
 
-If the user is unsure which agent they use most, default to `AGENTS.md` — it works for the widest set of runtimes.
+If the user is unsure which agent they use most, default to `AGENTS.md`: it works for the widest set of runtimes.
 
 ## The canonical stanza
 
@@ -53,6 +53,24 @@ My canonical LLM-curated wiki is at `~/wiki/` and is independent of any project.
 When work in any project produces durable facts, decisions, incidents, or post-mortems, preserve them in `~/wiki/` using the `llm-wiki` skill. Put captured source material under `~/wiki/raw/`. Do not ingest an entire project automatically; add only requested sources and durable findings.
 ```
 
+## Hosted-wiki stanza
+
+Use this variant when the wiki is on an LLM Wiki server (see `hosted-mode.md`). Put it in global instructions for a personal wiki, or in the project memory file for a project wiki. Replace the URL. Never put a token in a memory file.
+
+```markdown
+## LLM Wiki
+
+My canonical LLM-curated wiki is hosted at `https://<worker>.workers.dev` (MCP server `llm-wiki`, endpoint `/mcp`). Use the `llm-wiki` skill in hosted mode.
+
+Call `wiki_overview` first and follow the `SCHEMA.md` it returns. Use `index.md` first, then `wiki_search`. Cite with `[[wikilinks]]`. Write with `wiki_commit`: `edit` operations for surgical changes, `append` for `log.md` and index lines. After a conflict, read the page again and retry. If MCP is not available, use `python3 scripts/wiki_remote.py` with the token in `LLM_WIKI_TOKEN`.
+
+Preserve durable facts, decisions and post-mortems from any project in this wiki. Do not ingest a full project automatically. A local `pull` mirror, if present, is read-only.
+```
+
+The agent also needs the MCP server configuration and a token. Run `python3 scripts/wiki_remote.py mcp-config <client>` and show the result. Add the configuration only after the user approves. Each agent gets its own token, so each commit shows which agent made it.
+
+When a local wiki moves to a hosted wiki, replace the local stanza. Do not keep both. Change the stanza only after the import verification passes and the user approves the text.
+
 ## The bootstrap conversation
 
 At init time, after the directory structure is in place and the schema walkthrough is done, propose the stanza. Don't silently append. The user owns their memory file.
@@ -78,6 +96,7 @@ This project has an LLM-curated wiki at `wiki/`. Read `wiki/index.md` before ans
 The stanza is a pointer, not a playbook. Most evolution of the wiki (new page types, new tags, domain conventions) should happen in `SCHEMA.md`, not in the memory file. The memory file only changes when:
 
 - The wiki moves to a non-standard directory (update the path).
+- The wiki moves to a hosted server (replace the stanza with the hosted-wiki stanza).
 - The wiki shards its index (mention `wiki/indexes/` specifically so the agent starts there).
 - The wiki is deprecated (remove the stanza; don't leave a dead pointer).
 

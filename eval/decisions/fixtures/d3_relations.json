@@ -1,0 +1,29 @@
+{
+  "note": "D3 relation fixtures. Synthetic passage pairs about one entity. label contradicts = seeded contradiction; other = corroborates, new_detail or unrelated (kept in 'relation').",
+  "pairs": [
+    {"id": "r01", "entity": "Adam", "a": "Adam uses a default beta2 of 0.999 and an epsilon of 1e-8.", "b": "The Adam defaults are beta2 = 0.98 and epsilon = 1e-6.", "label": "contradicts", "relation": "contradicts"},
+    {"id": "r02", "entity": "Chinchilla", "a": "Chinchilla has 70 billion parameters and trained on 1.4 trillion tokens.", "b": "Chinchilla is a 280 billion parameter model trained on 300 billion tokens.", "label": "contradicts", "relation": "contradicts"},
+    {"id": "r03", "entity": "GPT-4", "a": "GPT-4 accepts images alongside text as input.", "b": "GPT-4 is a text-only model and cannot read images.", "label": "contradicts", "relation": "contradicts"},
+    {"id": "r04", "entity": "OpenAI", "a": "OpenAI began as a non-profit research lab in 2015.", "b": "OpenAI was founded in 2019 as a for-profit company.", "label": "contradicts", "relation": "contradicts"},
+    {"id": "r05", "entity": "LoRA", "a": "LoRA freezes the pretrained weights and trains small low-rank adapters.", "b": "LoRA fine-tunes every weight in the network at full rank.", "label": "contradicts", "relation": "contradicts"},
+    {"id": "r06", "entity": "CUDA", "a": "Compute capability 8.0 first offered tensor cores for bfloat16.", "b": "Bfloat16 tensor cores first appeared with compute capability 6.1.", "label": "contradicts", "relation": "contradicts"},
+    {"id": "r07", "entity": "Ilya Sutskever", "a": "Ilya Sutskever co-founded OpenAI and served as its chief scientist.", "b": "Ilya Sutskever never worked at OpenAI; he spent his career at Google.", "label": "contradicts", "relation": "contradicts"},
+    {"id": "r08", "entity": "ZeRO", "a": "ZeRO stage 3 shards parameters, gradients and optimizer state.", "b": "ZeRO stage 3 shards only the optimizer state and keeps full parameters on every device.", "label": "contradicts", "relation": "contradicts"},
+    {"id": "r09", "entity": "Transformer", "a": "The transformer replaces recurrence entirely with attention.", "b": "The transformer keeps an LSTM layer between attention blocks to carry state.", "label": "contradicts", "relation": "contradicts"},
+    {"id": "r10", "entity": "Mixture of Experts", "a": "Each token goes to its top-2 experts.", "b": "Each token is processed by every expert in the layer.", "label": "contradicts", "relation": "contradicts"},
+    {"id": "r11", "entity": "Adam", "a": "Adam adapts the step size per parameter using moving averages of the gradient.", "b": "Adam keeps running averages of the gradient and its square to set a per-parameter step.", "label": "other", "relation": "corroborates"},
+    {"id": "r12", "entity": "Chinchilla", "a": "Chinchilla suggests about 20 tokens per parameter.", "b": "The Chinchilla fits point to roughly twenty training tokens for each parameter.", "label": "other", "relation": "corroborates"},
+    {"id": "r13", "entity": "GPT-4", "a": "GPT-4 is a large decoder-only transformer from OpenAI.", "b": "GPT-4 was tuned with reinforcement learning from human feedback.", "label": "other", "relation": "new_detail"},
+    {"id": "r14", "entity": "OpenAI", "a": "OpenAI builds large generative models.", "b": "OpenAI's API offers chat completions, embeddings and image generation.", "label": "other", "relation": "new_detail"},
+    {"id": "r15", "entity": "LoRA", "a": "LoRA adds trainable low-rank matrices to each layer.", "b": "Many LoRA adapters can share one frozen backbone at serving time.", "label": "other", "relation": "new_detail"},
+    {"id": "r16", "entity": "CUDA", "a": "CUDA kernels launch a grid of thread blocks.", "b": "The nvcc compiler turns annotated source into device code.", "label": "other", "relation": "new_detail"},
+    {"id": "r17", "entity": "Ilya Sutskever", "a": "Ilya Sutskever co-authored AlexNet as a graduate student.", "b": "Sutskever was a co-author of the 2012 AlexNet paper.", "label": "other", "relation": "corroborates"},
+    {"id": "r18", "entity": "PyTorch", "a": "PyTorch records tensor operations on a tape for autograd.", "b": "Our team lunch moved to Thursdays this quarter.", "label": "other", "relation": "unrelated"},
+    {"id": "r19", "entity": "KV cache", "a": "The KV cache grows linearly with generated tokens.", "b": "Paged attention allocates the cache in fixed-size blocks.", "label": "other", "relation": "new_detail"},
+    {"id": "r20", "entity": "Transformer", "a": "Self-attention connects any two positions in one hop.", "b": "The transformer avoids the long gradient paths of recurrent networks.", "label": "other", "relation": "corroborates"},
+    {"id": "r21", "entity": "Mixture of Experts", "a": "A load balancing loss spreads tokens across experts.", "b": "Tokens over the capacity budget skip the layer through the residual path.", "label": "other", "relation": "new_detail"},
+    {"id": "r22", "entity": "Quantization", "a": "Post-training quantization calibrates scale factors on a small sample.", "b": "The office printer on floor three is out of toner.", "label": "other", "relation": "unrelated"},
+    {"id": "r23", "entity": "Tokenization", "a": "Byte-pair encoding merges the most frequent adjacent pair.", "b": "BPE starts from single bytes and repeatedly merges frequent pairs.", "label": "other", "relation": "corroborates"},
+    {"id": "r24", "entity": "Scaling laws", "a": "Test loss falls as a power law in compute.", "b": "Kaplan and McCandlish published the scaling laws paper in 2020.", "label": "other", "relation": "new_detail"}
+  ]
+}

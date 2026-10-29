@@ -1,0 +1,335 @@
+{
+ "note": "Captured from wiki_search.py before the --decide flag existed. Output without --decide must stay byte-identical.",
+ "cases": [
+  {
+   "argv": [
+    "kv cache memory",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed"
+   ],
+   "stdout": "Top 10 results for: 'kv cache memory'\n\n  [ 11.22] [concept  ] KV Cache\n             concepts/kv-cache.md\n             § KV Cache > Memory growth\n  [ 10.72] [concept  ] KV Cache\n             concepts/kv-cache.md\n             § KV Cache > Paged attention\n  [  3.84] [synthesis] Where the cost lives: training versus inference\n             synthesis/training-vs-inference-cost.md\n             § Where the cost lives: training versus inference > Inference compounds with traffic\n  [  3.48] [entity   ] CUDA\n             entities/cuda.md\n             § CUDA > Memory hierarchy\n  [  3.45] [entity   ] CUDA\n             entities/cuda.md\n             § CUDA > Out-of-memory errors\n  [  2.09] [concept  ] Distributed Training\n             concepts/distributed-training.md\n             § Distributed Training\n  [  2.09] [concept  ] Distributed Training\n             concepts/distributed-training.md\n             § Distributed Training > Activation checkpointing\n  [  2.09] [synthesis] Numeric precision tradeoffs across the stack\n             synthesis/precision-tradeoffs.md\n             § Numeric precision tradeoffs across the stack\n  [  2.03] [entity   ] PyTorch\n             entities/pytorch.md\n             § PyTorch > Fused kernels\n  [  1.97] [concept  ] Quantization\n             concepts/quantization.md\n             § Quantization\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "kv cache memory",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json"
+   ],
+   "stdout": "{\"query\": \"kv cache memory\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"section\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"kv-cache\", \"rel_path\": \"concepts/kv-cache.md\", \"type\": \"concept\", \"title\": \"KV Cache\", \"heading_path\": [\"KV Cache\", \"Memory growth\"], \"section_index\": 3, \"score\": 11.2154, \"retrievers\": [\"bm25\"], \"snippet\": \"The cache grows linearly with the number of generated tokens and with batch size, so a long generation eventually dominates GPU memory. This is the motivation for [[quantization]] of the cache.\", \"updated\": \"2026-02-14\", \"tags\": [\"inference\", \"efficiency\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": \"past_key_values\", \"next\": \"Paged attention\"}}, {\"slug\": \"kv-cache\", \"rel_path\": \"concepts/kv-cache.md\", \"type\": \"concept\", \"title\": \"KV Cache\", \"heading_path\": [\"KV Cache\", \"Paged attention\"], \"section_index\": 4, \"score\": 10.7241, \"retrievers\": [\"bm25\"], \"snippet\": \"Paged attention allocates the cache in fixed blocks like virtual memory pages, cutting fragmentation when many requests of different lengths share one accelerator.\", \"updated\": \"2026-02-14\", \"tags\": [\"inference\", \"efficiency\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": \"Memory growth\", \"next\": null}}, {\"slug\": \"training-vs-inference-cost\", \"rel_path\": \"synthesis/training-vs-inference-cost.md\", \"type\": \"synthesis\", \"title\": \"Where the cost lives: training versus inference\", \"heading_path\": [\"Where the cost lives: training versus inference\", \"Inference compounds with traffic\"], \"section_index\": 3, \"score\": 3.8409, \"retrievers\": [\"bm25\"], \"snippet\": \"Every request pays for a forward pass and a growing [[kv-cache]], so a popular product spends far more serving answers than it ever spent learning them. This is why [[quantization]] and [[mixture-of-experts]] matter for the bottom line.\", \"updated\": \"2026-03-08\", \"tags\": [\"cost\", \"efficiency\"], \"sources\": [\"chinchilla-paper\"], \"neighbors\": {\"prev\": \"Training is amortised\", \"next\": \"The Chinchilla angle\"}}, {\"slug\": \"cuda\", \"rel_path\": \"entities/cuda.md\", \"type\": \"entity\", \"title\": \"CUDA\", \"heading_path\": [\"CUDA\", \"Memory hierarchy\"], \"section_index\": 3, \"score\": 3.4776, \"retrievers\": [\"bm25\"], \"snippet\": \"Threads read fastest from registers, then shared memory within a block, then global device memory. Coalescing global reads across a warp is the single biggest performance lever.\", \"updated\": \"2026-02-04\", \"tags\": [\"gpu\", \"infrastructure\"], \"sources\": [], \"neighbors\": {\"prev\": \"Compute capability\", \"next\": \"Out-of-memory errors\"}}, {\"slug\": \"cuda\", \"rel_path\": \"entities/cuda.md\", \"type\": \"entity\", \"title\": \"CUDA\", \"heading_path\": [\"CUDA\", \"Out-of-memory errors\"], \"section_index\": 4, \"score\": 3.4486, \"retrievers\": [\"bm25\"], \"snippet\": \"Oversubscribing device memory raises `CUDA_ERROR_OUT_OF_MEMORY`. Reduce the batch, enable activation checkpointing, or shard the model to recover, as covered in [[distributed-training]].\", \"updated\": \"2026-02-04\", \"tags\": [\"gpu\", \"infrastructure\"], \"sources\": [], \"neighbors\": {\"prev\": \"Memory hierarchy\", \"next\": null}}, {\"slug\": \"distributed-training\", \"rel_path\": \"concepts/distributed-training.md\", \"type\": \"concept\", \"title\": \"Distributed Training\", \"heading_path\": [\"Distributed Training\"], \"section_index\": 1, \"score\": 2.093, \"retrievers\": [\"bm25\"], \"snippet\": \"Training a large model spreads the work across many accelerators. The right combination of parallelism strategies depends on model size, interconnect bandwidth, and memory per device.\", \"updated\": \"2026-02-18\", \"tags\": [\"training\", \"scaling\", \"infrastructure\"], \"sources\": [\"scaling-laws-paper\"], \"neighbors\": {\"prev\": null, \"next\": \"Data parallelism\"}}, {\"slug\": \"distributed-training\", \"rel_path\": \"concepts/distributed-training.md\", \"type\": \"concept\", \"title\": \"Distributed Training\", \"heading_path\": [\"Distributed Training\", \"Activation checkpointing\"], \"section_index\": 8, \"score\": 2.093, \"retrievers\": [\"bm25\"], \"snippet\": \"Activation checkpointing discards intermediate activations during the forward pass and recomputes them in the backward pass, trading extra compute for a smaller memory footprint.\", \"updated\": \"2026-02-18\", \"tags\": [\"training\", \"scaling\", \"infrastructure\"], \"sources\": [\"scaling-laws-paper\"], \"neighbors\": {\"prev\": \"Mixed precision training\", \"next\": \"Communication collectives\"}}, {\"slug\": \"precision-tradeoffs\", \"rel_path\": \"synthesis/precision-tradeoffs.md\", \"type\": \"synthesis\", \"title\": \"Numeric precision tradeoffs across the stack\", \"heading_path\": [\"Numeric precision tradeoffs across the stack\"], \"section_index\": 1, \"score\": 2.093, \"retrievers\": [\"bm25\"], \"snippet\": \"Lower precision saves memory and bandwidth but risks rounding damage. The safe floor differs between training and serving.\", \"updated\": \"2026-03-09\", \"tags\": [\"precision\", \"efficiency\"], \"sources\": [\"lora-paper\"], \"neighbors\": {\"prev\": null, \"next\": \"Training wants headroom\"}}, {\"slug\": \"pytorch\", \"rel_path\": \"entities/pytorch.md\", \"type\": \"entity\", \"title\": \"PyTorch\", \"heading_path\": [\"PyTorch\", \"Fused kernels\"], \"section_index\": 4, \"score\": 2.0311, \"retrievers\": [\"bm25\"], \"snippet\": \"`torch.nn.functional.scaled_dot_product_attention` dispatches to a fused kernel that computes the [[attention-mechanism]] without materialising the full score matrix, saving memory on long sequences.\", \"updated\": \"2026-02-02\", \"tags\": [\"framework\", \"infrastructure\"], \"sources\": [], \"neighbors\": {\"prev\": \"Distributed API\", \"next\": null}}, {\"slug\": \"quantization\", \"rel_path\": \"concepts/quantization.md\", \"type\": \"concept\", \"title\": \"Quantization\", \"heading_path\": [\"Quantization\"], \"section_index\": 1, \"score\": 1.9729, \"retrievers\": [\"bm25\"], \"snippet\": \"Quantization stores weights and activations at lower numeric precision to shrink memory footprint and speed up matrix multiplies. A model trained in bfloat16 can often serve in int8 with little quality loss.\", \"updated\": \"2026-02-10\", \"tags\": [\"efficiency\", \"inference\", \"precision\"], \"sources\": [\"lora-paper\"], \"neighbors\": {\"prev\": null, \"next\": \"Post-training quantization\"}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "kv cache memory",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json",
+    "--granularity",
+    "page"
+   ],
+   "stdout": "{\"query\": \"kv cache memory\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"page\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"kv-cache\", \"rel_path\": \"concepts/kv-cache.md\", \"type\": \"concept\", \"title\": \"KV Cache\", \"heading_path\": [], \"section_index\": null, \"score\": 9.729, \"retrievers\": [\"bm25\"], \"snippet\": \"# KV Cache During autoregressive decoding a model appends one token at a time. The KV cache stores the keys and values computed for previous tokens so attention never recomputes them, turning quadratic decoding into a linear scan over new positions. ## past_key_values Frameworks expose the cache as a `past_key_values` tuple threaded through each decoding step. On the first step it is empty; on lat\", \"updated\": \"2026-02-14\", \"tags\": [\"inference\", \"efficiency\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"training-vs-inference-cost\", \"rel_path\": \"synthesis/training-vs-inference-cost.md\", \"type\": \"synthesis\", \"title\": \"Where the cost lives: training versus inference\", \"heading_path\": [], \"section_index\": null, \"score\": 4.0395, \"retrievers\": [\"bm25\"], \"snippet\": \"# Where the cost lives: training versus inference Training is a one-time capital expense; inference is a recurring bill that scales with usage. For a widely deployed model the recurring side usually wins over the lifetime. ## Training is amortised A single expensive training run is paid once and spread across every later request, so its per-request share shrinks as traffic climbs. ## Inference com\", \"updated\": \"2026-03-08\", \"tags\": [\"cost\", \"efficiency\"], \"sources\": [\"chinchilla-paper\"], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"cuda\", \"rel_path\": \"entities/cuda.md\", \"type\": \"entity\", \"title\": \"CUDA\", \"heading_path\": [], \"section_index\": null, \"score\": 2.367, \"retrievers\": [\"bm25\"], \"snippet\": \"# CUDA CUDA is NVIDIA's parallel programming platform for its graphics processors. Kernels launch a grid of threads grouped into blocks, and the compiler `nvcc` turns annotated source into device code. ## Compute capability Each generation exposes a compute capability version that gates which instructions are available; compute capability 8.0 first offered the tensor cores used for bfloat16 matrix\", \"updated\": \"2026-02-04\", \"tags\": [\"gpu\", \"infrastructure\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"distributed-training\", \"rel_path\": \"concepts/distributed-training.md\", \"type\": \"concept\", \"title\": \"Distributed Training\", \"heading_path\": [], \"section_index\": null, \"score\": 1.698, \"retrievers\": [\"bm25\"], \"snippet\": \"# Distributed Training Training a large model spreads the work across many accelerators. The right combination of parallelism strategies depends on model size, interconnect bandwidth, and memory per device. ## Data parallelism Data parallelism replicates the whole model on every worker and feeds each replica a different slice of the batch. Workers average their gradients through an all-reduce befo\", \"updated\": \"2026-02-18\", \"tags\": [\"training\", \"scaling\", \"infrastructure\"], \"sources\": [\"scaling-laws-paper\"], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"pytorch\", \"rel_path\": \"entities/pytorch.md\", \"type\": \"entity\", \"title\": \"PyTorch\", \"heading_path\": [], \"section_index\": null, \"score\": 1.2416, \"retrievers\": [\"bm25\"], \"snippet\": \"# PyTorch PyTorch is a Python deep learning framework built around eager tensor operations and automatic differentiation. It compiles hot code paths with a tracing compiler while keeping the define-by-run programming model. ## Autograd The autograd engine records every tensor operation on a tape and walks it backward to produce gradients, so no manual derivative bookkeeping is needed. ## Distribut\", \"updated\": \"2026-02-02\", \"tags\": [\"framework\", \"infrastructure\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"quantization\", \"rel_path\": \"concepts/quantization.md\", \"type\": \"concept\", \"title\": \"Quantization\", \"heading_path\": [], \"section_index\": null, \"score\": 1.2056, \"retrievers\": [\"bm25\"], \"snippet\": \"# Quantization Quantization stores weights and activations at lower numeric precision to shrink memory footprint and speed up matrix multiplies. A model trained in bfloat16 can often serve in int8 with little quality loss. ## Post-training quantization Post-training quantization converts an already-trained checkpoint by calibrating scale factors on a small sample, mapping float ranges onto the int\", \"updated\": \"2026-02-10\", \"tags\": [\"efficiency\", \"inference\", \"precision\"], \"sources\": [\"lora-paper\"], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"precision-tradeoffs\", \"rel_path\": \"synthesis/precision-tradeoffs.md\", \"type\": \"synthesis\", \"title\": \"Numeric precision tradeoffs across the stack\", \"heading_path\": [], \"section_index\": null, \"score\": 1.1884, \"retrievers\": [\"bm25\"], \"snippet\": \"# Numeric precision tradeoffs across the stack Lower precision saves memory and bandwidth but risks rounding damage. The safe floor differs between training and serving. ## Training wants headroom Training keeps a float32 master copy of the weights because the many tiny gradient updates would vanish under aggressive rounding, even while the forward pass runs in bfloat16. ## Serving tolerates less \", \"updated\": \"2026-03-09\", \"tags\": [\"precision\", \"efficiency\"], \"sources\": [\"lora-paper\"], \"neighbors\": {\"prev\": null, \"next\": null}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "kv cache memory",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--granularity",
+    "page"
+   ],
+   "stdout": "Top 7 results for: 'kv cache memory'\n\n  [  9.73] [concept  ] KV Cache\n             concepts/kv-cache.md\n  [  4.04] [synthesis] Where the cost lives: training versus inference\n             synthesis/training-vs-inference-cost.md\n  [  2.37] [entity   ] CUDA\n             entities/cuda.md\n  [  1.70] [concept  ] Distributed Training\n             concepts/distributed-training.md\n  [  1.24] [entity   ] PyTorch\n             entities/pytorch.md\n  [  1.21] [concept  ] Quantization\n             concepts/quantization.md\n  [  1.19] [synthesis] Numeric precision tradeoffs across the stack\n             synthesis/precision-tradeoffs.md\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "kv cache memory",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json",
+    "--top",
+    "3",
+    "--per-page",
+    "1"
+   ],
+   "stdout": "{\"query\": \"kv cache memory\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"section\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"kv-cache\", \"rel_path\": \"concepts/kv-cache.md\", \"type\": \"concept\", \"title\": \"KV Cache\", \"heading_path\": [\"KV Cache\", \"Memory growth\"], \"section_index\": 3, \"score\": 11.2154, \"retrievers\": [\"bm25\"], \"snippet\": \"The cache grows linearly with the number of generated tokens and with batch size, so a long generation eventually dominates GPU memory. This is the motivation for [[quantization]] of the cache.\", \"updated\": \"2026-02-14\", \"tags\": [\"inference\", \"efficiency\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": \"past_key_values\", \"next\": \"Paged attention\"}}, {\"slug\": \"training-vs-inference-cost\", \"rel_path\": \"synthesis/training-vs-inference-cost.md\", \"type\": \"synthesis\", \"title\": \"Where the cost lives: training versus inference\", \"heading_path\": [\"Where the cost lives: training versus inference\", \"Inference compounds with traffic\"], \"section_index\": 3, \"score\": 3.8409, \"retrievers\": [\"bm25\"], \"snippet\": \"Every request pays for a forward pass and a growing [[kv-cache]], so a popular product spends far more serving answers than it ever spent learning them. This is why [[quantization]] and [[mixture-of-experts]] matter for the bottom line.\", \"updated\": \"2026-03-08\", \"tags\": [\"cost\", \"efficiency\"], \"sources\": [\"chinchilla-paper\"], \"neighbors\": {\"prev\": \"Training is amortised\", \"next\": \"The Chinchilla angle\"}}, {\"slug\": \"cuda\", \"rel_path\": \"entities/cuda.md\", \"type\": \"entity\", \"title\": \"CUDA\", \"heading_path\": [\"CUDA\", \"Memory hierarchy\"], \"section_index\": 3, \"score\": 3.4776, \"retrievers\": [\"bm25\"], \"snippet\": \"Threads read fastest from registers, then shared memory within a block, then global device memory. Coalescing global reads across a warp is the single biggest performance lever.\", \"updated\": \"2026-02-04\", \"tags\": [\"gpu\", \"infrastructure\"], \"sources\": [], \"neighbors\": {\"prev\": \"Compute capability\", \"next\": \"Out-of-memory errors\"}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "pipeline bubble",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed"
+   ],
+   "stdout": "Top 1 results for: 'pipeline bubble'\n\n  [ 10.00] [concept  ] Distributed Training\n             concepts/distributed-training.md\n             § Distributed Training > Pipeline parallelism\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "pipeline bubble",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json"
+   ],
+   "stdout": "{\"query\": \"pipeline bubble\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"section\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"distributed-training\", \"rel_path\": \"concepts/distributed-training.md\", \"type\": \"concept\", \"title\": \"Distributed Training\", \"heading_path\": [\"Distributed Training\", \"Pipeline parallelism\"], \"section_index\": 4, \"score\": 10.0038, \"retrievers\": [\"bm25\"], \"snippet\": \"Pipeline parallelism assigns consecutive layers to different devices and streams micro-batches through the stages. A poorly sized schedule leaves a pipeline bubble where early stages idle while waiting for the last stage to finish.\", \"updated\": \"2026-02-18\", \"tags\": [\"training\", \"scaling\", \"infrastructure\"], \"sources\": [\"scaling-laws-paper\"], \"neighbors\": {\"prev\": \"Tensor parallelism\", \"next\": \"ZeRO and sharded optimizers\"}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "pipeline bubble",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json",
+    "--granularity",
+    "page"
+   ],
+   "stdout": "{\"query\": \"pipeline bubble\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"page\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"distributed-training\", \"rel_path\": \"concepts/distributed-training.md\", \"type\": \"concept\", \"title\": \"Distributed Training\", \"heading_path\": [], \"section_index\": null, \"score\": 4.4078, \"retrievers\": [\"bm25\"], \"snippet\": \"# Distributed Training Training a large model spreads the work across many accelerators. The right combination of parallelism strategies depends on model size, interconnect bandwidth, and memory per device. ## Data parallelism Data parallelism replicates the whole model on every worker and feeds each replica a different slice of the batch. Workers average their gradients through an all-reduce befo\", \"updated\": \"2026-02-18\", \"tags\": [\"training\", \"scaling\", \"infrastructure\"], \"sources\": [\"scaling-laws-paper\"], \"neighbors\": {\"prev\": null, \"next\": null}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "pipeline bubble",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--granularity",
+    "page"
+   ],
+   "stdout": "Top 1 results for: 'pipeline bubble'\n\n  [  4.41] [concept  ] Distributed Training\n             concepts/distributed-training.md\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "pipeline bubble",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json",
+    "--top",
+    "3",
+    "--per-page",
+    "1"
+   ],
+   "stdout": "{\"query\": \"pipeline bubble\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"section\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"distributed-training\", \"rel_path\": \"concepts/distributed-training.md\", \"type\": \"concept\", \"title\": \"Distributed Training\", \"heading_path\": [\"Distributed Training\", \"Pipeline parallelism\"], \"section_index\": 4, \"score\": 10.0038, \"retrievers\": [\"bm25\"], \"snippet\": \"Pipeline parallelism assigns consecutive layers to different devices and streams micro-batches through the stages. A poorly sized schedule leaves a pipeline bubble where early stages idle while waiting for the last stage to finish.\", \"updated\": \"2026-02-18\", \"tags\": [\"training\", \"scaling\", \"infrastructure\"], \"sources\": [\"scaling-laws-paper\"], \"neighbors\": {\"prev\": \"Tensor parallelism\", \"next\": \"ZeRO and sharded optimizers\"}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "attention heads",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed"
+   ],
+   "stdout": "Top 10 results for: 'attention heads'\n\n  [  9.73] [concept  ] Attention Mechanism\n             concepts/attention-mechanism.md\n             § Attention Mechanism > Multi-head attention\n  [  3.52] [concept  ] Attention Mechanism\n             concepts/attention-mechanism.md\n             § Attention Mechanism > Self-attention versus cross-attention\n  [  3.44] [source   ] Attention Is All You Need\n             sources/attention-paper.md\n             § Attention Is All You Need\n  [  3.10] [source   ] Attention Is All You Need\n             sources/attention-paper.md\n             § Attention Is All You Need > Contribution\n  [  2.73] [concept  ] KV Cache\n             concepts/kv-cache.md\n             § KV Cache > Paged attention\n  [  2.64] [entity   ] PyTorch\n             entities/pytorch.md\n             § PyTorch > Fused kernels\n  [  1.82] [entity   ] Ilya Sutskever\n             entities/ilya-sutskever.md\n             § Ilya Sutskever > Sequence to sequence\n  [  1.59] [concept  ] KV Cache\n             concepts/kv-cache.md\n             § KV Cache\n  [  1.59] [synthesis] Why transformers displaced recurrent networks\n             synthesis/why-transformers-won.md\n             § Why transformers displaced recurrent networks > Constant path length\n  [  1.39] [synthesis] Why transformers displaced recurrent networks\n             synthesis/why-transformers-won.md\n             § Why transformers displaced recurrent networks > Parallelism during training\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "attention heads",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json"
+   ],
+   "stdout": "{\"query\": \"attention heads\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"section\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"attention-mechanism\", \"rel_path\": \"concepts/attention-mechanism.md\", \"type\": \"concept\", \"title\": \"Attention Mechanism\", \"heading_path\": [\"Attention Mechanism\", \"Multi-head attention\"], \"section_index\": 3, \"score\": 9.7343, \"retrievers\": [\"bm25\"], \"snippet\": \"Multi-head attention runs several attention heads in parallel and concatenates their outputs, so different heads specialise on different relationships between tokens.\", \"updated\": \"2026-01-20\", \"tags\": [\"attention\", \"transformer\", \"inference\"], \"sources\": [\"attention-paper\"], \"neighbors\": {\"prev\": \"Scaled dot-product attention\", \"next\": \"Self-attention versus cross-attention\"}}, {\"slug\": \"attention-mechanism\", \"rel_path\": \"concepts/attention-mechanism.md\", \"type\": \"concept\", \"title\": \"Attention Mechanism\", \"heading_path\": [\"Attention Mechanism\", \"Self-attention versus cross-attention\"], \"section_index\": 4, \"score\": 3.5232, \"retrievers\": [\"bm25\"], \"snippet\": \"Self-attention draws its query, keys, and values from one sequence. Cross-attention takes the query from one sequence and the keys and values from another, which is how a decoder reads an encoder. See [[attention-paper]] and the [[transformer]] page for the surrounding architecture.\", \"updated\": \"2026-01-20\", \"tags\": [\"attention\", \"transformer\", \"inference\"], \"sources\": [\"attention-paper\"], \"neighbors\": {\"prev\": \"Multi-head attention\", \"next\": null}}, {\"slug\": \"attention-paper\", \"rel_path\": \"sources/attention-paper.md\", \"type\": \"source\", \"title\": \"Attention Is All You Need\", \"heading_path\": [\"Attention Is All You Need\"], \"section_index\": 1, \"score\": 3.4405, \"retrievers\": [\"bm25\"], \"snippet\": \"Vaswani and colleagues introduce the [[transformer]], replacing recurrence and convolutions entirely with self-attention. The paper presents the [[attention-mechanism]] as scaled dot-product attention plus a multi-head arrangement.\", \"updated\": \"2026-01-15\", \"tags\": [\"transformer\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": \"Contribution\"}}, {\"slug\": \"attention-paper\", \"rel_path\": \"sources/attention-paper.md\", \"type\": \"source\", \"title\": \"Attention Is All You Need\", \"heading_path\": [\"Attention Is All You Need\", \"Contribution\"], \"section_index\": 2, \"score\": 3.0984, \"retrievers\": [\"bm25\"], \"snippet\": \"The central claim is that attention alone suffices for sequence transduction, and that removing recurrence unlocks parallel training on long inputs.\", \"updated\": \"2026-01-15\", \"tags\": [\"transformer\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": \"Attention Is All You Need\", \"next\": \"Architecture\"}}, {\"slug\": \"kv-cache\", \"rel_path\": \"concepts/kv-cache.md\", \"type\": \"concept\", \"title\": \"KV Cache\", \"heading_path\": [\"KV Cache\", \"Paged attention\"], \"section_index\": 4, \"score\": 2.7255, \"retrievers\": [\"bm25\"], \"snippet\": \"Paged attention allocates the cache in fixed blocks like virtual memory pages, cutting fragmentation when many requests of different lengths share one accelerator.\", \"updated\": \"2026-02-14\", \"tags\": [\"inference\", \"efficiency\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": \"Memory growth\", \"next\": null}}, {\"slug\": \"pytorch\", \"rel_path\": \"entities/pytorch.md\", \"type\": \"entity\", \"title\": \"PyTorch\", \"heading_path\": [\"PyTorch\", \"Fused kernels\"], \"section_index\": 4, \"score\": 2.6382, \"retrievers\": [\"bm25\"], \"snippet\": \"`torch.nn.functional.scaled_dot_product_attention` dispatches to a fused kernel that computes the [[attention-mechanism]] without materialising the full score matrix, saving memory on long sequences.\", \"updated\": \"2026-02-02\", \"tags\": [\"framework\", \"infrastructure\"], \"sources\": [], \"neighbors\": {\"prev\": \"Distributed API\", \"next\": null}}, {\"slug\": \"ilya-sutskever\", \"rel_path\": \"entities/ilya-sutskever.md\", \"type\": \"entity\", \"title\": \"Ilya Sutskever\", \"heading_path\": [\"Ilya Sutskever\", \"Sequence to sequence\"], \"section_index\": 3, \"score\": 1.8249, \"retrievers\": [\"bm25\"], \"snippet\": \"He introduced the sequence-to-sequence framework that maps one variable length sequence to another, an idea that fed directly into later [[attention-mechanism]] research.\", \"updated\": \"2026-02-08\", \"tags\": [\"researcher\", \"people\"], \"sources\": [], \"neighbors\": {\"prev\": \"AlexNet\", \"next\": \"Views on scaling\"}}, {\"slug\": \"kv-cache\", \"rel_path\": \"concepts/kv-cache.md\", \"type\": \"concept\", \"title\": \"KV Cache\", \"heading_path\": [\"KV Cache\"], \"section_index\": 1, \"score\": 1.59, \"retrievers\": [\"bm25\"], \"snippet\": \"During autoregressive decoding a model appends one token at a time. The KV cache stores the keys and values computed for previous tokens so attention never recomputes them, turning quadratic decoding into a linear scan over new positions.\", \"updated\": \"2026-02-14\", \"tags\": [\"inference\", \"efficiency\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": \"past_key_values\"}}, {\"slug\": \"why-transformers-won\", \"rel_path\": \"synthesis/why-transformers-won.md\", \"type\": \"synthesis\", \"title\": \"Why transformers displaced recurrent networks\", \"heading_path\": [\"Why transformers displaced recurrent networks\", \"Constant path length\"], \"section_index\": 3, \"score\": 1.59, \"retrievers\": [\"bm25\"], \"snippet\": \"Self-attention connects any two positions in a single hop, whereas a recurrent network passes signal through many steps and its gradients fade. Short paths preserve long-range dependencies.\", \"updated\": \"2026-03-05\", \"tags\": [\"transformer\", \"comparison\"], \"sources\": [\"attention-paper\", \"scaling-laws-paper\"], \"neighbors\": {\"prev\": \"Parallelism during training\", \"next\": \"Scale follows parallelism\"}}, {\"slug\": \"why-transformers-won\", \"rel_path\": \"synthesis/why-transformers-won.md\", \"type\": \"synthesis\", \"title\": \"Why transformers displaced recurrent networks\", \"heading_path\": [\"Why transformers displaced recurrent networks\", \"Parallelism during training\"], \"section_index\": 2, \"score\": 1.3928, \"retrievers\": [\"bm25\"], \"snippet\": \"A recurrent network must process step t only after step t minus one, so it cannot use a device fully. The [[attention-mechanism]] computes all positions at once, which is the gap between training a model in days versus months.\", \"updated\": \"2026-03-05\", \"tags\": [\"transformer\", \"comparison\"], \"sources\": [\"attention-paper\", \"scaling-laws-paper\"], \"neighbors\": {\"prev\": \"Why transformers displaced recurrent networks\", \"next\": \"Constant path length\"}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "attention heads",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json",
+    "--granularity",
+    "page"
+   ],
+   "stdout": "{\"query\": \"attention heads\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"page\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"attention-mechanism\", \"rel_path\": \"concepts/attention-mechanism.md\", \"type\": \"concept\", \"title\": \"Attention Mechanism\", \"heading_path\": [], \"section_index\": null, \"score\": 6.2043, \"retrievers\": [\"bm25\"], \"snippet\": \"# Attention Mechanism Attention computes a weighted sum of values, where the weights come from the similarity between a query and a set of keys. It lets a sequence position gather information from every other position. ## Scaled dot-product attention The core operation is scaled dot-product attention: softmax(QK^T / sqrt(d_k)) V. Dividing by sqrt(d_k) keeps the logits from growing too large as dim\", \"updated\": \"2026-01-20\", \"tags\": [\"attention\", \"transformer\", \"inference\"], \"sources\": [\"attention-paper\"], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"attention-paper\", \"rel_path\": \"sources/attention-paper.md\", \"type\": \"source\", \"title\": \"Attention Is All You Need\", \"heading_path\": [], \"section_index\": null, \"score\": 2.4941, \"retrievers\": [\"bm25\"], \"snippet\": \"# Attention Is All You Need Vaswani and colleagues introduce the [[transformer]], replacing recurrence and convolutions entirely with self-attention. The paper presents the [[attention-mechanism]] as scaled dot-product attention plus a multi-head arrangement. ## Contribution The central claim is that attention alone suffices for sequence transduction, and that removing recurrence unlocks parallel \", \"updated\": \"2026-01-15\", \"tags\": [\"transformer\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"kv-cache\", \"rel_path\": \"concepts/kv-cache.md\", \"type\": \"concept\", \"title\": \"KV Cache\", \"heading_path\": [], \"section_index\": null, \"score\": 1.9161, \"retrievers\": [\"bm25\"], \"snippet\": \"# KV Cache During autoregressive decoding a model appends one token at a time. The KV cache stores the keys and values computed for previous tokens so attention never recomputes them, turning quadratic decoding into a linear scan over new positions. ## past_key_values Frameworks expose the cache as a `past_key_values` tuple threaded through each decoding step. On the first step it is empty; on lat\", \"updated\": \"2026-02-14\", \"tags\": [\"inference\", \"efficiency\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"pytorch\", \"rel_path\": \"entities/pytorch.md\", \"type\": \"entity\", \"title\": \"PyTorch\", \"heading_path\": [], \"section_index\": null, \"score\": 1.7444, \"retrievers\": [\"bm25\"], \"snippet\": \"# PyTorch PyTorch is a Python deep learning framework built around eager tensor operations and automatic differentiation. It compiles hot code paths with a tracing compiler while keeping the define-by-run programming model. ## Autograd The autograd engine records every tensor operation on a tape and walks it backward to produce gradients, so no manual derivative bookkeeping is needed. ## Distribut\", \"updated\": \"2026-02-02\", \"tags\": [\"framework\", \"infrastructure\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"why-transformers-won\", \"rel_path\": \"synthesis/why-transformers-won.md\", \"type\": \"synthesis\", \"title\": \"Why transformers displaced recurrent networks\", \"heading_path\": [], \"section_index\": null, \"score\": 1.7308, \"retrievers\": [\"bm25\"], \"snippet\": \"# Why transformers displaced recurrent networks Three factors, in order of importance. ## Parallelism during training A recurrent network must process step t only after step t minus one, so it cannot use a device fully. The [[attention-mechanism]] computes all positions at once, which is the gap between training a model in days versus months. ## Constant path length Self-attention connects any two\", \"updated\": \"2026-03-05\", \"tags\": [\"transformer\", \"comparison\"], \"sources\": [\"attention-paper\", \"scaling-laws-paper\"], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"ilya-sutskever\", \"rel_path\": \"entities/ilya-sutskever.md\", \"type\": \"entity\", \"title\": \"Ilya Sutskever\", \"heading_path\": [], \"section_index\": null, \"score\": 1.2056, \"retrievers\": [\"bm25\"], \"snippet\": \"# Ilya Sutskever Ilya Sutskever is a machine learning researcher and a co-founder of [[openai]], where he served as chief scientist. His early work on deep neural networks helped kick off the modern era of the field. ## AlexNet As a graduate student he co-authored AlexNet, the convolutional network whose 2012 image-recognition win convinced the field that deep learning scaled with data and compute\", \"updated\": \"2026-02-08\", \"tags\": [\"researcher\", \"people\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": null}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "attention heads",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--granularity",
+    "page"
+   ],
+   "stdout": "Top 6 results for: 'attention heads'\n\n  [  6.20] [concept  ] Attention Mechanism\n             concepts/attention-mechanism.md\n  [  2.49] [source   ] Attention Is All You Need\n             sources/attention-paper.md\n  [  1.92] [concept  ] KV Cache\n             concepts/kv-cache.md\n  [  1.74] [entity   ] PyTorch\n             entities/pytorch.md\n  [  1.73] [synthesis] Why transformers displaced recurrent networks\n             synthesis/why-transformers-won.md\n  [  1.21] [entity   ] Ilya Sutskever\n             entities/ilya-sutskever.md\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "attention heads",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json",
+    "--top",
+    "3",
+    "--per-page",
+    "1"
+   ],
+   "stdout": "{\"query\": \"attention heads\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"section\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"attention-mechanism\", \"rel_path\": \"concepts/attention-mechanism.md\", \"type\": \"concept\", \"title\": \"Attention Mechanism\", \"heading_path\": [\"Attention Mechanism\", \"Multi-head attention\"], \"section_index\": 3, \"score\": 9.7343, \"retrievers\": [\"bm25\"], \"snippet\": \"Multi-head attention runs several attention heads in parallel and concatenates their outputs, so different heads specialise on different relationships between tokens.\", \"updated\": \"2026-01-20\", \"tags\": [\"attention\", \"transformer\", \"inference\"], \"sources\": [\"attention-paper\"], \"neighbors\": {\"prev\": \"Scaled dot-product attention\", \"next\": \"Self-attention versus cross-attention\"}}, {\"slug\": \"attention-paper\", \"rel_path\": \"sources/attention-paper.md\", \"type\": \"source\", \"title\": \"Attention Is All You Need\", \"heading_path\": [\"Attention Is All You Need\"], \"section_index\": 1, \"score\": 3.4405, \"retrievers\": [\"bm25\"], \"snippet\": \"Vaswani and colleagues introduce the [[transformer]], replacing recurrence and convolutions entirely with self-attention. The paper presents the [[attention-mechanism]] as scaled dot-product attention plus a multi-head arrangement.\", \"updated\": \"2026-01-15\", \"tags\": [\"transformer\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": \"Contribution\"}}, {\"slug\": \"kv-cache\", \"rel_path\": \"concepts/kv-cache.md\", \"type\": \"concept\", \"title\": \"KV Cache\", \"heading_path\": [\"KV Cache\", \"Paged attention\"], \"section_index\": 4, \"score\": 2.7255, \"retrievers\": [\"bm25\"], \"snippet\": \"Paged attention allocates the cache in fixed blocks like virtual memory pages, cutting fragmentation when many requests of different lengths share one accelerator.\", \"updated\": \"2026-02-14\", \"tags\": [\"inference\", \"efficiency\", \"attention\"], \"sources\": [], \"neighbors\": {\"prev\": \"Memory growth\", \"next\": null}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "quantum gravity",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed"
+   ],
+   "stdout": "",
+   "stderr": "No matches.\n",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "quantum gravity",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json"
+   ],
+   "stdout": "{\"query\": \"quantum gravity\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"section\", \"mode\": \"lexical\", \"results\": []}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "quantum gravity",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json",
+    "--granularity",
+    "page"
+   ],
+   "stdout": "{\"query\": \"quantum gravity\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"page\", \"mode\": \"lexical\", \"results\": []}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "quantum gravity",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--granularity",
+    "page"
+   ],
+   "stdout": "",
+   "stderr": "No matches.\n",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "quantum gravity",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json",
+    "--top",
+    "3",
+    "--per-page",
+    "1"
+   ],
+   "stdout": "{\"query\": \"quantum gravity\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"section\", \"mode\": \"lexical\", \"results\": []}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "OpenAI GPT-4 release",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed"
+   ],
+   "stdout": "Top 5 results for: 'OpenAI GPT-4 release'\n\n  [ 11.56] [entity   ] GPT-4\n             entities/gpt-4.md\n             § GPT-4\n  [ 10.23] [entity   ] OpenAI\n             entities/openai.md\n             § OpenAI\n  [  9.67] [entity   ] GPT-4\n             entities/gpt-4.md\n             § GPT-4 > Multimodal input\n  [  4.65] [entity   ] OpenAI\n             entities/openai.md\n  [  2.28] [entity   ] Ilya Sutskever\n             entities/ilya-sutskever.md\n             § Ilya Sutskever\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "OpenAI GPT-4 release",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json"
+   ],
+   "stdout": "{\"query\": \"OpenAI GPT-4 release\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"section\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"gpt-4\", \"rel_path\": \"entities/gpt-4.md\", \"type\": \"entity\", \"title\": \"GPT-4\", \"heading_path\": [\"GPT-4\"], \"section_index\": 1, \"score\": 11.5592, \"retrievers\": [\"bm25\"], \"snippet\": \"GPT-4 is a large decoder-only [[transformer]] language model released by [[openai]]. It extends the recipe of earlier GPT models with more parameters, more training tokens, and a longer context window.\", \"updated\": \"2026-02-06\", \"tags\": [\"model\", \"transformer\"], \"sources\": [\"scaling-laws-paper\"], \"neighbors\": {\"prev\": null, \"next\": \"Architecture rumours\"}}, {\"slug\": \"openai\", \"rel_path\": \"entities/openai.md\", \"type\": \"entity\", \"title\": \"OpenAI\", \"heading_path\": [\"OpenAI\"], \"section_index\": 1, \"score\": 10.2314, \"retrievers\": [\"bm25\"], \"snippet\": \"OpenAI is an artificial intelligence research company that builds and deploys large generative models, including the GPT family such as [[gpt-4]]. It began as a non-profit and later added a capped-profit arm.\", \"updated\": \"2026-02-09\", \"tags\": [\"company\", \"lab\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": \"Research direction\"}}, {\"slug\": \"gpt-4\", \"rel_path\": \"entities/gpt-4.md\", \"type\": \"entity\", \"title\": \"GPT-4\", \"heading_path\": [\"GPT-4\", \"Multimodal input\"], \"section_index\": 3, \"score\": 9.6729, \"retrievers\": [\"bm25\"], \"snippet\": \"GPT-4 accepts images alongside text, encoding a picture into the same token stream the language layers consume.\", \"updated\": \"2026-02-06\", \"tags\": [\"model\", \"transformer\"], \"sources\": [\"scaling-laws-paper\"], \"neighbors\": {\"prev\": \"Architecture rumours\", \"next\": \"Alignment\"}}, {\"slug\": \"openai\", \"rel_path\": \"entities/openai.md\", \"type\": \"entity\", \"title\": \"OpenAI\", \"heading_path\": [], \"section_index\": 0, \"score\": 4.6506, \"retrievers\": [\"bm25\"], \"snippet\": \"\", \"updated\": \"2026-02-09\", \"tags\": [\"company\", \"lab\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": \"OpenAI\"}}, {\"slug\": \"ilya-sutskever\", \"rel_path\": \"entities/ilya-sutskever.md\", \"type\": \"entity\", \"title\": \"Ilya Sutskever\", \"heading_path\": [\"Ilya Sutskever\"], \"section_index\": 1, \"score\": 2.2846, \"retrievers\": [\"bm25\"], \"snippet\": \"Ilya Sutskever is a machine learning researcher and a co-founder of [[openai]], where he served as chief scientist. His early work on deep neural networks helped kick off the modern era of the field.\", \"updated\": \"2026-02-08\", \"tags\": [\"researcher\", \"people\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": \"AlexNet\"}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "OpenAI GPT-4 release",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json",
+    "--granularity",
+    "page"
+   ],
+   "stdout": "{\"query\": \"OpenAI GPT-4 release\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"page\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"gpt-4\", \"rel_path\": \"entities/gpt-4.md\", \"type\": \"entity\", \"title\": \"GPT-4\", \"heading_path\": [], \"section_index\": null, \"score\": 10.3797, \"retrievers\": [\"bm25\"], \"snippet\": \"# GPT-4 GPT-4 is a large decoder-only [[transformer]] language model released by [[openai]]. It extends the recipe of earlier GPT models with more parameters, more training tokens, and a longer context window. ## Architecture rumours Public detail is sparse. Independent analysts believe GPT-4 uses a [[mixture-of-experts]] design to raise capacity while holding inference cost down, though this is n\", \"updated\": \"2026-02-06\", \"tags\": [\"model\", \"transformer\"], \"sources\": [\"scaling-laws-paper\"], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"openai\", \"rel_path\": \"entities/openai.md\", \"type\": \"entity\", \"title\": \"OpenAI\", \"heading_path\": [], \"section_index\": null, \"score\": 8.8846, \"retrievers\": [\"bm25\"], \"snippet\": \"# OpenAI OpenAI is an artificial intelligence research company that builds and deploys large generative models, including the GPT family such as [[gpt-4]]. It began as a non-profit and later added a capped-profit arm. ## Research direction The lab concentrates on scaling up general models rather than many small task-specific ones, a bet reflected across its publications and product releases. ## No\", \"updated\": \"2026-02-09\", \"tags\": [\"company\", \"lab\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": null}}, {\"slug\": \"ilya-sutskever\", \"rel_path\": \"entities/ilya-sutskever.md\", \"type\": \"entity\", \"title\": \"Ilya Sutskever\", \"heading_path\": [], \"section_index\": null, \"score\": 1.842, \"retrievers\": [\"bm25\"], \"snippet\": \"# Ilya Sutskever Ilya Sutskever is a machine learning researcher and a co-founder of [[openai]], where he served as chief scientist. His early work on deep neural networks helped kick off the modern era of the field. ## AlexNet As a graduate student he co-authored AlexNet, the convolutional network whose 2012 image-recognition win convinced the field that deep learning scaled with data and compute\", \"updated\": \"2026-02-08\", \"tags\": [\"researcher\", \"people\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": null}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "OpenAI GPT-4 release",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--granularity",
+    "page"
+   ],
+   "stdout": "Top 3 results for: 'OpenAI GPT-4 release'\n\n  [ 10.38] [entity   ] GPT-4\n             entities/gpt-4.md\n  [  8.88] [entity   ] OpenAI\n             entities/openai.md\n  [  1.84] [entity   ] Ilya Sutskever\n             entities/ilya-sutskever.md\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "OpenAI GPT-4 release",
+    "--wiki",
+    "eval/retrieval/corpus/wiki",
+    "--no-embed",
+    "--json",
+    "--top",
+    "3",
+    "--per-page",
+    "1"
+   ],
+   "stdout": "{\"query\": \"OpenAI GPT-4 release\", \"wiki\": \"eval/retrieval/corpus/wiki\", \"granularity\": \"section\", \"mode\": \"lexical\", \"results\": [{\"slug\": \"gpt-4\", \"rel_path\": \"entities/gpt-4.md\", \"type\": \"entity\", \"title\": \"GPT-4\", \"heading_path\": [\"GPT-4\"], \"section_index\": 1, \"score\": 11.5592, \"retrievers\": [\"bm25\"], \"snippet\": \"GPT-4 is a large decoder-only [[transformer]] language model released by [[openai]]. It extends the recipe of earlier GPT models with more parameters, more training tokens, and a longer context window.\", \"updated\": \"2026-02-06\", \"tags\": [\"model\", \"transformer\"], \"sources\": [\"scaling-laws-paper\"], \"neighbors\": {\"prev\": null, \"next\": \"Architecture rumours\"}}, {\"slug\": \"openai\", \"rel_path\": \"entities/openai.md\", \"type\": \"entity\", \"title\": \"OpenAI\", \"heading_path\": [\"OpenAI\"], \"section_index\": 1, \"score\": 10.2314, \"retrievers\": [\"bm25\"], \"snippet\": \"OpenAI is an artificial intelligence research company that builds and deploys large generative models, including the GPT family such as [[gpt-4]]. It began as a non-profit and later added a capped-profit arm.\", \"updated\": \"2026-02-09\", \"tags\": [\"company\", \"lab\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": \"Research direction\"}}, {\"slug\": \"ilya-sutskever\", \"rel_path\": \"entities/ilya-sutskever.md\", \"type\": \"entity\", \"title\": \"Ilya Sutskever\", \"heading_path\": [\"Ilya Sutskever\"], \"section_index\": 1, \"score\": 2.2846, \"retrievers\": [\"bm25\"], \"snippet\": \"Ilya Sutskever is a machine learning researcher and a co-founder of [[openai]], where he served as chief scientist. His early work on deep neural networks helped kick off the modern era of the field.\", \"updated\": \"2026-02-08\", \"tags\": [\"researcher\", \"people\"], \"sources\": [], \"neighbors\": {\"prev\": null, \"next\": \"AlexNet\"}}]}\n",
+   "stderr": "",
+   "returncode": 0
+  }
+ ]
+}

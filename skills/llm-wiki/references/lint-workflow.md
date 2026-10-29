@@ -1,10 +1,12 @@
 # Lint Workflow
 
-A health check on the wiki. Best run on a cadence — after every N ingests, weekly, or when the user explicitly requests it — not on every operation. Lint is split into a structural pass (handled by `wiki_lint.py`) and a semantic pass (handled by the LLM directly).
+A health check on the wiki. Best run on a cadence (after every N ingests, weekly, or when the user explicitly requests it), not on every operation. Lint is split into a structural pass (handled by `wiki_lint.py`) and a semantic pass (handled by the LLM directly).
 
 ## Step 0: Check the schema
 
 `wiki/SCHEMA.md` may declare additional lint rules specific to this wiki (e.g. "every entity page must have an `aliases:` field", "no concept page without at least 2 sources"). Read it.
+
+Each step shows the local form first. For a hosted wiki, use the **Hosted** form (see `hosted-mode.md`). **Hosted:** call `wiki_overview`. It returns `SCHEMA.md`.
 
 ## Step 1: Run the structural lint script
 
@@ -18,24 +20,28 @@ If the wiki has the optional graph layer (`wiki/graph/ontology.yaml` exists), al
 uv run --script scripts/wiki_graph_lint.py wiki/
 ```
 
-This catches typed-edge problems independently of the structural lint: unknown predicates, missing evidence, broken object references, alias collisions, invalid `confidence`/`status` values, broken `contradicts`/`supersedes` references. Triage findings the same way as structural lint — propose fixes, don't apply them silently. After approved fixes, run `uv run --script scripts/wiki_graph_extract.py wiki/` to refresh the compiled artifacts.
+This catches typed-edge problems independently of the structural lint: unknown predicates, missing evidence, broken object references, alias collisions, invalid `confidence`/`status` values, broken `contradicts`/`supersedes` references. Triage findings the same way as structural lint: propose fixes, don't apply them silently. After approved fixes, run `uv run --script scripts/wiki_graph_extract.py wiki/` to refresh the compiled artifacts.
+
+**Hosted:** call `wiki_lint`. It returns the structural findings, the graph findings and the count of open review flags in one result. The server keeps the graph current, so no extract step is necessary. Review flags come from the optional decision layer (weak edge evidence, untrusted text). Show them to the user with the other findings.
+
+If the user enabled the optional decision layer, add `--decide` to `wiki_graph_lint.py` (local) or `decide` to the lint request (hosted). It checks typed edges whose evidence text does not occur in the source page. For a contradiction screen, run `python scripts/wiki_decide.py contradictions --wiki wiki/` and read the reported pairs before you decide. See `decision-models.md`.
 
 This produces a report covering:
 
-- **Orphan pages** — pages with no inbound `[[wikilinks]]` from anywhere else in the wiki. Orphans are usually a sign that an ingest forgot to update a parent page. They become invisible because the index-first navigation can't surface them.
-- **Broken wikilinks** — `[[page-name]]` references pointing to nonexistent pages. Usually a typo or a page that got renamed without updating its referrers.
-- **Oversized pages** — anything over the 800-line hard cap (or 400-line soft cap, with a warning).
-- **Frontmatter issues** — pages missing required fields (`type`, `tags`, `sources`, `updated`), or with malformed YAML.
-- **Stale pages** — pages whose `updated:` date is much older than the most recent ingest that touched their topic. (The script approximates this using the page's tags and the log.)
-- **Duplicate slugs** — two pages with the same slug in different subdirectories (a sign of an ingest collision that wasn't resolved).
+- **Orphan pages**: pages with no inbound `[[wikilinks]]` from anywhere else in the wiki. Orphans are usually a sign that an ingest forgot to update a parent page. They become invisible because the index-first navigation can't surface them.
+- **Broken wikilinks**: `[[page-name]]` references pointing to nonexistent pages. Usually a typo or a page that got renamed without updating its referrers.
+- **Oversized pages**: anything over the 800-line hard cap (or 400-line soft cap, with a warning).
+- **Frontmatter issues**: pages missing required fields (`type`, `tags`, `sources`, `updated`), or with malformed YAML.
+- **Stale pages**: pages whose `updated:` date is much older than the most recent ingest that touched their topic. (The script approximates this using the page's tags and the log.)
+- **Duplicate slugs**: two pages with the same slug in different subdirectories (a sign of an ingest collision that wasn't resolved).
 
-The script is conservative — it reports findings but doesn't fix them. Present the report to the user.
+The script is conservative: it reports findings but doesn't fix them. Present the report to the user.
 
 ## Step 2: Triage the structural findings
 
 Walk through the findings with the user and propose a fix for each:
 
-- Orphans: either link them from a sensible parent page (preferred), or determine that the page is genuinely useless and delete it (rare). If many orphans pile up, the index is probably out of date — re-derive the index entries.
+- Orphans: either link them from a sensible parent page (preferred), or determine that the page is genuinely useless and delete it (rare). If many orphans pile up, the index is probably out of date: re-derive the index entries.
 - Broken links: rename the link to match the actual page, or create the missing page if it should exist, or remove the link if the concept turned out not to warrant a page.
 - Oversized pages: split. Extract sub-concepts into their own pages, link from the parent, update the index.
 - Frontmatter issues: add the missing fields. If many pages have the same gap, consider whether the schema should be relaxed or the bootstrap template improved.
@@ -44,17 +50,19 @@ Walk through the findings with the user and propose a fix for each:
 
 Present each proposed fix as an edit, not a fait accompli. The user approves.
 
+**Hosted:** apply approved fixes with `wiki_commit`: `edit` for surgical changes, `move` or `delete` with `base_rev` for renames and merges. `move` does not change links, so edit the referring pages in the same commit. Resolve review flags with `wiki_remote.py review --resolve <id> --status accepted|dismissed`.
+
 ## Step 3: Run the semantic pass
 
-The semantic pass is what the script can't do — it requires reading pages and reasoning about content. The good news is that you don't have to read the whole wiki: focus on the pages most likely to have semantic issues.
+The semantic pass is what the script can't do: it requires reading pages and reasoning about content. The good news is that you don't have to read the whole wiki: focus on the pages most likely to have semantic issues.
 
 **Recently updated pages.** Read the last ~10 pages that were modified (sorted by `updated:` frontmatter or by the log). Look for:
 
 - Contradictions with older pages on the same topic. The new claim may have superseded the old one (in which case mark the old as superseded with a note), or both may be true but in different contexts (in which case clarify each), or the new ingest may have been wrong (in which case revert).
 - Internal contradictions within a page (an ingest layered on a new claim without reconciling against existing prose).
-- Repeated mentions of an entity or concept that doesn't have its own page yet — candidate for promotion.
+- Repeated mentions of an entity or concept that doesn't have its own page yet: candidate for promotion.
 
-**Highly-linked pages (hubs).** These are the most likely to drift because every ingest touches them. Use `wiki_search.py --top-linked 10` (or grep `[[wikilinks]]` and count) to find them. Read each hub and check that the prose still hangs together and the cross-references still make sense.
+**Highly-linked pages (hubs).** These are the most likely to drift because every ingest touches them. Use `wiki_search.py --top-linked 10` (or grep `[[wikilinks]]` and count) to find them (**Hosted:** `wiki_search` with `top_linked: 10`). Read each hub and check that the prose still hangs together and the cross-references still make sense.
 
 **Pages flagged with explicit uncertainty.** During ingest, the convention is to hedge ("the source claims X, though this is not yet corroborated") rather than assert. The lint pass is when you check whether subsequent ingests have corroborated or contradicted, and update accordingly.
 
@@ -68,7 +76,7 @@ python scripts/wiki_lint.py wiki/ --suggest-pages
 
 This finds entity-like and concept-like names that appear in many pages but lack their own page. The user can decide which to promote and which to leave as inline mentions.
 
-Also look for what's not covered at all — topics the user has expressed interest in but that haven't been ingested yet. The log can help here ("you ingested 5 sources on diffusion models in March but nothing since; want to refresh?").
+Also look for what's not covered at all: topics the user has expressed interest in but that haven't been ingested yet. The log can help here ("you ingested 5 sources on diffusion models in March but nothing since; want to refresh?").
 
 ## Step 5: Update the index
 
@@ -80,11 +88,13 @@ If `index.md` is over 300 lines and hasn't been sharded yet, this is a good mome
 
 One line: `## [YYYY-MM-DD] lint | <N> structural fixes, <M> semantic fixes, <K> proposed gaps`. Optionally a sub-line listing the highest-impact changes.
 
+**Hosted:** add the line with an `append` operation on `log.md`.
+
 ## Cadence
 
 A reasonable default: structural lint after every 5 ingests, semantic lint weekly or after every 20 ingests, gap-finding monthly. Adjust based on the user's pace and the wiki's volatility. A wiki that's growing fast needs more frequent lint; a stable mature wiki needs less.
 
-The user may also trigger lint explicitly ("clean up the wiki", "what's broken", "lint pass please"). Treat these as priority — the user is asking because they noticed something.
+The user may also trigger lint explicitly ("clean up the wiki", "what's broken", "lint pass please"). Treat these as priority: the user is asking because they noticed something.
 
 ## Anti-patterns to avoid
 

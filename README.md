@@ -1,4 +1,4 @@
-# LLM Wiki — a second brain for AI agents
+# LLM Wiki: a second brain for AI agents
 
 Turn PDFs, articles, transcripts, and notes into a shared wiki that your AI agents can search, cite, and keep up to date. Add a source once. Ask questions later. Keep the useful answers.
 
@@ -10,19 +10,17 @@ AI agents are good at the task in front of them, but a new session starts with l
 
 When you add a source, the agent turns it into linked Markdown pages. Later, it can find the right section and answer with citations. Useful answers can be saved back into the wiki, so the knowledge grows instead of being rebuilt from scratch.
 
-Everything canonical stays in readable Markdown. Default semantic search is local—no hosted vector database or embedding service.
+Everything canonical stays in readable Markdown. Default semantic search is local, with no hosted vector database or embedding service. An optional [hosted wiki](#hosted-wiki) on your own Cloudflare account lets agents on many machines share one wiki.
 
-## What's new in v3.2.0
+## What's new in v4
 
-- **Learn from completed work.** `/wiki:learn` captures verified successes/failures and consolidates cited patterns, applicability and counterexamples.
-- **Turn evidence into tested procedures.** `/wiki:evolve` runs training, evidence consolidation, whole-skill proposals, validation, and independent final testing, retaining rejected attempts. Adapters for nine supported agent hosts provide bounded runs, durable tool traces and cross-agent transfer; see the [execution requirements](https://praneybehl.github.io/llm-wiki-plugin/evolution.html).
-- **Explicit apply and rollback.** Only a reviewed, passing change can be applied; whole-skill snapshot checks prevent overwriting intervening edits.
-- **Runnable evaluation examples.** Separate training, validation and final-test tasks cover source-grounded answers and file artifacts, with calibrated judging, paired task-level analysis, and ingestion/graph/hybrid-search checks. Fictional fixtures stay outside the installed skill.
-- **Compatible upgrade.** Existing Markdown and commands remain valid. `/wiki:upgrade` adds optional templates and archive guidance idempotently.
+- **Optional hosted wiki.** Deploy one Cloudflare Worker to your own account with one click. Agents on any machine read and write the wiki over MCP or a JSON API. See [Hosted wiki](#hosted-wiki).
+- **Safe shared writes.** Every change is an atomic commit with an author and a revision. Surgical `edit` and `append` operations rarely conflict. A conflict tells the agent to read the page again and retry.
+- **Migration and mirror.** `/wiki:migrate` moves a local wiki, verifies every uploaded file by SHA-256, and reports the files that the import skipped. `wiki_remote.py pull --git` keeps a read-only local mirror for Git history and Obsidian.
+- **Optional decision models.** Small models can gate search relevance, check graph evidence and flag untrusted text. Off by default. See [Decision layer](#decision-layer-optional).
+- **Local mode is unchanged.** Existing wikis, scripts and commands work as before.
 
-See [Learning and skill evolution](https://praneybehl.github.io/llm-wiki-plugin/evolution.html) for the full workflow, evaluation limits and inference costs. This release adds tooling; it does not claim measured model gains.
-
-The evolution workflow adapts [WikiSkill: Compiling Agent Experience into Persistent Knowledge for Skill Evolution](https://arxiv.org/html/2608.27454v1) (Google Research and Virginia Tech, 2026): persistent experience-to-pattern learning, repeated skill proposals, retained failures, validation-only selection and independent final testing. See [what we adapted and changed](docs/evolution.md#research-basis-and-adaptation) and the [measured results](eval/evolution/workflows/README.md). Our study rejected both proposals; no quality improvement was demonstrated.
+v3.2.0 added learning from completed work: `/wiki:learn` captures verified experience, and `/wiki:evolve` proposes, tests, applies and rolls back skill changes. See [Learning and skill evolution](https://praneybehl.github.io/llm-wiki-plugin/evolution.html). The evolution workflow adapts [WikiSkill: Compiling Agent Experience into Persistent Knowledge for Skill Evolution](https://arxiv.org/html/2608.27454v1) (Google Research and Virginia Tech, 2026). See [what we adapted and changed](docs/evolution.md#research-basis-and-adaptation) and the [measured results](eval/evolution/workflows/README.md). Our study rejected both proposals; no quality improvement was demonstrated.
 
 ## Why use it?
 
@@ -40,9 +38,9 @@ LLM Wiki works best for knowledge that grows over time: research, meeting notes,
 Plugin/skill installation copies all agent-facing commands and bundled tools. Wiki initialization then performs mandatory runtime setup: FastEmbed `0.8.0`, sqlite-vec `0.1.9`, PyYAML `6.0.3`, the local `BAAI/bge-small-en-v1.5` model, the parse cache, and vectors for every existing section. Upgrade runs the same setup again, incrementally synchronizing changed and deleted sections.
 
 
-### Claude Code — full plugin
+### Claude Code: full plugin
 
-The native path: the skill, the nine `/wiki:*` slash commands, and the marketplace manifest all ship in one install.
+The native path: the skill, the ten `/wiki:*` slash commands, and the marketplace manifest all ship in one install.
 
 ```
 /plugin marketplace add praneybehl/llm-wiki-plugin
@@ -51,7 +49,7 @@ The native path: the skill, the nine `/wiki:*` slash commands, and the marketpla
 
 Once installed, the plugin works in any project. Installation does not decide where your wiki lives.
 
-### Other coding agents — skill only
+### Other coding agents: skill only
 
 The `llm-wiki` skill uses the standard [agentskills.io](https://agentskills.io) format, so it installs cleanly into any agent supported by the [`skills` CLI](https://github.com/vercel-labs/skills). Pick the `--agent` flag that matches your setup:
 
@@ -76,7 +74,7 @@ npx skills add praneybehl/llm-wiki-plugin -a <agent>
 
 OpenCode also reads `.claude/skills/` and `~/.claude/skills/`, so if you already installed the skill for Claude Code you can use it in OpenCode without a second install.
 
-**Hermes Agent** (Nous Research), **OMP** ("Oh My Pi"), and other agentskills.io-compatible runtimes that aren't yet in the `npx skills` registry can still use this skill — clone the repo and symlink or copy `skills/llm-wiki/` into the agent's skills directory. Hermes reads from `~/.hermes/skills/`; OMP reads managed/user skills from `~/.omp/agent/skills/` and surfaces them via `skill://`.
+**Hermes Agent** (Nous Research), **OMP** ("Oh My Pi"), and other agentskills.io-compatible runtimes that aren't yet in the `npx skills` registry can still use this skill: clone the repo and symlink or copy `skills/llm-wiki/` into the agent's skills directory. Hermes reads from `~/.hermes/skills/`; OMP reads managed/user skills from `~/.omp/agent/skills/` and surfaces them via `skill://`.
 
 ```bash
 git clone https://github.com/praneybehl/llm-wiki-plugin.git
@@ -87,7 +85,7 @@ ln -s "$(pwd)/llm-wiki-plugin/skills/llm-wiki" ~/.omp/agent/skills/llm-wiki
 
 A few things to know when using the skill outside Claude Code:
 
-- **Slash commands are Claude Code-only.** The nine `/wiki:*` commands live in `commands/wiki/` as Claude Code plugin manifests. In other agents, invoke the skill by natural language ("add this paper to the wiki", "what does the wiki say about X", "lint the wiki") — the SKILL.md handles the rest.
+- **Slash commands are Claude Code-only.** The ten `/wiki:*` commands live in `commands/wiki/` as Claude Code plugin manifests. In other agents, invoke the skill by natural language ("add this paper to the wiki", "what does the wiki say about X", "lint the wiki"): the SKILL.md handles the rest.
 - **All bundled tools are agent-accessible.** Every listed agent can invoke `setup_wiki.py`, hybrid/lexical search, lint, stats, graph lint/extract/query, and initialization through the installed skill. Dependency-bearing scripts carry pinned PEP 723 metadata and run with `uv run --script`; initialization and upgrade verify the full runtime before reporting readiness.
 - **The wiki itself is agent-agnostic.** It's just a directory of markdown files. You can ingest with one agent and query with another; nothing in `wiki/` ties it to a specific runtime.
 
@@ -144,7 +142,7 @@ Periodically, run a health check:
 /wiki:lint
 ```
 
-This catches orphan pages, broken wikilinks, oversized pages, missing frontmatter, and stale claims. Findings are presented as proposed edits — Claude doesn't rewrite your wiki silently.
+This catches orphan pages, broken wikilinks, oversized pages, missing frontmatter, and stale claims. Findings are presented as proposed edits: Claude doesn't rewrite your wiki silently.
 
 ## Commands
 
@@ -158,9 +156,11 @@ This catches orphan pages, broken wikilinks, oversized pages, missing frontmatte
 | `/wiki:graph <action>` | `extract` / `lint` / `neighbors` / `edges` / `path` / `facts` against the compiled graph layer. |
 | `/wiki:learn <task artifacts>` | Capture verified experience and consolidate reusable, evidence-linked patterns. |
 | `/wiki:evolve <goal or action>` | Propose, evaluate, inspect, apply or roll back a skill improvement; retain all trial results. |
+| `/wiki:init --hosted <url>` | Connect this agent to a hosted wiki: store the token, print the MCP configuration and propose the memory stanza. |
+| `/wiki:migrate [<wiki-dir>]` | Move a local wiki to a hosted wiki, verify every uploaded file by SHA-256, check the skipped files, and keep a read-only `pull` mirror. |
 | `/wiki:upgrade` | Upgrade an existing wiki to the current plugin version (idempotent file ops + walked SCHEMA.md merge). |
 
-You don't have to use the commands — Claude triggers the underlying skill on natural-language requests too ("add this paper to my wiki", "what does the wiki say about diffusion", "lint the wiki"). The commands are there when you want explicit invocation.
+You don't have to use the commands: Claude triggers the underlying skill on natural-language requests too ("add this paper to my wiki", "what does the wiki say about diffusion", "lint the wiki"). The commands are there when you want explicit invocation.
 
 ## Architecture
 
@@ -170,7 +170,7 @@ The wiki has three layers and three operations.
 
 **The three operations** are *ingest* (compile a new source into the wiki, touching ten or fifteen pages in one pass), *query* (navigate the wiki to answer a question, with the option to file the answer back as a new synthesis page), and *lint* (periodic health check on structural and semantic integrity).
 
-There is also an **optional fourth layer**: the graph at `wiki/graph/`. Pages can declare typed `graph:` metadata in frontmatter (e.g. `founded`, `proposed`, `depends_on`) with an explicit source-page slug and evidence quote. A bundled extractor compiles every page into `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, and `graph.graphml`. **Markdown stays canonical** — the graph can be deleted and rebuilt at any time. Use `/wiki:graph` for relational queries that the index alone can't answer cheaply ("what's connected to X", "who proposed Y", "shortest path A → B").
+There is also an **optional fourth layer**: the graph at `wiki/graph/`. Pages can declare typed `graph:` metadata in frontmatter (e.g. `founded`, `proposed`, `depends_on`) with an explicit source-page slug and evidence quote. A bundled extractor compiles every page into `nodes.jsonl`, `edges.jsonl`, `graph.sqlite`, and `graph.graphml`. **Markdown stays canonical**: the graph can be deleted and rebuilt at any time. Use `/wiki:graph` for relational queries that the index alone can't answer cheaply ("what's connected to X", "who proposed Y", "shortest path A → B").
 
 For the full architecture write-up including page types, frontmatter conventions, the rationale behind each design choice, and the workflow procedures, see the reference docs inside the skill at `skills/llm-wiki/references/`. The graph layer is documented in `skills/llm-wiki/references/graph-workflow.md`.
 
@@ -200,44 +200,41 @@ The `/wiki:stats` command surfaces which threshold you're at and what migration 
 
 ## What it doesn't try to be
 
-This is a markdown-based personal knowledge base, not a database. If your domain is fundamentally relational — tracking 100,000 customer records, complex org structures, financial ledgers with strict referential integrity — a real database serves better. Markdown plus grep plus frontmatter scales further than people expect (Karpathy's own wiki was about 100 articles and 400K words working fine), but at some point the right tool changes.
+This is a markdown-based personal knowledge base, not a database. If your domain is fundamentally relational (tracking 100,000 customer records, complex org structures, financial ledgers with strict referential integrity), a real database serves better. Markdown plus grep plus frontmatter scales further than people expect (Karpathy's own wiki was about 100 articles and 400K words working fine), but at some point the right tool changes.
 
-Failure modes to know about, all discussed in `skills/llm-wiki/SKILL.md`: silent corruption (a misreading of one source becomes an authoritative-looking wiki page that influences subsequent ingests — mitigated by mandatory `sources:` frontmatter and lint), the wiki-reads-its-own-output drift (Claude treating prior wiki pages as ground truth rather than checking against raw sources — mitigated by the ingest workflow's instruction to re-read raw sources when updating claims), and the maintenance ratchet (lint reports growing faster than you can review — mitigated by the scalability discipline, but if it happens, the schema needs revision).
+Failure modes to know about, all discussed in `skills/llm-wiki/SKILL.md`: silent corruption (a misreading of one source becomes an authoritative-looking wiki page that influences subsequent ingests; mitigated by mandatory `sources:` frontmatter and lint), the wiki-reads-its-own-output drift (Claude treating prior wiki pages as ground truth rather than checking against raw sources; mitigated by the ingest workflow's instruction to re-read raw sources when updating claims), and the maintenance ratchet (lint reports growing faster than you can review; mitigated by the scalability discipline, but if it happens, the schema needs revision).
 
-## Integrations
+## Hosted wiki
 
-The skill is the **agent-side** install — every adapter table above gets you that. For specific platforms there's also an optional **human-side** companion that brings the wiki into view where operators already work.
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/praneybehl/llm-wiki-plugin/tree/main/server)
 
-### Paperclip — `paperclip-plugin-llm-wiki`
+The hosted wiki is optional. It puts your wiki on a Cloudflare Worker in your own account, so agents on many machines, remote agents and agents without file access can share one wiki.
 
-For teams that run their work in [Paperclip](https://github.com/paperclipai/paperclip), an optional plugin at [`integrations/paperclip/plugin/`](./integrations/paperclip/plugin/) surfaces the wiki inside Paperclip's UI. Five surfaces, all read-only:
+- **One click, one secret.** The button creates the Worker, a SQLite Durable Object for each wiki, KV, R2, Vectorize and Workers AI. You enter one `ADMIN_TOKEN`. No other step is necessary. The server runs on the Workers Free plan.
+- **MCP for every agent.** Eight tools at `/mcp`: `wiki_overview`, `wiki_read`, `wiki_search`, `wiki_commit`, `wiki_history`, `wiki_graph`, `wiki_lint`, `wiki_raw`. A JSON API at `/api/v1` serves scripts and CI.
+- **Per-agent access.** Each agent gets its own token with scopes, and its label is the commit author. MCP clients that support OAuth can connect without a token.
+- **Markdown stays canonical.** Hybrid search (FTS5 BM25 plus Workers AI `bge-small-en-v1.5` vectors, fused with RRF), links and the graph update on each commit.
+- **History and backup.** Every commit keeps a revision. Revert makes a new commit. `export` writes all pages. Durable Objects keep 30 days of point-in-time recovery.
+- **Browser reader** at `/ui/<wiki>/` with folder tree, search, backlinks, history, diffs and review flags. The `/setup` page makes wikis, tokens and MCP configuration for each client.
 
-| Surface | What it does |
-|---|---|
-| Wiki sidebar | Browse the wiki by type, drill into pages, search across the whole wiki |
-| Full-page view | The same browser at full width — for reading multiple linked pages |
-| Issue context tab | Top wiki pages relevant to the open issue, ranked by BM25 over title + description |
-| Dashboard health widget | Page count, lint status (pass / warn / fail), link density, sharding-threshold messages |
-| `wiki.query` agent tool | BM25 search via tool call — for HTTP-only adapters that don't run the skill directly |
+Get started:
 
-Install the companion:
+1. Click the button above, or deploy from the CLI with `npm run deploy` in `server/` (see the guide for the first-deploy secret).
+2. Open `https://<your-worker>/setup`, sign in with `ADMIN_TOKEN`, create the wiki and one token for each agent.
+3. In each agent, run `/wiki:init --hosted https://<your-worker>`.
+4. To move an existing wiki, run `/wiki:migrate`.
 
-```bash
-pnpm paperclipai plugin install paperclip-plugin-llm-wiki
-```
+Read the [hosted wiki guide](https://praneybehl.github.io/llm-wiki-plugin/hosted.html) for MCP set-up for each agent, OAuth, Free and Paid plan limits, costs and security.
 
-The plugin is **read-only by design** and pairs with the skill. The skill writes the wiki on heartbeat; the plugin reads it from inside Paperclip. Editing still happens through agents on heartbeat or the operator's editor of choice (Obsidian, Claude Code, direct SSH).
+## Decision layer (optional)
 
-Documentation:
+Small decision models answer closed questions that code prepares, for example "does this section help answer the query?". LLM Wiki can use them to gate search relevance, check the evidence of typed graph edges, screen contradictions, shortlist pages during ingest and flag source text that gives orders to AI agents.
 
-- [`integrations/paperclip/plugin/README.md`](./integrations/paperclip/plugin/README.md) — the comprehensive user guide. Install walkthrough, per-surface usage guide, configuration reference, agent-tool JSON shape, security and privacy notes, troubleshooting, FAQ.
-- [`integrations/paperclip/README.md`](./integrations/paperclip/README.md) — operator-facing decision page. When to install plugin vs. just the skill, first-time setup walkthrough, multi-Company guidance.
-- [`integrations/paperclip/SPEC.md`](./integrations/paperclip/SPEC.md) — v0.1 design with verbatim references to the live Paperclip plugin SDK source.
-- [`integrations/paperclip/FEASIBILITY.md`](./integrations/paperclip/FEASIBILITY.md) — Phase 0 validation report; documents the SPEC errata that surfaced against the SDK at `paperclipai/paperclip@master`.
+The layer is off by default. A decision never writes a page or blocks a write. Read paths fail open. Backends: a local Liquid `d1-2B` model through `llama-server` (no data leaves the machine), TypeSafe Jev, OpenRouter, the Liquid API, or Jev on Workers AI for a hosted wiki. Hosted backends receive wiki text, so you turn them on yourself. Read [Decision models](https://praneybehl.github.io/llm-wiki-plugin/decisions.html) for privacy, licence terms and costs.
 
 ## Tooling
 
-Once the wiki is set up, you can read and edit pages with any markdown viewer. [Obsidian](https://obsidian.md) is a particularly good fit because of its graph view, `[[wikilinks]]` syntax, and Web Clipper extension, but it isn't required — the wiki is just a directory of markdown files in your project.
+Once the wiki is set up, you can read and edit pages with any markdown viewer. [Obsidian](https://obsidian.md) is a particularly good fit because of its graph view, `[[wikilinks]]` syntax, and Web Clipper extension, but it isn't required: the wiki is just a directory of markdown files in your project.
 
 The tools require Python 3.10+ and `uv`. Initialization and upgrade invoke `setup_wiki.py`, whose PEP 723 environment pins FastEmbed 0.8.0, sqlite-vec 0.1.9, and PyYAML 6.0.3; it caches the model and synchronizes the complete wiki index. Search, graph lint, and graph extraction also carry their own pinned script metadata. Lexical `wiki_search.py --no-embed`, `wiki_lint.py`, `wiki_stats.py`, and graph queries remain directly runnable with stdlib Python. The bundled scripts live in `skills/llm-wiki/scripts/` after install.
 
@@ -249,12 +246,12 @@ The pattern is from Andrej Karpathy's [llm-wiki gist](https://gist.github.com/ka
 
 The v2 retrieval architecture was informed by Cerebras's engineering article, [How We Built Our Knowledge Base](https://www.cerebras.ai/blog/how-we-built-our-knowledge-base), especially its section-level retrieval, multi-retriever fusion, evidence packaging, and evaluation approach.
 
-The v3 local retrieval cutover was evaluated against [Basic Memory](https://github.com/basicmachines-co/basic-memory). LLM Wiki adopts the same local-first shape—FastEmbed, SQLite vector search, and incremental derived indexes—while keeping its existing Markdown schema, typed graph, RRF ranking, and agent-native workflows instead of adding Basic Memory's application and MCP service as a second canonical system.
+The v3 local retrieval cutover was evaluated against [Basic Memory](https://github.com/basicmachines-co/basic-memory). LLM Wiki adopts the same local-first shape (FastEmbed, SQLite vector search, and incremental derived indexes) while keeping its existing Markdown schema, typed graph, RRF ranking, and agent-native workflows instead of adding Basic Memory's application and MCP service as a second canonical system.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT: see [LICENSE](./LICENSE).
 
 ## Contributing
 
-Issues and PRs welcome. The skill itself is at `skills/llm-wiki/`; the slash commands at `commands/wiki/`. Before opening a PR, please run the bundled scripts against a small test wiki to verify nothing broke.
+Issues and PRs welcome. The skill itself is at `skills/llm-wiki/`; the slash commands at `commands/wiki/`; the hosted server at `server/`. See [CONTRIBUTING.md](./CONTRIBUTING.md). Before opening a PR, please run the bundled scripts against a small test wiki to verify nothing broke.

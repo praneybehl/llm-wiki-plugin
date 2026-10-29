@@ -1,0 +1,27 @@
+{
+  "note": "D2 evidence fixtures. Each case names a source page in eval/retrieval/corpus/wiki and an edge whose evidence is not a verbatim quote. label supported = a source sentence states the claim; unsupported = seeded wrong evidence.",
+  "cases": [
+    {"id": "e01", "source": "sources/adam-paper.md", "claim": "Diederik Kingma authored Adam: A Method for Stochastic Optimization", "evidence": "Adam was proposed by Kingma and Ba.", "label": "supported"},
+    {"id": "e02", "source": "sources/adam-paper.md", "claim": "Adam recommends beta2 of 0.999", "evidence": "the recommended beta2 is 0.999", "label": "supported"},
+    {"id": "e03", "source": "sources/adam-paper.md", "claim": "Adam corrects the zero bias of its moving averages", "evidence": "a correction removes the early bias toward zero", "label": "supported"},
+    {"id": "e04", "source": "sources/chinchilla-paper.md", "claim": "Chinchilla paper recommends about 20 training tokens per parameter", "evidence": "about twenty tokens for each parameter is compute-optimal", "label": "supported"},
+    {"id": "e05", "source": "sources/chinchilla-paper.md", "claim": "Chinchilla outperformed Gopher at equal compute", "evidence": "the smaller Chinchilla model beat the larger Gopher", "label": "supported"},
+    {"id": "e06", "source": "sources/lora-paper.md", "claim": "LoRA keeps the pretrained weights frozen", "evidence": "base model weights are not updated during fine-tuning", "label": "supported"},
+    {"id": "e07", "source": "sources/lora-paper.md", "claim": "LoRA rank eight recovers most full fine-tune quality", "evidence": "rank 8 gets close to a full fine-tune", "label": "supported"},
+    {"id": "e08", "source": "sources/attention-paper.md", "claim": "The transformer removes recurrence", "evidence": "the transformer drops recurrent layers and uses only attention", "label": "supported"},
+    {"id": "e09", "source": "sources/attention-paper.md", "claim": "The transformer architecture uses positional encodings", "evidence": "positional encodings are a key part of the model", "label": "supported"},
+    {"id": "e10", "source": "sources/scaling-laws-paper.md", "claim": "Test loss follows a power law in model size", "evidence": "loss decreases as a power law of model size", "label": "supported"},
+    {"id": "e11", "source": "sources/scaling-laws-paper.md", "claim": "Kaplan recommends spending compute on larger models", "evidence": "most compute should buy a bigger model trained for fewer steps", "label": "supported"},
+    {"id": "e12", "source": "sources/adam-paper.md", "claim": "Adam recommends an epsilon of 1e-6", "evidence": "the paper sets epsilon to 1e-6", "label": "unsupported"},
+    {"id": "e13", "source": "sources/adam-paper.md", "claim": "Geoffrey Hinton authored Adam", "evidence": "Hinton introduced the Adam optimizer", "label": "unsupported"},
+    {"id": "e14", "source": "sources/chinchilla-paper.md", "claim": "Chinchilla paper recommends 5 tokens per parameter", "evidence": "five tokens per parameter is optimal", "label": "unsupported"},
+    {"id": "e15", "source": "sources/chinchilla-paper.md", "claim": "Chinchilla depends on mixture of experts", "evidence": "Chinchilla routes tokens to sparse experts", "label": "unsupported"},
+    {"id": "e16", "source": "sources/lora-paper.md", "claim": "LoRA updates every weight of the model", "evidence": "all pretrained parameters are trained", "label": "unsupported"},
+    {"id": "e17", "source": "sources/lora-paper.md", "claim": "Google DeepMind developed LoRA", "evidence": "LoRA comes from a DeepMind team", "label": "unsupported"},
+    {"id": "e18", "source": "sources/attention-paper.md", "claim": "The transformer depends on an LSTM encoder", "evidence": "the encoder is a stack of LSTM layers", "label": "unsupported"},
+    {"id": "e19", "source": "sources/attention-paper.md", "claim": "The attention paper reports 28.4 BLEU on WMT", "evidence": "it scores 28.4 BLEU on English-German", "label": "unsupported"},
+    {"id": "e20", "source": "sources/scaling-laws-paper.md", "claim": "Loss falls exponentially and then flattens", "evidence": "returns flatten out completely at large scale", "label": "unsupported"},
+    {"id": "e21", "source": "sources/scaling-laws-paper.md", "claim": "Jordan Hoffmann authored Scaling Laws for Neural Language Models", "evidence": "Hoffmann wrote the scaling laws paper", "label": "unsupported"},
+    {"id": "e22", "source": "sources/attention-paper.md", "claim": "The transformer was designed for image classification", "evidence": "the model targets image recognition", "label": "unsupported"}
+  ]
+}

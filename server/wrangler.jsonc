@@ -1,0 +1,22 @@
+{
+  // LLM Wiki hosted server. Deploy with the "Deploy to Cloudflare" button or `npm run deploy`.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "llm-wiki",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      { "name": "WIKI", "class_name": "WikiDO" },
+      { "name": "REGISTRY", "class_name": "Registry" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WikiDO", "Registry"] }],
+  "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  "r2_buckets": [{ "binding": "RAW", "bucket_name": "llm-wiki-raw" }],
+  "vectorize": [{ "binding": "VECTORIZE", "index_name": "llm-wiki" }],
+  "ai": { "binding": "AI" },
+  "observability": { "enabled": true },
+  "secrets": { "required": ["ADMIN_TOKEN"] }
+}

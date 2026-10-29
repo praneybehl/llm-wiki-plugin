@@ -1,0 +1,39 @@
+{
+  "name": "llm-wiki-server",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Hosted LLM Wiki on Cloudflare Workers: one Durable Object per wiki, MCP, OAuth, hybrid search.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "node scripts/ensure-vectorize.mjs && wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "1.2.4",
+    "@modelcontextprotocol/server": "2.4.0",
+    "marked": "18.1.2",
+    "yaml": "2.9.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.4.10",
+    "@cloudflare/workers-types": "5.20261029.1",
+    "typescript": "6.0.3",
+    "vitest": "4.1.0",
+    "wrangler": "4.155.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "ADMIN_TOKEN": {
+        "description": "Owner secret for /setup, admin API calls and OAuth approval. Use a long random value and keep it private."
+      }
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

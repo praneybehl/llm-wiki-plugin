@@ -31,9 +31,11 @@ Checks:
 - `contradicts` / `supersedes` references resolve to known node/edge ids.
 - Generated graph has no orphan typed nodes (nodes with no inbound or
   outbound typed edges) except for `source` nodes (allowed source-only).
+- Optional (--decide): a decision model checks typed edges whose evidence
+  quote is not in the source page. It reports findings only.
 
 Usage:
-    uv run --script wiki_graph_lint.py [<wiki-dir>] [--json]
+    uv run --script wiki_graph_lint.py [<wiki-dir>] [--json] [--decide [--decide-threshold X]]
 """
 
 import argparse
@@ -324,6 +326,90 @@ def lint(pages: list[dict], ontology: dict) -> dict:
     return findings
 
 
+def decide_evidence(pages: list[dict], ontology: dict, threshold: float | None) -> tuple[list[dict], dict]:
+    """D2: ask the decision model which source sentence states each typed edge whose
+    evidence is not a quote of its source page. Returns (unsupported findings, block)."""
+    import wiki_decide as wd
+    from concurrent.futures import ThreadPoolExecutor
+    import time
+
+    if threshold is None:
+        threshold = wd.QUESTIONS["evidence"]["default_threshold"]
+    started = time.monotonic()
+    try:
+        client = wd.client_from_config()
+    except wd.DecisionError as exc:
+        wd.note(str(exc))
+        client = None
+    predicates = ontology.get("predicates", {})
+    sources = {p["slug"]: p for p in pages if p["meta"].get("type") == "source"}
+    titles = {derive_node_id(p["meta"], p["slug"], ontology): p["meta"].get("title") or p["slug"] for p in pages}
+    items = []
+    for p in pages:
+        graph_meta = p["meta"].get("graph") if isinstance(p["meta"].get("graph"), dict) else {}
+        subject_id = derive_node_id(p["meta"], p["slug"], ontology)
+        for idx, rel in enumerate(graph_meta.get("relationships") or []):
+            if not isinstance(rel, dict):
+                continue
+            predicate, evidence, src = rel.get("predicate"), rel.get("evidence"), rel.get("source")
+            if not predicate or predicate in IMPLICIT_PREDICATES or predicate not in predicates:
+                continue
+            if not (predicates[predicate] or {}).get("requires_evidence", True):
+                continue
+            source_page = sources.get(str(src)) if src else None
+            if not evidence or source_page is None or wd.evidence_in_text(str(evidence), source_page["body"]):
+                continue
+            obj = rel.get("object")
+            items.append({
+                "page": p["rel_path"],
+                "predicate": predicate,
+                "object": obj,
+                "index": idx,
+                "source": str(src),
+                "evidence": str(evidence),
+                "claim": f"{titles.get(subject_id, subject_id)} {predicate.replace('_', ' ')} {titles.get(obj, obj)}",
+                "body": source_page["body"],
+            })
+
+    def check(item):
+        try:
+            return wd.check_evidence(client, item["claim"], item["evidence"], item["body"], threshold), None
+        except wd.DecisionError as exc:
+            return None, exc
+
+    findings, errors = [], []
+    if items and client is not None:
+        with ThreadPoolExecutor(max_workers=min(wd.MAX_WORKERS, len(items))) as pool:
+            results = list(pool.map(check, items))
+        for item, (verdict, exc) in zip(items, results):
+            if exc is not None:
+                errors.append(exc.code)
+                continue
+            if not verdict["supported"]:
+                findings.append({
+                    **{k: item[k] for k in ("page", "predicate", "object", "index", "source", "evidence")},
+                    "choice": verdict["choice"],
+                    "confidence": verdict["confidence"],
+                    "best_sentence": verdict["sentence"],
+                })
+    failed_open = bool(items) and (client is None or len(errors) == len(items))
+    if errors:
+        wd.note(f"evidence check failed for {len(errors)} of {len(items)} edges ({errors[0]}); those edges are not flagged")
+    elif items and client is None:
+        wd.note("evidence check skipped: no backend configured (set LLM_WIKI_DECISIONS)")
+    block = {
+        "backend": client.backend if client else "off",
+        "model": client.model if client else None,
+        "threshold": threshold,
+        "latency_ms": int((time.monotonic() - started) * 1000),
+        "checked": len(items) - len(errors) if client else 0,
+        "candidates": len(items),
+        "errors": len(errors),
+        "failed_open": failed_open,
+    }
+    return findings, block
+
+
 def render_text(findings: dict) -> str:
     out = []
     s = findings["summary"]
@@ -364,11 +450,14 @@ def render_text(findings: dict) -> str:
          lambda f: f"  - {f['page']}#rel[{f['index']}]  supersedes={f.get('supersedes')}"),
         ("orphan_typed_nodes", "Orphan typed nodes (no inbound or outbound typed edges)",
          lambda f: f"  - {f['node_id']}  ({f['path']})"),
+        ("evidence_unsupported", "Evidence not supported by the source page (decision model)",
+         lambda f: f"  - {f['page']}#rel[{f['index']}]  {f['predicate']} → {f['object']}  "
+                   f"(source={f['source']}, choice={f['choice']}, confidence={f['confidence']})"),
     ]
 
     healthy = True
     for key, label, formatter in sections:
-        items = findings[key]
+        items = findings.get(key)
         if not items:
             continue
         healthy = False
@@ -379,9 +468,24 @@ def render_text(findings: dict) -> str:
             out.append(f"  ... and {len(items) - 50} more")
         out.append("")
 
+    if "evidence_check" in findings:
+        check = findings["evidence_check"]
+        state = "failed open" if check["failed_open"] else f"checked {check['checked']} of {check['candidates']} edges"
+        out.append(f"Evidence check ({check['backend']}): {state}.")
+        out.append("")
+
     if healthy:
         out.append("No graph issues found.")
     return "\n".join(out)
+
+
+def decision_default_threshold(check: str) -> str:
+    """The default threshold of a decision check, read from decision-questions.json."""
+    path = SCRIPT_DIR.parent / "assets" / "decision-questions.json"
+    try:
+        return str(json.loads(path.read_text(encoding="utf-8"))["checks"][check]["default_threshold"])
+    except (OSError, ValueError, KeyError):
+        return f"see {path.name}"
 
 
 def main():
@@ -389,6 +493,11 @@ def main():
     parser.add_argument("wiki", nargs="?", type=Path, default=Path("wiki"))
     parser.add_argument("--ontology", type=Path, help="Ontology file (default: <wiki>/graph/ontology.yaml)")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--decide", action="store_true",
+                        help="Check unquoted edge evidence with the decision model. Needs LLM_WIKI_DECISIONS.")
+    parser.add_argument("--decide-threshold", type=float, default=None,
+                        help="Confidence needed to accept a supporting sentence "
+                             f"(default: {decision_default_threshold('evidence')}).")
     args = parser.parse_args()
 
     if not args.wiki.exists():
@@ -409,6 +518,11 @@ def main():
 
     pages = collect_pages(args.wiki)
     findings = lint(pages, ontology)
+    if args.decide:
+        unsupported, check = decide_evidence(pages, ontology, args.decide_threshold)
+        findings["evidence_unsupported"] = unsupported
+        findings["evidence_check"] = check
+        findings["summary"]["evidence_unsupported"] = len(unsupported)
 
     if args.json:
         print(json.dumps(findings, indent=2, default=str))

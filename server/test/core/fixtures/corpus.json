@@ -1,0 +1,1694 @@
+{
+ "files": {
+  "SCHEMA.md": "# Evaluation Wiki Schema\n\n## Retrieval\n\n- Semantic backend: local FastEmbed + sqlite-vec (`BAAI/bge-small-en-v1.5`, 384 dimensions).\n\nThe fixture uses hybrid retrieval when local semantic dependencies are available and otherwise exercises lexical fallback.\n",
+  "concepts/attention-mechanism.md": "---\ntype: concept\ntitle: Attention Mechanism\ntags: [attention, transformer, inference]\nsources: [attention-paper]\ncreated: 2026-01-15\nupdated: 2026-01-20\n---\n\n# Attention Mechanism\n\nAttention computes a weighted sum of values, where the weights come from\nthe similarity between a query and a set of keys. It lets a sequence\nposition gather information from every other position.\n\n## Scaled dot-product attention\n\nThe core operation is scaled dot-product attention:\nsoftmax(QK^T / sqrt(d_k)) V. Dividing by sqrt(d_k) keeps the logits from\ngrowing too large as dimensionality rises.\n\n## Multi-head attention\n\nMulti-head attention runs several attention heads in parallel and\nconcatenates their outputs, so different heads specialise on different\nrelationships between tokens.\n\n## Self-attention versus cross-attention\n\nSelf-attention draws its query, keys, and values from one sequence.\nCross-attention takes the query from one sequence and the keys and\nvalues from another, which is how a decoder reads an encoder.\n\nSee [[attention-paper]] and the [[transformer]] page for the surrounding\narchitecture.\n",
+  "concepts/distributed-training.md": "---\ntype: concept\ntitle: Distributed Training\ntags: [training, scaling, infrastructure]\nsources: [scaling-laws-paper]\ncreated: 2026-02-06\nupdated: 2026-02-18\n---\n\n# Distributed Training\n\nTraining a large model spreads the work across many accelerators. The\nright combination of parallelism strategies depends on model size,\ninterconnect bandwidth, and memory per device.\n\n## Data parallelism\n\nData parallelism replicates the whole model on every worker and feeds\neach replica a different slice of the batch. Workers average their\ngradients through an all-reduce before the optimizer step, so all\nreplicas stay identical.\n\n## Tensor parallelism ##\n\nTensor parallelism splits an individual weight matrix across devices,\neach holding a shard of the rows or columns. Every layer then needs an\nall-gather so partial results recombine, so this strategy wants fast\nintra-node links.\n\n## Pipeline parallelism\n\nPipeline parallelism assigns consecutive layers to different devices and\nstreams micro-batches through the stages. A poorly sized schedule leaves\na pipeline bubble where early stages idle while waiting for the last\nstage to finish.\n\n## ZeRO and sharded optimizers\n\nZeRO stage 3 shards the optimizer state, gradients, and parameters\nacross the data-parallel group instead of replicating them, trading a\nlittle extra communication for a large drop in per-device memory.\n\n## Gradient accumulation\n\nGradient accumulation runs several forward and backward passes before an\noptimizer step, summing their gradients. This simulates a large batch on\ndevices that cannot hold one in memory at once.\n\n## Mixed precision training\n\nMixed precision keeps a master copy of the weights in float32 while\nrunning the forward and backward passes in bfloat16, halving activation\nmemory and speeding up the matrix multiplies.\n\n## Activation checkpointing\n\nActivation checkpointing discards intermediate activations during the\nforward pass and recomputes them in the backward pass, trading extra\ncompute for a smaller memory footprint.\n\n## Communication collectives\n\nThe core collectives are all-reduce, all-gather, and reduce-scatter.\nOverlapping these collectives with computation hides most of the network\nlatency behind useful work.\n\n## Fault tolerance and checkpointing\n\nLong runs write periodic checkpoints so a hardware failure only costs\nthe work since the last save. Elastic training rebuilds the process\ngroup when a node drops out.\n\n## Hyperparameter scaling\n\nAs the world size grows the global batch grows too, so the learning rate\nusually scales with it, guided by the [[scaling-laws]] relationships\nbetween compute, data, and model size.\n\n## Where this fits\n\n- [[gradient-descent]]\n- [[scaling-laws]]\n- [[pytorch]]\n- [[cuda]]\n",
+  "concepts/gradient-descent.md": "---\ntype: concept\ntitle: Gradient Descent\ntags: [optimization, training]\nsources: [adam-paper]\ncreated: 2026-01-16\nupdated: 2026-01-22\n---\n\n# Gradient Descent\n\nGradient descent updates parameters by stepping in the direction that\nlowers the loss, scaled by a learning rate. Stochastic gradient descent\nestimates the gradient from a mini-batch instead of the whole dataset.\n\n## Learning rate schedules\n\nThe learning rate controls step size. A warmup phase raises it slowly,\nthen a cosine schedule decays it toward zero over training.\n\n## Adam and AdamW\n\nAdam keeps running averages of the gradient and its square to adapt the\nstep per parameter. AdamW decouples weight decay from the gradient\nupdate, which improves regularisation. See [[adam-paper]].\n\n## Gradient clipping\n\nClipping the global gradient norm to a threshold prevents a single large\nbatch from destabilising the [[distributed-training]] run.\n",
+  "concepts/kv-cache.md": "---\ntype: concept\ntitle: KV Cache\ntags: [inference, efficiency, attention]\nsources: []\ncreated: 2026-02-05\nupdated: 2026-02-14\n---\n\n# KV Cache\n\nDuring autoregressive decoding a model appends one token at a time. The\nKV cache stores the keys and values computed for previous tokens so\nattention never recomputes them, turning quadratic decoding into a\nlinear scan over new positions.\n\n## past_key_values\n\nFrameworks expose the cache as a `past_key_values` tuple threaded\nthrough each decoding step. On the first step it is empty; on later steps\nthe freshly computed keys and values are concatenated onto it.\n\n## Memory growth\n\nThe cache grows linearly with the number of generated tokens and with\nbatch size, so a long generation eventually dominates GPU memory. This\nis the motivation for [[quantization]] of the cache.\n\n## Paged attention\n\nPaged attention allocates the cache in fixed blocks like virtual memory\npages, cutting fragmentation when many requests of different lengths\nshare one accelerator.\n",
+  "concepts/mixture-of-experts.md": "---\ntype: concept\ntitle: Mixture of Experts\ntags: [efficiency, architecture, scaling]\nsources: []\ncreated: 2026-02-03\nupdated: 2026-02-12\n---\n\n# Mixture of Experts\n\nA mixture-of-experts layer replaces one dense feed-forward block with\nmany expert blocks and a router that sends each token to only a few of\nthem, so the parameter count grows without a proportional rise in\ncompute per token.\n\n## Top-2 routing\n\nA gating network scores every expert for a token and dispatches the\ntoken to its top-2 experts. Only those experts run, which keeps the\nactive compute far below the total parameter count.\n\n## Load balancing loss\n\nWithout a load balancing loss the router collapses onto a handful of\nexperts. The auxiliary loss pushes the gate to spread tokens evenly\nacross all experts.\n\n## Capacity factor\n\nEach expert has a fixed slot budget per batch. A capacity factor above\none leaves headroom; tokens beyond the budget are dropped and skip the\nlayer via the residual path.\n",
+  "concepts/quantization.md": "---\ntype: concept\ntitle: Quantization\ntags: [efficiency, inference, precision]\nsources: [lora-paper]\ncreated: 2026-02-01\nupdated: 2026-02-10\n---\n\n# Quantization\n\nQuantization stores weights and activations at lower numeric precision\nto shrink memory footprint and speed up matrix multiplies. A model\ntrained in bfloat16 can often serve in int8 with little quality loss.\n\n## Post-training quantization\n\nPost-training quantization converts an already-trained checkpoint by\ncalibrating scale factors on a small sample, mapping float ranges onto\nthe int8 grid without any further optimisation.\n\n## Quantization-aware training\n\nQuantization-aware training simulates the rounding during the forward\npass so the network learns weights that survive int8 rounding better\nthan a naive conversion.\n\n## Common pitfalls\n\nMixing dtypes triggers `RuntimeError: expected scalar type Half`. Keep\nthe activations and weights on the same dtype, and watch for outlier\nchannels that widen the calibration range.\n",
+  "concepts/tokenization.md": "---\ntype: concept\ntitle: Tokenization\ntags: [preprocessing, text]\nsources: []\ncreated: 2026-01-17\nupdated: 2026-01-19\n---\n\n# Tokenization\n\nTokenization converts raw text into a sequence of integer ids that a\nmodel consumes. The vocabulary maps each subword unit to one id.\n\n## Byte-pair encoding\n\nByte-pair encoding starts from single bytes and repeatedly merges the\nmost frequent adjacent pair, building a vocabulary of subword units that\nbalances vocabulary size against sequence length.\n\n## Special tokens\n\nReserved ids mark boundaries: a beginning-of-sequence id, an\nend-of-sequence id, and a padding id that fills short sequences in a\nbatch so their lengths align.\n\n## Detokenization\n\nDecoding reverses the map: integer ids become subword strings that are\nconcatenated back into readable text.\n",
+  "entities/cuda.md": "---\ntype: entity\nkind: platform\ntitle: CUDA\naliases: [CUDA Toolkit]\ntags: [gpu, infrastructure]\nsources: []\ncreated: 2026-01-19\nupdated: 2026-02-04\n---\n\n# CUDA\n\nCUDA is NVIDIA's parallel programming platform for its graphics\nprocessors. Kernels launch a grid of threads grouped into blocks, and\nthe compiler `nvcc` turns annotated source into device code.\n\n## Compute capability\n\nEach generation exposes a compute capability version that gates which\ninstructions are available; compute capability 8.0 first offered the\ntensor cores used for bfloat16 matrix multiplies.\n\n## Memory hierarchy\n\nThreads read fastest from registers, then shared memory within a block,\nthen global device memory. Coalescing global reads across a warp is the\nsingle biggest performance lever.\n\n## Out-of-memory errors\n\nOversubscribing device memory raises `CUDA_ERROR_OUT_OF_MEMORY`. Reduce\nthe batch, enable activation checkpointing, or shard the model to\nrecover, as covered in [[distributed-training]].\n",
+  "entities/gpt-4.md": "---\ntype: entity\nkind: model\ntitle: GPT-4\naliases: [GPT4]\ntags: [model, transformer]\nsources: [scaling-laws-paper]\ncreated: 2026-01-20\nupdated: 2026-02-06\n---\n\n# GPT-4\n\nGPT-4 is a large decoder-only [[transformer]] language model released by\n[[openai]]. It extends the recipe of earlier GPT models with more\nparameters, more training tokens, and a longer context window.\n\n## Architecture rumours\n\nPublic detail is sparse. Independent analysts believe GPT-4 uses a\n[[mixture-of-experts]] design to raise capacity while holding inference\ncost down, though this is not confirmed by the lab.\n\n## Multimodal input\n\nGPT-4 accepts images alongside text, encoding a picture into the same\ntoken stream the language layers consume.\n\n## Alignment\n\nThe model is tuned with reinforcement learning from human feedback to\nfollow instructions and refuse unsafe requests, work led in part by\n[[ilya-sutskever]].\n",
+  "entities/ilya-sutskever.md": "---\ntype: entity\nkind: person\ntitle: Ilya Sutskever\naliases: [Sutskever]\ntags: [researcher, people]\nsources: []\ncreated: 2026-01-21\nupdated: 2026-02-08\n---\n\n# Ilya Sutskever\n\nIlya Sutskever is a machine learning researcher and a co-founder of\n[[openai]], where he served as chief scientist. His early work on deep\nneural networks helped kick off the modern era of the field.\n\n## AlexNet\n\nAs a graduate student he co-authored AlexNet, the convolutional network\nwhose 2012 image-recognition win convinced the field that deep learning\nscaled with data and compute.\n\n## Sequence to sequence\n\nHe introduced the sequence-to-sequence framework that maps one variable\nlength sequence to another, an idea that fed directly into later\n[[attention-mechanism]] research.\n\n## Views on scaling\n\nHe is associated with the thesis that steadily enlarging models and\ndatasets keeps yielding capability gains, echoed in the\n[[scaling-laws-paper]].\n",
+  "entities/openai.md": "---\ntype: entity\nkind: company\ntitle: OpenAI\naliases: [Open AI]\ntags: [company, lab]\nsources: []\ncreated: 2026-01-22\nupdated: 2026-02-09\n---\n\n# OpenAI\n\nOpenAI is an artificial intelligence research company that builds and\ndeploys large generative models, including the GPT family such as\n[[gpt-4]]. It began as a non-profit and later added a capped-profit arm.\n\n## Research direction\n\nThe lab concentrates on scaling up general models rather than many small\ntask-specific ones, a bet reflected across its publications and product\nreleases.\n\n## Notable people\n\nCo-founders include [[ilya-sutskever]], who shaped its early research\nagenda around large neural networks.\n\n## Products\n\nIts API exposes chat completions, embeddings, and image generation\nendpoints that developers call over HTTP.\n",
+  "entities/pytorch.md": "---\ntype: entity\nkind: software\ntitle: PyTorch\naliases: [torch]\ntags: [framework, infrastructure]\nsources: []\ncreated: 2026-01-18\nupdated: 2026-02-02\n---\n\n# PyTorch\n\nPyTorch is a Python deep learning framework built around eager tensor\noperations and automatic differentiation. It compiles hot code paths\nwith a tracing compiler while keeping the define-by-run programming\nmodel.\n\n## Autograd\n\nThe autograd engine records every tensor operation on a tape and walks\nit backward to produce gradients, so no manual derivative bookkeeping is\nneeded.\n\n## Distributed API\n\n`DistributedDataParallel` wraps a module and synchronises gradients\nacross processes with all-reduce. It is the standard entry point for\n[[distributed-training]].\n\n## Fused kernels\n\n`torch.nn.functional.scaled_dot_product_attention` dispatches to a fused\nkernel that computes the [[attention-mechanism]] without materialising\nthe full score matrix, saving memory on long sequences.\n",
+  "sources/adam-paper.md": "---\ntype: source\ntitle: \"Adam: A Method for Stochastic Optimization\"\nauthors: [Diederik Kingma, Jimmy Ba]\nurl: https://arxiv.org/abs/1412.6980\nraw: raw/adam-paper.md\ningested: 2026-01-16\ncreated: 2026-01-16\nupdated: 2026-01-16\ntags: [optimization, training]\n---\n\n# Adam: A Method for Stochastic Optimization\n\nKingma and Ba propose Adam, an optimizer that keeps exponential moving\naverages of the first and second moments of the gradient to adapt the\nstep size per parameter. It underpins the [[gradient-descent]] page.\n\n## Bias correction\n\nBecause the moving averages start at zero they are biased toward zero\nearly in training; a correction term divides out that bias.\n\n## Default hyperparameters\n\nThe paper recommends beta1 of 0.9, beta2 of 0.999, and an epsilon of\n1e-8, defaults that remain common today.\n",
+  "sources/attention-paper.md": "---\ntype: source\ntitle: \"Attention Is All You Need\"\nauthors: [Ashish Vaswani, Noam Shazeer]\nurl: https://arxiv.org/abs/1706.03762\nraw: raw/attention-paper.md\ningested: 2026-01-15\ncreated: 2026-01-15\nupdated: 2026-01-15\ntags: [transformer, attention]\n---\n\n# Attention Is All You Need\n\nVaswani and colleagues introduce the [[transformer]], replacing\nrecurrence and convolutions entirely with self-attention. The paper\npresents the [[attention-mechanism]] as scaled dot-product attention\nplus a multi-head arrangement.\n\n## Contribution\n\nThe central claim is that attention alone suffices for sequence\ntransduction, and that removing recurrence unlocks parallel training on\nlong inputs.\n\n## Architecture\n\nKey components are the encoder stack, the decoder stack, positional\nencodings, and layer normalisation.\n",
+  "sources/chinchilla-paper.md": "---\ntype: source\ntitle: \"Training Compute-Optimal Large Language Models\"\nauthors: [Jordan Hoffmann, Sebastian Borgeaud]\nurl: https://arxiv.org/abs/2203.15556\nraw: raw/chinchilla-paper.md\ningested: 2026-02-11\ncreated: 2026-02-11\nupdated: 2026-02-11\ntags: [scaling, compute]\n---\n\n# Training Compute-Optimal Large Language Models\n\nHoffmann and Borgeaud revisit compute-optimal training and find that\nearlier models were badly undertrained: for a given compute budget,\nmodel size and training data should grow in equal proportion.\n\n## Twenty tokens per parameter\n\nTheir fits suggest roughly 20 tokens per parameter as the compute-optimal\nratio, far more data per weight than prior practice used.\n\n## Chinchilla versus Gopher\n\nA smaller model trained on more data beat a much larger model trained on\nless, at the same compute, overturning the previous [[scaling-laws-paper]]\nallocation advice.\n",
+  "sources/lora-paper.md": "---\ntype: source\ntitle: \"LoRA: Low-Rank Adaptation of Large Language Models\"\nauthors: [Edward Hu, Yelong Shen]\nurl: https://arxiv.org/abs/2106.09685\nraw: raw/lora-paper.md\ningested: 2026-02-01\ncreated: 2026-02-01\nupdated: 2026-02-01\ntags: [efficiency, fine-tuning]\n---\n\n# LoRA: Low-Rank Adaptation of Large Language Models\n\nHu and Shen freeze the pretrained weights and inject a trainable\nlow-rank adaptation into each layer, so fine-tuning updates a tiny\nfraction of the parameters.\n\n## Rank decomposition\n\nThe update is written as the product of two thin matrices whose inner\ndimension is the rank. A rank of eight already recovers most of the\nquality of a full fine-tune.\n\n## Deployment\n\nBecause the base weights stay frozen, many task adapters can be swapped\nin and out at serving time without duplicating the backbone, and they\npair naturally with [[quantization]].\n",
+  "sources/scaling-laws-paper.md": "---\ntype: source\ntitle: \"Scaling Laws for Neural Language Models\"\nauthors: [Jared Kaplan, Sam McCandlish]\nurl: https://arxiv.org/abs/2001.08361\nraw: raw/scaling-laws-paper.md\ningested: 2026-01-24\ncreated: 2026-01-24\nupdated: 2026-01-24\ntags: [scaling, training]\n---\n\n# Scaling Laws for Neural Language Models\n\nKaplan and McCandlish show that test loss falls as a smooth power law in\nmodel size, dataset size, and compute, spanning many orders of\nmagnitude. The result motivates [[distributed-training]] at ever larger\nscale.\n\n## Power-law form\n\nLoss is roughly proportional to each resource raised to a small negative\nexponent, so returns diminish but never flatten within the studied\nrange.\n\n## Compute allocation\n\nGiven a fixed compute budget the paper argues most of it should go into a\nlarger model trained on fewer steps than intuition suggests.\n",
+  "synthesis/precision-tradeoffs.md": "---\ntype: synthesis\ntitle: \"Numeric precision tradeoffs across the stack\"\nquestion: How low can numeric precision go before quality suffers?\ntags: [precision, efficiency]\nsources: [lora-paper]\ncreated: 2026-03-03\nupdated: 2026-03-09\n---\n\n# Numeric precision tradeoffs across the stack\n\nLower precision saves memory and bandwidth but risks rounding damage.\nThe safe floor differs between training and serving.\n\n## Training wants headroom\n\nTraining keeps a float32 master copy of the weights because the many\ntiny gradient updates would vanish under aggressive rounding, even while\nthe forward pass runs in bfloat16.\n\n## Serving tolerates less\n\nAt serving time the weights are fixed, so [[quantization]] to int8 or\nlower is far safer than it would be mid-training, and it pairs well with\n[[lora-paper]] adapters kept at higher precision.\n\n## The outlier problem\n\nA handful of large-magnitude channels dominate the error budget; holding\njust those channels at higher precision recovers most of the lost\nquality.\n",
+  "synthesis/training-vs-inference-cost.md": "---\ntype: synthesis\ntitle: \"Where the cost lives: training versus inference\"\nquestion: Does training or inference dominate the lifetime cost of a deployed model?\ntags: [cost, efficiency]\nsources: [chinchilla-paper]\ncreated: 2026-03-02\nupdated: 2026-03-08\n---\n\n# Where the cost lives: training versus inference\n\nTraining is a one-time capital expense; inference is a recurring bill\nthat scales with usage. For a widely deployed model the recurring side\nusually wins over the lifetime.\n\n## Training is amortised\n\nA single expensive training run is paid once and spread across every\nlater request, so its per-request share shrinks as traffic climbs.\n\n## Inference compounds with traffic\n\nEvery request pays for a forward pass and a growing [[kv-cache]], so a\npopular product spends far more serving answers than it ever spent\nlearning them. This is why [[quantization]] and [[mixture-of-experts]]\nmatter for the bottom line.\n\n## The Chinchilla angle\n\nBecause a compute-optimal model from the [[chinchilla-paper]] is smaller\nfor the same quality, it also lowers the recurring inference bill, not\njust the training bill.\n",
+  "synthesis/why-transformers-won.md": "---\ntype: synthesis\ntitle: \"Why transformers displaced recurrent networks\"\nquestion: Why did transformers replace recurrent networks for sequence modeling?\ntags: [transformer, comparison]\nsources: [attention-paper, scaling-laws-paper]\ncreated: 2026-03-01\nupdated: 2026-03-05\n---\n\n# Why transformers displaced recurrent networks\n\nThree factors, in order of importance.\n\n## Parallelism during training\n\nA recurrent network must process step t only after step t minus one, so\nit cannot use a device fully. The [[attention-mechanism]] computes all\npositions at once, which is the gap between training a model in days\nversus months.\n\n## Constant path length\n\nSelf-attention connects any two positions in a single hop, whereas a\nrecurrent network passes signal through many steps and its gradients\nfade. Short paths preserve long-range dependencies.\n\n## Scale follows parallelism\n\nOnce training parallelises, adding capability is mostly a matter of\ncompute, and the [[scaling-laws-paper]] results take over from there.\n",
+  "concepts/fences.md": "---\ntype: concept\ntitle: Fences\ntags: [code]\nupdated: 2026-03-01\n---\n\nIntro line.\n\n## Example\n\n```python\n# not a heading\nprint('x')\n```\n\n~~~\n## also not a heading\n~~~\n\n### Nested ###\n\nDeep text.\n\n# Top again\n\n#### Skip level\nend\n",
+  "concepts/quirks.md": "---\ntype: \"concept\"\ntitle: '\"Quirky\"'\ntags:\n  - alpha\n  - \"beta\"\nsources: [\"src-a\", 'src-b']\nupdated: 2026-13-40\n---\n# Heading one\ntext [[entities/openai]] and [[raw/foo]] and [[openai|Open AI]] and [[kv-cache#Paged attention]] and [[missing-page]]\n"
+ },
+ "sections": {
+  "concepts/attention-mechanism.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Attention Mechanism"
+    ],
+    "level": 1,
+    "text": "\nAttention computes a weighted sum of values, where the weights come from\nthe similarity between a query and a set of keys. It lets a sequence\nposition gather information from every other position.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Attention Mechanism",
+     "Scaled dot-product attention"
+    ],
+    "level": 2,
+    "text": "\nThe core operation is scaled dot-product attention:\nsoftmax(QK^T / sqrt(d_k)) V. Dividing by sqrt(d_k) keeps the logits from\ngrowing too large as dimensionality rises.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Attention Mechanism",
+     "Multi-head attention"
+    ],
+    "level": 2,
+    "text": "\nMulti-head attention runs several attention heads in parallel and\nconcatenates their outputs, so different heads specialise on different\nrelationships between tokens.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Attention Mechanism",
+     "Self-attention versus cross-attention"
+    ],
+    "level": 2,
+    "text": "\nSelf-attention draws its query, keys, and values from one sequence.\nCross-attention takes the query from one sequence and the keys and\nvalues from another, which is how a decoder reads an encoder.\n\nSee [[attention-paper]] and the [[transformer]] page for the surrounding\narchitecture.",
+    "section_index": 4
+   }
+  ],
+  "concepts/distributed-training.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Distributed Training"
+    ],
+    "level": 1,
+    "text": "\nTraining a large model spreads the work across many accelerators. The\nright combination of parallelism strategies depends on model size,\ninterconnect bandwidth, and memory per device.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "Data parallelism"
+    ],
+    "level": 2,
+    "text": "\nData parallelism replicates the whole model on every worker and feeds\neach replica a different slice of the batch. Workers average their\ngradients through an all-reduce before the optimizer step, so all\nreplicas stay identical.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "Tensor parallelism"
+    ],
+    "level": 2,
+    "text": "\nTensor parallelism splits an individual weight matrix across devices,\neach holding a shard of the rows or columns. Every layer then needs an\nall-gather so partial results recombine, so this strategy wants fast\nintra-node links.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "Pipeline parallelism"
+    ],
+    "level": 2,
+    "text": "\nPipeline parallelism assigns consecutive layers to different devices and\nstreams micro-batches through the stages. A poorly sized schedule leaves\na pipeline bubble where early stages idle while waiting for the last\nstage to finish.\n",
+    "section_index": 4
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "ZeRO and sharded optimizers"
+    ],
+    "level": 2,
+    "text": "\nZeRO stage 3 shards the optimizer state, gradients, and parameters\nacross the data-parallel group instead of replicating them, trading a\nlittle extra communication for a large drop in per-device memory.\n",
+    "section_index": 5
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "Gradient accumulation"
+    ],
+    "level": 2,
+    "text": "\nGradient accumulation runs several forward and backward passes before an\noptimizer step, summing their gradients. This simulates a large batch on\ndevices that cannot hold one in memory at once.\n",
+    "section_index": 6
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "Mixed precision training"
+    ],
+    "level": 2,
+    "text": "\nMixed precision keeps a master copy of the weights in float32 while\nrunning the forward and backward passes in bfloat16, halving activation\nmemory and speeding up the matrix multiplies.\n",
+    "section_index": 7
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "Activation checkpointing"
+    ],
+    "level": 2,
+    "text": "\nActivation checkpointing discards intermediate activations during the\nforward pass and recomputes them in the backward pass, trading extra\ncompute for a smaller memory footprint.\n",
+    "section_index": 8
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "Communication collectives"
+    ],
+    "level": 2,
+    "text": "\nThe core collectives are all-reduce, all-gather, and reduce-scatter.\nOverlapping these collectives with computation hides most of the network\nlatency behind useful work.\n",
+    "section_index": 9
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "Fault tolerance and checkpointing"
+    ],
+    "level": 2,
+    "text": "\nLong runs write periodic checkpoints so a hardware failure only costs\nthe work since the last save. Elastic training rebuilds the process\ngroup when a node drops out.\n",
+    "section_index": 10
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "Hyperparameter scaling"
+    ],
+    "level": 2,
+    "text": "\nAs the world size grows the global batch grows too, so the learning rate\nusually scales with it, guided by the [[scaling-laws]] relationships\nbetween compute, data, and model size.\n",
+    "section_index": 11
+   },
+   {
+    "heading_path": [
+     "Distributed Training",
+     "Where this fits"
+    ],
+    "level": 2,
+    "text": "\n- [[gradient-descent]]\n- [[scaling-laws]]\n- [[pytorch]]\n- [[cuda]]",
+    "section_index": 12
+   }
+  ],
+  "concepts/fences.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "Intro line.\n",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Example"
+    ],
+    "level": 2,
+    "text": "\n```python\n# not a heading\nprint('x')\n```\n\n~~~\n## also not a heading\n~~~\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Example",
+     "Nested"
+    ],
+    "level": 3,
+    "text": "\nDeep text.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Top again"
+    ],
+    "level": 1,
+    "text": "",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Top again",
+     "Skip level"
+    ],
+    "level": 4,
+    "text": "end",
+    "section_index": 4
+   }
+  ],
+  "concepts/gradient-descent.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Gradient Descent"
+    ],
+    "level": 1,
+    "text": "\nGradient descent updates parameters by stepping in the direction that\nlowers the loss, scaled by a learning rate. Stochastic gradient descent\nestimates the gradient from a mini-batch instead of the whole dataset.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Gradient Descent",
+     "Learning rate schedules"
+    ],
+    "level": 2,
+    "text": "\nThe learning rate controls step size. A warmup phase raises it slowly,\nthen a cosine schedule decays it toward zero over training.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Gradient Descent",
+     "Adam and AdamW"
+    ],
+    "level": 2,
+    "text": "\nAdam keeps running averages of the gradient and its square to adapt the\nstep per parameter. AdamW decouples weight decay from the gradient\nupdate, which improves regularisation. See [[adam-paper]].\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Gradient Descent",
+     "Gradient clipping"
+    ],
+    "level": 2,
+    "text": "\nClipping the global gradient norm to a threshold prevents a single large\nbatch from destabilising the [[distributed-training]] run.",
+    "section_index": 4
+   }
+  ],
+  "concepts/kv-cache.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "KV Cache"
+    ],
+    "level": 1,
+    "text": "\nDuring autoregressive decoding a model appends one token at a time. The\nKV cache stores the keys and values computed for previous tokens so\nattention never recomputes them, turning quadratic decoding into a\nlinear scan over new positions.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "KV Cache",
+     "past_key_values"
+    ],
+    "level": 2,
+    "text": "\nFrameworks expose the cache as a `past_key_values` tuple threaded\nthrough each decoding step. On the first step it is empty; on later steps\nthe freshly computed keys and values are concatenated onto it.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "KV Cache",
+     "Memory growth"
+    ],
+    "level": 2,
+    "text": "\nThe cache grows linearly with the number of generated tokens and with\nbatch size, so a long generation eventually dominates GPU memory. This\nis the motivation for [[quantization]] of the cache.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "KV Cache",
+     "Paged attention"
+    ],
+    "level": 2,
+    "text": "\nPaged attention allocates the cache in fixed blocks like virtual memory\npages, cutting fragmentation when many requests of different lengths\nshare one accelerator.",
+    "section_index": 4
+   }
+  ],
+  "concepts/mixture-of-experts.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Mixture of Experts"
+    ],
+    "level": 1,
+    "text": "\nA mixture-of-experts layer replaces one dense feed-forward block with\nmany expert blocks and a router that sends each token to only a few of\nthem, so the parameter count grows without a proportional rise in\ncompute per token.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Mixture of Experts",
+     "Top-2 routing"
+    ],
+    "level": 2,
+    "text": "\nA gating network scores every expert for a token and dispatches the\ntoken to its top-2 experts. Only those experts run, which keeps the\nactive compute far below the total parameter count.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Mixture of Experts",
+     "Load balancing loss"
+    ],
+    "level": 2,
+    "text": "\nWithout a load balancing loss the router collapses onto a handful of\nexperts. The auxiliary loss pushes the gate to spread tokens evenly\nacross all experts.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Mixture of Experts",
+     "Capacity factor"
+    ],
+    "level": 2,
+    "text": "\nEach expert has a fixed slot budget per batch. A capacity factor above\none leaves headroom; tokens beyond the budget are dropped and skip the\nlayer via the residual path.",
+    "section_index": 4
+   }
+  ],
+  "concepts/quantization.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Quantization"
+    ],
+    "level": 1,
+    "text": "\nQuantization stores weights and activations at lower numeric precision\nto shrink memory footprint and speed up matrix multiplies. A model\ntrained in bfloat16 can often serve in int8 with little quality loss.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Quantization",
+     "Post-training quantization"
+    ],
+    "level": 2,
+    "text": "\nPost-training quantization converts an already-trained checkpoint by\ncalibrating scale factors on a small sample, mapping float ranges onto\nthe int8 grid without any further optimisation.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Quantization",
+     "Quantization-aware training"
+    ],
+    "level": 2,
+    "text": "\nQuantization-aware training simulates the rounding during the forward\npass so the network learns weights that survive int8 rounding better\nthan a naive conversion.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Quantization",
+     "Common pitfalls"
+    ],
+    "level": 2,
+    "text": "\nMixing dtypes triggers `RuntimeError: expected scalar type Half`. Keep\nthe activations and weights on the same dtype, and watch for outlier\nchannels that widen the calibration range.",
+    "section_index": 4
+   }
+  ],
+  "concepts/quirks.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Heading one"
+    ],
+    "level": 1,
+    "text": "text [[entities/openai]] and [[raw/foo]] and [[openai|Open AI]] and [[kv-cache#Paged attention]] and [[missing-page]]",
+    "section_index": 1
+   }
+  ],
+  "concepts/tokenization.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Tokenization"
+    ],
+    "level": 1,
+    "text": "\nTokenization converts raw text into a sequence of integer ids that a\nmodel consumes. The vocabulary maps each subword unit to one id.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Tokenization",
+     "Byte-pair encoding"
+    ],
+    "level": 2,
+    "text": "\nByte-pair encoding starts from single bytes and repeatedly merges the\nmost frequent adjacent pair, building a vocabulary of subword units that\nbalances vocabulary size against sequence length.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Tokenization",
+     "Special tokens"
+    ],
+    "level": 2,
+    "text": "\nReserved ids mark boundaries: a beginning-of-sequence id, an\nend-of-sequence id, and a padding id that fills short sequences in a\nbatch so their lengths align.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Tokenization",
+     "Detokenization"
+    ],
+    "level": 2,
+    "text": "\nDecoding reverses the map: integer ids become subword strings that are\nconcatenated back into readable text.",
+    "section_index": 4
+   }
+  ],
+  "entities/cuda.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "CUDA"
+    ],
+    "level": 1,
+    "text": "\nCUDA is NVIDIA's parallel programming platform for its graphics\nprocessors. Kernels launch a grid of threads grouped into blocks, and\nthe compiler `nvcc` turns annotated source into device code.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "CUDA",
+     "Compute capability"
+    ],
+    "level": 2,
+    "text": "\nEach generation exposes a compute capability version that gates which\ninstructions are available; compute capability 8.0 first offered the\ntensor cores used for bfloat16 matrix multiplies.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "CUDA",
+     "Memory hierarchy"
+    ],
+    "level": 2,
+    "text": "\nThreads read fastest from registers, then shared memory within a block,\nthen global device memory. Coalescing global reads across a warp is the\nsingle biggest performance lever.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "CUDA",
+     "Out-of-memory errors"
+    ],
+    "level": 2,
+    "text": "\nOversubscribing device memory raises `CUDA_ERROR_OUT_OF_MEMORY`. Reduce\nthe batch, enable activation checkpointing, or shard the model to\nrecover, as covered in [[distributed-training]].",
+    "section_index": 4
+   }
+  ],
+  "entities/gpt-4.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "GPT-4"
+    ],
+    "level": 1,
+    "text": "\nGPT-4 is a large decoder-only [[transformer]] language model released by\n[[openai]]. It extends the recipe of earlier GPT models with more\nparameters, more training tokens, and a longer context window.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "GPT-4",
+     "Architecture rumours"
+    ],
+    "level": 2,
+    "text": "\nPublic detail is sparse. Independent analysts believe GPT-4 uses a\n[[mixture-of-experts]] design to raise capacity while holding inference\ncost down, though this is not confirmed by the lab.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "GPT-4",
+     "Multimodal input"
+    ],
+    "level": 2,
+    "text": "\nGPT-4 accepts images alongside text, encoding a picture into the same\ntoken stream the language layers consume.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "GPT-4",
+     "Alignment"
+    ],
+    "level": 2,
+    "text": "\nThe model is tuned with reinforcement learning from human feedback to\nfollow instructions and refuse unsafe requests, work led in part by\n[[ilya-sutskever]].",
+    "section_index": 4
+   }
+  ],
+  "entities/ilya-sutskever.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Ilya Sutskever"
+    ],
+    "level": 1,
+    "text": "\nIlya Sutskever is a machine learning researcher and a co-founder of\n[[openai]], where he served as chief scientist. His early work on deep\nneural networks helped kick off the modern era of the field.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Ilya Sutskever",
+     "AlexNet"
+    ],
+    "level": 2,
+    "text": "\nAs a graduate student he co-authored AlexNet, the convolutional network\nwhose 2012 image-recognition win convinced the field that deep learning\nscaled with data and compute.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Ilya Sutskever",
+     "Sequence to sequence"
+    ],
+    "level": 2,
+    "text": "\nHe introduced the sequence-to-sequence framework that maps one variable\nlength sequence to another, an idea that fed directly into later\n[[attention-mechanism]] research.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Ilya Sutskever",
+     "Views on scaling"
+    ],
+    "level": 2,
+    "text": "\nHe is associated with the thesis that steadily enlarging models and\ndatasets keeps yielding capability gains, echoed in the\n[[scaling-laws-paper]].",
+    "section_index": 4
+   }
+  ],
+  "entities/openai.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "OpenAI"
+    ],
+    "level": 1,
+    "text": "\nOpenAI is an artificial intelligence research company that builds and\ndeploys large generative models, including the GPT family such as\n[[gpt-4]]. It began as a non-profit and later added a capped-profit arm.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "OpenAI",
+     "Research direction"
+    ],
+    "level": 2,
+    "text": "\nThe lab concentrates on scaling up general models rather than many small\ntask-specific ones, a bet reflected across its publications and product\nreleases.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "OpenAI",
+     "Notable people"
+    ],
+    "level": 2,
+    "text": "\nCo-founders include [[ilya-sutskever]], who shaped its early research\nagenda around large neural networks.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "OpenAI",
+     "Products"
+    ],
+    "level": 2,
+    "text": "\nIts API exposes chat completions, embeddings, and image generation\nendpoints that developers call over HTTP.",
+    "section_index": 4
+   }
+  ],
+  "entities/pytorch.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "PyTorch"
+    ],
+    "level": 1,
+    "text": "\nPyTorch is a Python deep learning framework built around eager tensor\noperations and automatic differentiation. It compiles hot code paths\nwith a tracing compiler while keeping the define-by-run programming\nmodel.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "PyTorch",
+     "Autograd"
+    ],
+    "level": 2,
+    "text": "\nThe autograd engine records every tensor operation on a tape and walks\nit backward to produce gradients, so no manual derivative bookkeeping is\nneeded.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "PyTorch",
+     "Distributed API"
+    ],
+    "level": 2,
+    "text": "\n`DistributedDataParallel` wraps a module and synchronises gradients\nacross processes with all-reduce. It is the standard entry point for\n[[distributed-training]].\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "PyTorch",
+     "Fused kernels"
+    ],
+    "level": 2,
+    "text": "\n`torch.nn.functional.scaled_dot_product_attention` dispatches to a fused\nkernel that computes the [[attention-mechanism]] without materialising\nthe full score matrix, saving memory on long sequences.",
+    "section_index": 4
+   }
+  ],
+  "sources/adam-paper.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Adam: A Method for Stochastic Optimization"
+    ],
+    "level": 1,
+    "text": "\nKingma and Ba propose Adam, an optimizer that keeps exponential moving\naverages of the first and second moments of the gradient to adapt the\nstep size per parameter. It underpins the [[gradient-descent]] page.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Adam: A Method for Stochastic Optimization",
+     "Bias correction"
+    ],
+    "level": 2,
+    "text": "\nBecause the moving averages start at zero they are biased toward zero\nearly in training; a correction term divides out that bias.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Adam: A Method for Stochastic Optimization",
+     "Default hyperparameters"
+    ],
+    "level": 2,
+    "text": "\nThe paper recommends beta1 of 0.9, beta2 of 0.999, and an epsilon of\n1e-8, defaults that remain common today.",
+    "section_index": 3
+   }
+  ],
+  "sources/attention-paper.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Attention Is All You Need"
+    ],
+    "level": 1,
+    "text": "\nVaswani and colleagues introduce the [[transformer]], replacing\nrecurrence and convolutions entirely with self-attention. The paper\npresents the [[attention-mechanism]] as scaled dot-product attention\nplus a multi-head arrangement.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Attention Is All You Need",
+     "Contribution"
+    ],
+    "level": 2,
+    "text": "\nThe central claim is that attention alone suffices for sequence\ntransduction, and that removing recurrence unlocks parallel training on\nlong inputs.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Attention Is All You Need",
+     "Architecture"
+    ],
+    "level": 2,
+    "text": "\nKey components are the encoder stack, the decoder stack, positional\nencodings, and layer normalisation.",
+    "section_index": 3
+   }
+  ],
+  "sources/chinchilla-paper.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Training Compute-Optimal Large Language Models"
+    ],
+    "level": 1,
+    "text": "\nHoffmann and Borgeaud revisit compute-optimal training and find that\nearlier models were badly undertrained: for a given compute budget,\nmodel size and training data should grow in equal proportion.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Training Compute-Optimal Large Language Models",
+     "Twenty tokens per parameter"
+    ],
+    "level": 2,
+    "text": "\nTheir fits suggest roughly 20 tokens per parameter as the compute-optimal\nratio, far more data per weight than prior practice used.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Training Compute-Optimal Large Language Models",
+     "Chinchilla versus Gopher"
+    ],
+    "level": 2,
+    "text": "\nA smaller model trained on more data beat a much larger model trained on\nless, at the same compute, overturning the previous [[scaling-laws-paper]]\nallocation advice.",
+    "section_index": 3
+   }
+  ],
+  "sources/lora-paper.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "LoRA: Low-Rank Adaptation of Large Language Models"
+    ],
+    "level": 1,
+    "text": "\nHu and Shen freeze the pretrained weights and inject a trainable\nlow-rank adaptation into each layer, so fine-tuning updates a tiny\nfraction of the parameters.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "LoRA: Low-Rank Adaptation of Large Language Models",
+     "Rank decomposition"
+    ],
+    "level": 2,
+    "text": "\nThe update is written as the product of two thin matrices whose inner\ndimension is the rank. A rank of eight already recovers most of the\nquality of a full fine-tune.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "LoRA: Low-Rank Adaptation of Large Language Models",
+     "Deployment"
+    ],
+    "level": 2,
+    "text": "\nBecause the base weights stay frozen, many task adapters can be swapped\nin and out at serving time without duplicating the backbone, and they\npair naturally with [[quantization]].",
+    "section_index": 3
+   }
+  ],
+  "sources/scaling-laws-paper.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Scaling Laws for Neural Language Models"
+    ],
+    "level": 1,
+    "text": "\nKaplan and McCandlish show that test loss falls as a smooth power law in\nmodel size, dataset size, and compute, spanning many orders of\nmagnitude. The result motivates [[distributed-training]] at ever larger\nscale.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Scaling Laws for Neural Language Models",
+     "Power-law form"
+    ],
+    "level": 2,
+    "text": "\nLoss is roughly proportional to each resource raised to a small negative\nexponent, so returns diminish but never flatten within the studied\nrange.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Scaling Laws for Neural Language Models",
+     "Compute allocation"
+    ],
+    "level": 2,
+    "text": "\nGiven a fixed compute budget the paper argues most of it should go into a\nlarger model trained on fewer steps than intuition suggests.",
+    "section_index": 3
+   }
+  ],
+  "synthesis/precision-tradeoffs.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Numeric precision tradeoffs across the stack"
+    ],
+    "level": 1,
+    "text": "\nLower precision saves memory and bandwidth but risks rounding damage.\nThe safe floor differs between training and serving.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Numeric precision tradeoffs across the stack",
+     "Training wants headroom"
+    ],
+    "level": 2,
+    "text": "\nTraining keeps a float32 master copy of the weights because the many\ntiny gradient updates would vanish under aggressive rounding, even while\nthe forward pass runs in bfloat16.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Numeric precision tradeoffs across the stack",
+     "Serving tolerates less"
+    ],
+    "level": 2,
+    "text": "\nAt serving time the weights are fixed, so [[quantization]] to int8 or\nlower is far safer than it would be mid-training, and it pairs well with\n[[lora-paper]] adapters kept at higher precision.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Numeric precision tradeoffs across the stack",
+     "The outlier problem"
+    ],
+    "level": 2,
+    "text": "\nA handful of large-magnitude channels dominate the error budget; holding\njust those channels at higher precision recovers most of the lost\nquality.",
+    "section_index": 4
+   }
+  ],
+  "synthesis/training-vs-inference-cost.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Where the cost lives: training versus inference"
+    ],
+    "level": 1,
+    "text": "\nTraining is a one-time capital expense; inference is a recurring bill\nthat scales with usage. For a widely deployed model the recurring side\nusually wins over the lifetime.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Where the cost lives: training versus inference",
+     "Training is amortised"
+    ],
+    "level": 2,
+    "text": "\nA single expensive training run is paid once and spread across every\nlater request, so its per-request share shrinks as traffic climbs.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Where the cost lives: training versus inference",
+     "Inference compounds with traffic"
+    ],
+    "level": 2,
+    "text": "\nEvery request pays for a forward pass and a growing [[kv-cache]], so a\npopular product spends far more serving answers than it ever spent\nlearning them. This is why [[quantization]] and [[mixture-of-experts]]\nmatter for the bottom line.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Where the cost lives: training versus inference",
+     "The Chinchilla angle"
+    ],
+    "level": 2,
+    "text": "\nBecause a compute-optimal model from the [[chinchilla-paper]] is smaller\nfor the same quality, it also lowers the recurring inference bill, not\njust the training bill.",
+    "section_index": 4
+   }
+  ],
+  "synthesis/why-transformers-won.md": [
+   {
+    "heading_path": [],
+    "level": 0,
+    "text": "",
+    "section_index": 0
+   },
+   {
+    "heading_path": [
+     "Why transformers displaced recurrent networks"
+    ],
+    "level": 1,
+    "text": "\nThree factors, in order of importance.\n",
+    "section_index": 1
+   },
+   {
+    "heading_path": [
+     "Why transformers displaced recurrent networks",
+     "Parallelism during training"
+    ],
+    "level": 2,
+    "text": "\nA recurrent network must process step t only after step t minus one, so\nit cannot use a device fully. The [[attention-mechanism]] computes all\npositions at once, which is the gap between training a model in days\nversus months.\n",
+    "section_index": 2
+   },
+   {
+    "heading_path": [
+     "Why transformers displaced recurrent networks",
+     "Constant path length"
+    ],
+    "level": 2,
+    "text": "\nSelf-attention connects any two positions in a single hop, whereas a\nrecurrent network passes signal through many steps and its gradients\nfade. Short paths preserve long-range dependencies.\n",
+    "section_index": 3
+   },
+   {
+    "heading_path": [
+     "Why transformers displaced recurrent networks",
+     "Scale follows parallelism"
+    ],
+    "level": 2,
+    "text": "\nOnce training parallelises, adding capability is mostly a matter of\ncompute, and the [[scaling-laws-paper]] results take over from there.",
+    "section_index": 4
+   }
+  ]
+ },
+ "meta": {
+  "concepts/attention-mechanism.md": {
+   "type": "concept",
+   "title": "Attention Mechanism",
+   "tags": [
+    "attention",
+    "transformer",
+    "inference"
+   ],
+   "sources": [
+    "attention-paper"
+   ],
+   "created": "2026-01-15",
+   "updated": "2026-01-20"
+  },
+  "concepts/distributed-training.md": {
+   "type": "concept",
+   "title": "Distributed Training",
+   "tags": [
+    "training",
+    "scaling",
+    "infrastructure"
+   ],
+   "sources": [
+    "scaling-laws-paper"
+   ],
+   "created": "2026-02-06",
+   "updated": "2026-02-18"
+  },
+  "concepts/fences.md": {
+   "type": "concept",
+   "title": "Fences",
+   "tags": [
+    "code"
+   ],
+   "updated": "2026-03-01"
+  },
+  "concepts/gradient-descent.md": {
+   "type": "concept",
+   "title": "Gradient Descent",
+   "tags": [
+    "optimization",
+    "training"
+   ],
+   "sources": [
+    "adam-paper"
+   ],
+   "created": "2026-01-16",
+   "updated": "2026-01-22"
+  },
+  "concepts/kv-cache.md": {
+   "type": "concept",
+   "title": "KV Cache",
+   "tags": [
+    "inference",
+    "efficiency",
+    "attention"
+   ],
+   "sources": [],
+   "created": "2026-02-05",
+   "updated": "2026-02-14"
+  },
+  "concepts/mixture-of-experts.md": {
+   "type": "concept",
+   "title": "Mixture of Experts",
+   "tags": [
+    "efficiency",
+    "architecture",
+    "scaling"
+   ],
+   "sources": [],
+   "created": "2026-02-03",
+   "updated": "2026-02-12"
+  },
+  "concepts/quantization.md": {
+   "type": "concept",
+   "title": "Quantization",
+   "tags": [
+    "efficiency",
+    "inference",
+    "precision"
+   ],
+   "sources": [
+    "lora-paper"
+   ],
+   "created": "2026-02-01",
+   "updated": "2026-02-10"
+  },
+  "concepts/quirks.md": {
+   "type": "concept",
+   "title": "\"Quirky\"",
+   "tags": [
+    "alpha",
+    "beta"
+   ],
+   "sources": [
+    "src-a",
+    "src-b"
+   ],
+   "updated": "2026-13-40"
+  },
+  "concepts/tokenization.md": {
+   "type": "concept",
+   "title": "Tokenization",
+   "tags": [
+    "preprocessing",
+    "text"
+   ],
+   "sources": [],
+   "created": "2026-01-17",
+   "updated": "2026-01-19"
+  },
+  "entities/cuda.md": {
+   "type": "entity",
+   "kind": "platform",
+   "title": "CUDA",
+   "aliases": [
+    "CUDA Toolkit"
+   ],
+   "tags": [
+    "gpu",
+    "infrastructure"
+   ],
+   "sources": [],
+   "created": "2026-01-19",
+   "updated": "2026-02-04"
+  },
+  "entities/gpt-4.md": {
+   "type": "entity",
+   "kind": "model",
+   "title": "GPT-4",
+   "aliases": [
+    "GPT4"
+   ],
+   "tags": [
+    "model",
+    "transformer"
+   ],
+   "sources": [
+    "scaling-laws-paper"
+   ],
+   "created": "2026-01-20",
+   "updated": "2026-02-06"
+  },
+  "entities/ilya-sutskever.md": {
+   "type": "entity",
+   "kind": "person",
+   "title": "Ilya Sutskever",
+   "aliases": [
+    "Sutskever"
+   ],
+   "tags": [
+    "researcher",
+    "people"
+   ],
+   "sources": [],
+   "created": "2026-01-21",
+   "updated": "2026-02-08"
+  },
+  "entities/openai.md": {
+   "type": "entity",
+   "kind": "company",
+   "title": "OpenAI",
+   "aliases": [
+    "Open AI"
+   ],
+   "tags": [
+    "company",
+    "lab"
+   ],
+   "sources": [],
+   "created": "2026-01-22",
+   "updated": "2026-02-09"
+  },
+  "entities/pytorch.md": {
+   "type": "entity",
+   "kind": "software",
+   "title": "PyTorch",
+   "aliases": [
+    "torch"
+   ],
+   "tags": [
+    "framework",
+    "infrastructure"
+   ],
+   "sources": [],
+   "created": "2026-01-18",
+   "updated": "2026-02-02"
+  },
+  "sources/adam-paper.md": {
+   "type": "source",
+   "title": "Adam: A Method for Stochastic Optimization",
+   "authors": [
+    "Diederik Kingma",
+    "Jimmy Ba"
+   ],
+   "url": "https://arxiv.org/abs/1412.6980",
+   "raw": "raw/adam-paper.md",
+   "ingested": "2026-01-16",
+   "created": "2026-01-16",
+   "updated": "2026-01-16",
+   "tags": [
+    "optimization",
+    "training"
+   ]
+  },
+  "sources/attention-paper.md": {
+   "type": "source",
+   "title": "Attention Is All You Need",
+   "authors": [
+    "Ashish Vaswani",
+    "Noam Shazeer"
+   ],
+   "url": "https://arxiv.org/abs/1706.03762",
+   "raw": "raw/attention-paper.md",
+   "ingested": "2026-01-15",
+   "created": "2026-01-15",
+   "updated": "2026-01-15",
+   "tags": [
+    "transformer",
+    "attention"
+   ]
+  },
+  "sources/chinchilla-paper.md": {
+   "type": "source",
+   "title": "Training Compute-Optimal Large Language Models",
+   "authors": [
+    "Jordan Hoffmann",
+    "Sebastian Borgeaud"
+   ],
+   "url": "https://arxiv.org/abs/2203.15556",
+   "raw": "raw/chinchilla-paper.md",
+   "ingested": "2026-02-11",
+   "created": "2026-02-11",
+   "updated": "2026-02-11",
+   "tags": [
+    "scaling",
+    "compute"
+   ]
+  },
+  "sources/lora-paper.md": {
+   "type": "source",
+   "title": "LoRA: Low-Rank Adaptation of Large Language Models",
+   "authors": [
+    "Edward Hu",
+    "Yelong Shen"
+   ],
+   "url": "https://arxiv.org/abs/2106.09685",
+   "raw": "raw/lora-paper.md",
+   "ingested": "2026-02-01",
+   "created": "2026-02-01",
+   "updated": "2026-02-01",
+   "tags": [
+    "efficiency",
+    "fine-tuning"
+   ]
+  },
+  "sources/scaling-laws-paper.md": {
+   "type": "source",
+   "title": "Scaling Laws for Neural Language Models",
+   "authors": [
+    "Jared Kaplan",
+    "Sam McCandlish"
+   ],
+   "url": "https://arxiv.org/abs/2001.08361",
+   "raw": "raw/scaling-laws-paper.md",
+   "ingested": "2026-01-24",
+   "created": "2026-01-24",
+   "updated": "2026-01-24",
+   "tags": [
+    "scaling",
+    "training"
+   ]
+  },
+  "synthesis/precision-tradeoffs.md": {
+   "type": "synthesis",
+   "title": "Numeric precision tradeoffs across the stack",
+   "question": "How low can numeric precision go before quality suffers?",
+   "tags": [
+    "precision",
+    "efficiency"
+   ],
+   "sources": [
+    "lora-paper"
+   ],
+   "created": "2026-03-03",
+   "updated": "2026-03-09"
+  },
+  "synthesis/training-vs-inference-cost.md": {
+   "type": "synthesis",
+   "title": "Where the cost lives: training versus inference",
+   "question": "Does training or inference dominate the lifetime cost of a deployed model?",
+   "tags": [
+    "cost",
+    "efficiency"
+   ],
+   "sources": [
+    "chinchilla-paper"
+   ],
+   "created": "2026-03-02",
+   "updated": "2026-03-08"
+  },
+  "synthesis/why-transformers-won.md": {
+   "type": "synthesis",
+   "title": "Why transformers displaced recurrent networks",
+   "question": "Why did transformers replace recurrent networks for sequence modeling?",
+   "tags": [
+    "transformer",
+    "comparison"
+   ],
+   "sources": [
+    "attention-paper",
+    "scaling-laws-paper"
+   ],
+   "created": "2026-03-01",
+   "updated": "2026-03-05"
+  }
+ },
+ "links": {
+  "concepts/attention-mechanism.md": [
+   {
+    "link": "attention-paper",
+    "resolved": "attention-paper",
+    "key": "attention-paper"
+   },
+   {
+    "link": "transformer",
+    "resolved": null,
+    "key": "transformer"
+   }
+  ],
+  "concepts/distributed-training.md": [
+   {
+    "link": "scaling-laws",
+    "resolved": null,
+    "key": "scaling-laws"
+   },
+   {
+    "link": "gradient-descent",
+    "resolved": "gradient-descent",
+    "key": "gradient-descent"
+   },
+   {
+    "link": "scaling-laws",
+    "resolved": null,
+    "key": "scaling-laws"
+   },
+   {
+    "link": "pytorch",
+    "resolved": "pytorch",
+    "key": "pytorch"
+   },
+   {
+    "link": "cuda",
+    "resolved": "cuda",
+    "key": "cuda"
+   }
+  ],
+  "concepts/fences.md": [],
+  "concepts/gradient-descent.md": [
+   {
+    "link": "adam-paper",
+    "resolved": "adam-paper",
+    "key": "adam-paper"
+   },
+   {
+    "link": "distributed-training",
+    "resolved": "distributed-training",
+    "key": "distributed-training"
+   }
+  ],
+  "concepts/kv-cache.md": [
+   {
+    "link": "quantization",
+    "resolved": "quantization",
+    "key": "quantization"
+   }
+  ],
+  "concepts/mixture-of-experts.md": [],
+  "concepts/quantization.md": [],
+  "concepts/quirks.md": [
+   {
+    "link": "entities/openai",
+    "resolved": "openai",
+    "key": "openai"
+   },
+   {
+    "link": "raw/foo",
+    "resolved": null,
+    "key": "raw/foo"
+   },
+   {
+    "link": "openai",
+    "resolved": "openai",
+    "key": "openai"
+   },
+   {
+    "link": "kv-cache#Paged attention",
+    "resolved": "kv-cache",
+    "key": "kv-cache"
+   },
+   {
+    "link": "missing-page",
+    "resolved": null,
+    "key": "missing-page"
+   }
+  ],
+  "concepts/tokenization.md": [],
+  "entities/cuda.md": [
+   {
+    "link": "distributed-training",
+    "resolved": "distributed-training",
+    "key": "distributed-training"
+   }
+  ],
+  "entities/gpt-4.md": [
+   {
+    "link": "transformer",
+    "resolved": null,
+    "key": "transformer"
+   },
+   {
+    "link": "openai",
+    "resolved": "openai",
+    "key": "openai"
+   },
+   {
+    "link": "mixture-of-experts",
+    "resolved": "mixture-of-experts",
+    "key": "mixture-of-experts"
+   },
+   {
+    "link": "ilya-sutskever",
+    "resolved": "ilya-sutskever",
+    "key": "ilya-sutskever"
+   }
+  ],
+  "entities/ilya-sutskever.md": [
+   {
+    "link": "openai",
+    "resolved": "openai",
+    "key": "openai"
+   },
+   {
+    "link": "attention-mechanism",
+    "resolved": "attention-mechanism",
+    "key": "attention-mechanism"
+   },
+   {
+    "link": "scaling-laws-paper",
+    "resolved": "scaling-laws-paper",
+    "key": "scaling-laws-paper"
+   }
+  ],
+  "entities/openai.md": [
+   {
+    "link": "gpt-4",
+    "resolved": "gpt-4",
+    "key": "gpt-4"
+   },
+   {
+    "link": "ilya-sutskever",
+    "resolved": "ilya-sutskever",
+    "key": "ilya-sutskever"
+   }
+  ],
+  "entities/pytorch.md": [
+   {
+    "link": "distributed-training",
+    "resolved": "distributed-training",
+    "key": "distributed-training"
+   },
+   {
+    "link": "attention-mechanism",
+    "resolved": "attention-mechanism",
+    "key": "attention-mechanism"
+   }
+  ],
+  "sources/adam-paper.md": [
+   {
+    "link": "gradient-descent",
+    "resolved": "gradient-descent",
+    "key": "gradient-descent"
+   }
+  ],
+  "sources/attention-paper.md": [
+   {
+    "link": "transformer",
+    "resolved": null,
+    "key": "transformer"
+   },
+   {
+    "link": "attention-mechanism",
+    "resolved": "attention-mechanism",
+    "key": "attention-mechanism"
+   }
+  ],
+  "sources/chinchilla-paper.md": [
+   {
+    "link": "scaling-laws-paper",
+    "resolved": "scaling-laws-paper",
+    "key": "scaling-laws-paper"
+   }
+  ],
+  "sources/lora-paper.md": [
+   {
+    "link": "quantization",
+    "resolved": "quantization",
+    "key": "quantization"
+   }
+  ],
+  "sources/scaling-laws-paper.md": [
+   {
+    "link": "distributed-training",
+    "resolved": "distributed-training",
+    "key": "distributed-training"
+   }
+  ],
+  "synthesis/precision-tradeoffs.md": [
+   {
+    "link": "quantization",
+    "resolved": "quantization",
+    "key": "quantization"
+   },
+   {
+    "link": "lora-paper",
+    "resolved": "lora-paper",
+    "key": "lora-paper"
+   }
+  ],
+  "synthesis/training-vs-inference-cost.md": [
+   {
+    "link": "kv-cache",
+    "resolved": "kv-cache",
+    "key": "kv-cache"
+   },
+   {
+    "link": "quantization",
+    "resolved": "quantization",
+    "key": "quantization"
+   },
+   {
+    "link": "mixture-of-experts",
+    "resolved": "mixture-of-experts",
+    "key": "mixture-of-experts"
+   },
+   {
+    "link": "chinchilla-paper",
+    "resolved": "chinchilla-paper",
+    "key": "chinchilla-paper"
+   }
+  ],
+  "synthesis/why-transformers-won.md": [
+   {
+    "link": "attention-mechanism",
+    "resolved": "attention-mechanism",
+    "key": "attention-mechanism"
+   },
+   {
+    "link": "scaling-laws-paper",
+    "resolved": "scaling-laws-paper",
+    "key": "scaling-laws-paper"
+   }
+  ]
+ },
+ "lint": {
+  "orphans": [
+   {
+    "slug": "fences",
+    "path": "concepts/fences.md"
+   },
+   {
+    "slug": "quirks",
+    "path": "concepts/quirks.md"
+   },
+   {
+    "slug": "tokenization",
+    "path": "concepts/tokenization.md"
+   },
+   {
+    "slug": "precision-tradeoffs",
+    "path": "synthesis/precision-tradeoffs.md"
+   },
+   {
+    "slug": "training-vs-inference-cost",
+    "path": "synthesis/training-vs-inference-cost.md"
+   },
+   {
+    "slug": "why-transformers-won",
+    "path": "synthesis/why-transformers-won.md"
+   }
+  ],
+  "broken_links": [
+   {
+    "from": "attention-mechanism",
+    "from_path": "concepts/attention-mechanism.md",
+    "to": "transformer"
+   },
+   {
+    "from": "distributed-training",
+    "from_path": "concepts/distributed-training.md",
+    "to": "scaling-laws"
+   },
+   {
+    "from": "distributed-training",
+    "from_path": "concepts/distributed-training.md",
+    "to": "scaling-laws"
+   },
+   {
+    "from": "quirks",
+    "from_path": "concepts/quirks.md",
+    "to": "raw/foo"
+   },
+   {
+    "from": "quirks",
+    "from_path": "concepts/quirks.md",
+    "to": "missing-page"
+   },
+   {
+    "from": "gpt-4",
+    "from_path": "entities/gpt-4.md",
+    "to": "transformer"
+   },
+   {
+    "from": "attention-paper",
+    "from_path": "sources/attention-paper.md",
+    "to": "transformer"
+   }
+  ],
+  "oversized_hard": [],
+  "oversized_soft": [],
+  "missing_frontmatter": [
+   {
+    "path": "concepts/fences.md",
+    "missing": [
+     "created"
+    ]
+   },
+   {
+    "path": "concepts/quirks.md",
+    "missing": [
+     "created"
+    ]
+   }
+  ],
+  "malformed_frontmatter": [],
+  "duplicate_slugs": [],
+  "stale_pages": [
+   {
+    "path": "concepts/attention-mechanism.md",
+    "updated": "2026-01-20",
+    "age_days": 282,
+    "inbound_count": 4
+   },
+   {
+    "path": "concepts/distributed-training.md",
+    "updated": "2026-02-18",
+    "age_days": 253,
+    "inbound_count": 4
+   },
+   {
+    "path": "concepts/quantization.md",
+    "updated": "2026-02-10",
+    "age_days": 261,
+    "inbound_count": 4
+   },
+   {
+    "path": "entities/openai.md",
+    "updated": "2026-02-09",
+    "age_days": 262,
+    "inbound_count": 3
+   },
+   {
+    "path": "sources/scaling-laws-paper.md",
+    "updated": "2026-01-24",
+    "age_days": 278,
+    "inbound_count": 3
+   }
+  ],
+  "read_errors": [],
+  "suggested_pages": [],
+  "summary": {
+   "total_pages": 22,
+   "orphans": 6,
+   "broken_links": 7,
+   "oversized_hard": 0,
+   "oversized_soft": 0,
+   "missing_frontmatter": 2,
+   "malformed_frontmatter": 0,
+   "duplicate_slugs": 0,
+   "stale_pages": 5,
+   "read_errors": 0,
+   "suggested_pages": 0
+  }
+ },
+ "today": "2026-10-29",
+ "cache_body": {
+  "concepts/attention-mechanism.md": "\n# Attention Mechanism\n\nAttention computes a weighted sum of values, where the weights come from\nthe similarity between a query and a set of keys. It lets a sequence\nposition gather information from every other position.\n\n## Scaled dot-product attention\n\nThe core operation is scaled dot-product attention:\nsoftmax(QK^T / sqrt(d_k)) V. Dividing by sqrt(d_k) keeps the logits from\ngrowing too large as dimensionality rises.\n\n## Multi-head attention\n\nMulti-head attention runs several attention heads in parallel and\nconcatenates their outputs, so different heads specialise on different\nrelationships between tokens.\n\n## Self-attention versus cross-attention\n\nSelf-attention draws its query, keys, and values from one sequence.\nCross-attention takes the query from one sequence and the keys and\nvalues from another, which is how a decoder reads an encoder.\n\nSee [[attention-paper]] and the [[transformer]] page for the surrounding\narchitecture.",
+  "concepts/distributed-training.md": "\n# Distributed Training\n\nTraining a large model spreads the work across many accelerators. The\nright combination of parallelism strategies depends on model size,\ninterconnect bandwidth, and memory per device.\n\n## Data parallelism\n\nData parallelism replicates the whole model on every worker and feeds\neach replica a different slice of the batch. Workers average their\ngradients through an all-reduce before the optimizer step, so all\nreplicas stay identical.\n\n## Tensor parallelism\n\nTensor parallelism splits an individual weight matrix across devices,\neach holding a shard of the rows or columns. Every layer then needs an\nall-gather so partial results recombine, so this strategy wants fast\nintra-node links.\n\n## Pipeline parallelism\n\nPipeline parallelism assigns consecutive layers to different devices and\nstreams micro-batches through the stages. A poorly sized schedule leaves\na pipeline bubble where early stages idle while waiting for the last\nstage to finish.\n\n## ZeRO and sharded optimizers\n\nZeRO stage 3 shards the optimizer state, gradients, and parameters\nacross the data-parallel group instead of replicating them, trading a\nlittle extra communication for a large drop in per-device memory.\n\n## Gradient accumulation\n\nGradient accumulation runs several forward and backward passes before an\noptimizer step, summing their gradients. This simulates a large batch on\ndevices that cannot hold one in memory at once.\n\n## Mixed precision training\n\nMixed precision keeps a master copy of the weights in float32 while\nrunning the forward and backward passes in bfloat16, halving activation\nmemory and speeding up the matrix multiplies.\n\n## Activation checkpointing\n\nActivation checkpointing discards intermediate activations during the\nforward pass and recomputes them in the backward pass, trading extra\ncompute for a smaller memory footprint.\n\n## Communication collectives\n\nThe core collectives are all-reduce, all-gather, and reduce-scatter.\nOverlapping these collectives with computation hides most of the network\nlatency behind useful work.\n\n## Fault tolerance and checkpointing\n\nLong runs write periodic checkpoints so a hardware failure only costs\nthe work since the last save. Elastic training rebuilds the process\ngroup when a node drops out.\n\n## Hyperparameter scaling\n\nAs the world size grows the global batch grows too, so the learning rate\nusually scales with it, guided by the [[scaling-laws]] relationships\nbetween compute, data, and model size.\n\n## Where this fits\n\n- [[gradient-descent]]\n- [[scaling-laws]]\n- [[pytorch]]\n- [[cuda]]",
+  "concepts/fences.md": "Intro line.\n\n## Example\n\n```python\n# not a heading\nprint('x')\n```\n\n~~~\n## also not a heading\n~~~\n\n### Nested\n\nDeep text.\n\n# Top again\n\n#### Skip level\nend",
+  "concepts/gradient-descent.md": "\n# Gradient Descent\n\nGradient descent updates parameters by stepping in the direction that\nlowers the loss, scaled by a learning rate. Stochastic gradient descent\nestimates the gradient from a mini-batch instead of the whole dataset.\n\n## Learning rate schedules\n\nThe learning rate controls step size. A warmup phase raises it slowly,\nthen a cosine schedule decays it toward zero over training.\n\n## Adam and AdamW\n\nAdam keeps running averages of the gradient and its square to adapt the\nstep per parameter. AdamW decouples weight decay from the gradient\nupdate, which improves regularisation. See [[adam-paper]].\n\n## Gradient clipping\n\nClipping the global gradient norm to a threshold prevents a single large\nbatch from destabilising the [[distributed-training]] run.",
+  "concepts/kv-cache.md": "\n# KV Cache\n\nDuring autoregressive decoding a model appends one token at a time. The\nKV cache stores the keys and values computed for previous tokens so\nattention never recomputes them, turning quadratic decoding into a\nlinear scan over new positions.\n\n## past_key_values\n\nFrameworks expose the cache as a `past_key_values` tuple threaded\nthrough each decoding step. On the first step it is empty; on later steps\nthe freshly computed keys and values are concatenated onto it.\n\n## Memory growth\n\nThe cache grows linearly with the number of generated tokens and with\nbatch size, so a long generation eventually dominates GPU memory. This\nis the motivation for [[quantization]] of the cache.\n\n## Paged attention\n\nPaged attention allocates the cache in fixed blocks like virtual memory\npages, cutting fragmentation when many requests of different lengths\nshare one accelerator.",
+  "concepts/mixture-of-experts.md": "\n# Mixture of Experts\n\nA mixture-of-experts layer replaces one dense feed-forward block with\nmany expert blocks and a router that sends each token to only a few of\nthem, so the parameter count grows without a proportional rise in\ncompute per token.\n\n## Top-2 routing\n\nA gating network scores every expert for a token and dispatches the\ntoken to its top-2 experts. Only those experts run, which keeps the\nactive compute far below the total parameter count.\n\n## Load balancing loss\n\nWithout a load balancing loss the router collapses onto a handful of\nexperts. The auxiliary loss pushes the gate to spread tokens evenly\nacross all experts.\n\n## Capacity factor\n\nEach expert has a fixed slot budget per batch. A capacity factor above\none leaves headroom; tokens beyond the budget are dropped and skip the\nlayer via the residual path.",
+  "concepts/quantization.md": "\n# Quantization\n\nQuantization stores weights and activations at lower numeric precision\nto shrink memory footprint and speed up matrix multiplies. A model\ntrained in bfloat16 can often serve in int8 with little quality loss.\n\n## Post-training quantization\n\nPost-training quantization converts an already-trained checkpoint by\ncalibrating scale factors on a small sample, mapping float ranges onto\nthe int8 grid without any further optimisation.\n\n## Quantization-aware training\n\nQuantization-aware training simulates the rounding during the forward\npass so the network learns weights that survive int8 rounding better\nthan a naive conversion.\n\n## Common pitfalls\n\nMixing dtypes triggers `RuntimeError: expected scalar type Half`. Keep\nthe activations and weights on the same dtype, and watch for outlier\nchannels that widen the calibration range.",
+  "concepts/quirks.md": "\n# Heading one\ntext [[entities/openai]] and [[raw/foo]] and [[openai|Open AI]] and [[kv-cache#Paged attention]] and [[missing-page]]",
+  "concepts/tokenization.md": "\n# Tokenization\n\nTokenization converts raw text into a sequence of integer ids that a\nmodel consumes. The vocabulary maps each subword unit to one id.\n\n## Byte-pair encoding\n\nByte-pair encoding starts from single bytes and repeatedly merges the\nmost frequent adjacent pair, building a vocabulary of subword units that\nbalances vocabulary size against sequence length.\n\n## Special tokens\n\nReserved ids mark boundaries: a beginning-of-sequence id, an\nend-of-sequence id, and a padding id that fills short sequences in a\nbatch so their lengths align.\n\n## Detokenization\n\nDecoding reverses the map: integer ids become subword strings that are\nconcatenated back into readable text.",
+  "entities/cuda.md": "\n# CUDA\n\nCUDA is NVIDIA's parallel programming platform for its graphics\nprocessors. Kernels launch a grid of threads grouped into blocks, and\nthe compiler `nvcc` turns annotated source into device code.\n\n## Compute capability\n\nEach generation exposes a compute capability version that gates which\ninstructions are available; compute capability 8.0 first offered the\ntensor cores used for bfloat16 matrix multiplies.\n\n## Memory hierarchy\n\nThreads read fastest from registers, then shared memory within a block,\nthen global device memory. Coalescing global reads across a warp is the\nsingle biggest performance lever.\n\n## Out-of-memory errors\n\nOversubscribing device memory raises `CUDA_ERROR_OUT_OF_MEMORY`. Reduce\nthe batch, enable activation checkpointing, or shard the model to\nrecover, as covered in [[distributed-training]].",
+  "entities/gpt-4.md": "\n# GPT-4\n\nGPT-4 is a large decoder-only [[transformer]] language model released by\n[[openai]]. It extends the recipe of earlier GPT models with more\nparameters, more training tokens, and a longer context window.\n\n## Architecture rumours\n\nPublic detail is sparse. Independent analysts believe GPT-4 uses a\n[[mixture-of-experts]] design to raise capacity while holding inference\ncost down, though this is not confirmed by the lab.\n\n## Multimodal input\n\nGPT-4 accepts images alongside text, encoding a picture into the same\ntoken stream the language layers consume.\n\n## Alignment\n\nThe model is tuned with reinforcement learning from human feedback to\nfollow instructions and refuse unsafe requests, work led in part by\n[[ilya-sutskever]].",
+  "entities/ilya-sutskever.md": "\n# Ilya Sutskever\n\nIlya Sutskever is a machine learning researcher and a co-founder of\n[[openai]], where he served as chief scientist. His early work on deep\nneural networks helped kick off the modern era of the field.\n\n## AlexNet\n\nAs a graduate student he co-authored AlexNet, the convolutional network\nwhose 2012 image-recognition win convinced the field that deep learning\nscaled with data and compute.\n\n## Sequence to sequence\n\nHe introduced the sequence-to-sequence framework that maps one variable\nlength sequence to another, an idea that fed directly into later\n[[attention-mechanism]] research.\n\n## Views on scaling\n\nHe is associated with the thesis that steadily enlarging models and\ndatasets keeps yielding capability gains, echoed in the\n[[scaling-laws-paper]].",
+  "entities/openai.md": "\n# OpenAI\n\nOpenAI is an artificial intelligence research company that builds and\ndeploys large generative models, including the GPT family such as\n[[gpt-4]]. It began as a non-profit and later added a capped-profit arm.\n\n## Research direction\n\nThe lab concentrates on scaling up general models rather than many small\ntask-specific ones, a bet reflected across its publications and product\nreleases.\n\n## Notable people\n\nCo-founders include [[ilya-sutskever]], who shaped its early research\nagenda around large neural networks.\n\n## Products\n\nIts API exposes chat completions, embeddings, and image generation\nendpoints that developers call over HTTP.",
+  "entities/pytorch.md": "\n# PyTorch\n\nPyTorch is a Python deep learning framework built around eager tensor\noperations and automatic differentiation. It compiles hot code paths\nwith a tracing compiler while keeping the define-by-run programming\nmodel.\n\n## Autograd\n\nThe autograd engine records every tensor operation on a tape and walks\nit backward to produce gradients, so no manual derivative bookkeeping is\nneeded.\n\n## Distributed API\n\n`DistributedDataParallel` wraps a module and synchronises gradients\nacross processes with all-reduce. It is the standard entry point for\n[[distributed-training]].\n\n## Fused kernels\n\n`torch.nn.functional.scaled_dot_product_attention` dispatches to a fused\nkernel that computes the [[attention-mechanism]] without materialising\nthe full score matrix, saving memory on long sequences.",
+  "sources/adam-paper.md": "\n# Adam: A Method for Stochastic Optimization\n\nKingma and Ba propose Adam, an optimizer that keeps exponential moving\naverages of the first and second moments of the gradient to adapt the\nstep size per parameter. It underpins the [[gradient-descent]] page.\n\n## Bias correction\n\nBecause the moving averages start at zero they are biased toward zero\nearly in training; a correction term divides out that bias.\n\n## Default hyperparameters\n\nThe paper recommends beta1 of 0.9, beta2 of 0.999, and an epsilon of\n1e-8, defaults that remain common today.",
+  "sources/attention-paper.md": "\n# Attention Is All You Need\n\nVaswani and colleagues introduce the [[transformer]], replacing\nrecurrence and convolutions entirely with self-attention. The paper\npresents the [[attention-mechanism]] as scaled dot-product attention\nplus a multi-head arrangement.\n\n## Contribution\n\nThe central claim is that attention alone suffices for sequence\ntransduction, and that removing recurrence unlocks parallel training on\nlong inputs.\n\n## Architecture\n\nKey components are the encoder stack, the decoder stack, positional\nencodings, and layer normalisation.",
+  "sources/chinchilla-paper.md": "\n# Training Compute-Optimal Large Language Models\n\nHoffmann and Borgeaud revisit compute-optimal training and find that\nearlier models were badly undertrained: for a given compute budget,\nmodel size and training data should grow in equal proportion.\n\n## Twenty tokens per parameter\n\nTheir fits suggest roughly 20 tokens per parameter as the compute-optimal\nratio, far more data per weight than prior practice used.\n\n## Chinchilla versus Gopher\n\nA smaller model trained on more data beat a much larger model trained on\nless, at the same compute, overturning the previous [[scaling-laws-paper]]\nallocation advice.",
+  "sources/lora-paper.md": "\n# LoRA: Low-Rank Adaptation of Large Language Models\n\nHu and Shen freeze the pretrained weights and inject a trainable\nlow-rank adaptation into each layer, so fine-tuning updates a tiny\nfraction of the parameters.\n\n## Rank decomposition\n\nThe update is written as the product of two thin matrices whose inner\ndimension is the rank. A rank of eight already recovers most of the\nquality of a full fine-tune.\n\n## Deployment\n\nBecause the base weights stay frozen, many task adapters can be swapped\nin and out at serving time without duplicating the backbone, and they\npair naturally with [[quantization]].",
+  "sources/scaling-laws-paper.md": "\n# Scaling Laws for Neural Language Models\n\nKaplan and McCandlish show that test loss falls as a smooth power law in\nmodel size, dataset size, and compute, spanning many orders of\nmagnitude. The result motivates [[distributed-training]] at ever larger\nscale.\n\n## Power-law form\n\nLoss is roughly proportional to each resource raised to a small negative\nexponent, so returns diminish but never flatten within the studied\nrange.\n\n## Compute allocation\n\nGiven a fixed compute budget the paper argues most of it should go into a\nlarger model trained on fewer steps than intuition suggests.",
+  "synthesis/precision-tradeoffs.md": "\n# Numeric precision tradeoffs across the stack\n\nLower precision saves memory and bandwidth but risks rounding damage.\nThe safe floor differs between training and serving.\n\n## Training wants headroom\n\nTraining keeps a float32 master copy of the weights because the many\ntiny gradient updates would vanish under aggressive rounding, even while\nthe forward pass runs in bfloat16.\n\n## Serving tolerates less\n\nAt serving time the weights are fixed, so [[quantization]] to int8 or\nlower is far safer than it would be mid-training, and it pairs well with\n[[lora-paper]] adapters kept at higher precision.\n\n## The outlier problem\n\nA handful of large-magnitude channels dominate the error budget; holding\njust those channels at higher precision recovers most of the lost\nquality.",
+  "synthesis/training-vs-inference-cost.md": "\n# Where the cost lives: training versus inference\n\nTraining is a one-time capital expense; inference is a recurring bill\nthat scales with usage. For a widely deployed model the recurring side\nusually wins over the lifetime.\n\n## Training is amortised\n\nA single expensive training run is paid once and spread across every\nlater request, so its per-request share shrinks as traffic climbs.\n\n## Inference compounds with traffic\n\nEvery request pays for a forward pass and a growing [[kv-cache]], so a\npopular product spends far more serving answers than it ever spent\nlearning them. This is why [[quantization]] and [[mixture-of-experts]]\nmatter for the bottom line.\n\n## The Chinchilla angle\n\nBecause a compute-optimal model from the [[chinchilla-paper]] is smaller\nfor the same quality, it also lowers the recurring inference bill, not\njust the training bill.",
+  "synthesis/why-transformers-won.md": "\n# Why transformers displaced recurrent networks\n\nThree factors, in order of importance.\n\n## Parallelism during training\n\nA recurrent network must process step t only after step t minus one, so\nit cannot use a device fully. The [[attention-mechanism]] computes all\npositions at once, which is the gap between training a model in days\nversus months.\n\n## Constant path length\n\nSelf-attention connects any two positions in a single hop, whereas a\nrecurrent network passes signal through many steps and its gradients\nfade. Short paths preserve long-range dependencies.\n\n## Scale follows parallelism\n\nOnce training parallelises, adding capability is mostly a matter of\ncompute, and the [[scaling-laws-paper]] results take over from there."
+ }
+}

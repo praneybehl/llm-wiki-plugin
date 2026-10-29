@@ -1,14 +1,14 @@
 # Contributing
 
-Thanks for your interest in improving this plugin. The structure below is meant to make contributions land smoothly — none of it is gatekeeping, and small PRs are welcome.
+Thanks for your interest in improving this plugin. The structure below is meant to make contributions land smoothly: none of it is gatekeeping, and small PRs are welcome.
 
 ## What kinds of contributions fit
 
-The plugin has four surface areas that take contributions well: the skill itself (`skills/llm-wiki/SKILL.md` and the references), the bundled scripts (`skills/llm-wiki/scripts/`), the slash commands (`commands/wiki/`), and the documentation (README, CHANGELOG, this file). Bug fixes and small improvements to any of these are easy yes-es.
+The plugin has five surface areas that take contributions well: the skill itself (`skills/llm-wiki/SKILL.md` and the references), the bundled scripts (`skills/llm-wiki/scripts/`), the slash commands (`commands/wiki/`), the optional hosted server (`server/`), and the documentation (README, CHANGELOG, `docs/`, this file). Bug fixes and small improvements to any of these are easy yes-es.
 
-For larger changes — new page types baked into the bootstrap, new lint checks, restructuring the references, changing the default schema — please open an issue first to discuss the shape before writing code. The skill is opinionated by design; some "improvements" would unwind a deliberate trade-off (atomic pages, index-first navigation, schema-as-config), so a quick issue conversation saves rework.
+For larger changes (new page types baked into the bootstrap, new lint checks, restructuring the references, changing the default schema), please open an issue first to discuss the shape before writing code. The skill is opinionated by design; some "improvements" would unwind a deliberate trade-off (atomic pages, index-first navigation, schema-as-config), so a quick issue conversation saves rework.
 
-What probably doesn't fit: features that move the plugin away from being a Claude Code-native, markdown-based, file-system-resident tool. If your idea needs a database backend, a hosted service, a vector store, or a separate UI, it's likely a different project rather than a PR here. The reference implementations linked in the README (OmegaWiki, Synthadoc, etc.) explore those directions if that's where you want to go.
+What probably doesn't fit: features that move the plugin away from Markdown as the canonical store, or that make the local folder mode depend on a service. The optional hosted server keeps Markdown canonical and must stay deployable with one click on the Cloudflare Workers Free plan: one Worker, only bindings that the Deploy button creates, one secret, and no code imported from outside `server/`. If your idea needs a separate canonical database, a second service or a manual deploy step, it's likely a different project rather than a PR here. The reference implementations linked in the README (OmegaWiki, Synthadoc, etc.) explore those directions if that's where you want to go.
 
 ## Development setup
 
@@ -26,7 +26,17 @@ Then in Claude Code, add the local path as a marketplace and install:
 /plugin install llm-wiki@llm-wiki
 ```
 
-After making changes, refresh with `/plugin marketplace update` and reinstall. There's no build step — the skill, commands, and scripts run as-is from the filesystem.
+After making changes, refresh with `/plugin marketplace update` and reinstall. There's no build step: the skill, commands, and scripts run as-is from the filesystem.
+
+The hosted server in `server/` is a self-contained TypeScript Worker. It uses npm, not pnpm, so the Deploy button can build it:
+
+```bash
+cd server
+npm ci
+npm run typecheck
+npm test
+npm run dev        # local Worker with wrangler
+```
 
 The bundled Python scripts target Python 3.10+. Evolution, lexical search, lint, stats and graph queries use the standard library. Runtime setup, hybrid retrieval and graph compilation use existing pinned PEP 723 dependencies through uv. Prefer stdlib for new helpers; do not add dependencies for the evolution workflow.
 
@@ -41,10 +51,16 @@ python eval/evolution/test_evolution.py
 python eval/evolution/test_loop.py
 python eval/evolution/test_adapters.py
 python eval/retrieval/run_eval.py --gate
+python eval/remote/test_remote.py
+python eval/decisions/test_decisions.py
+cmp skills/llm-wiki/assets/decision-questions.json server/src/decisions/decision-questions.json
+(cd server && npm ci && npm run typecheck && npm test)
 pnpm docs:build
 ```
 
-The evolution suite uses deterministic runners to verify lifecycle behavior, not model improvement. Live-model trials require an explicitly selected runner/model and inference budget; record actual results separately. For changes affecting the Paperclip companion, run its full `pnpm prepublish:check`.
+`skills/llm-wiki/assets/decision-questions.json` and `server/src/decisions/decision-questions.json` must stay identical. Change both in one commit. CI fails when they differ. Decision tests use a fake backend. Do not send private wiki text to a hosted decision backend.
+
+The evolution suite uses deterministic runners to verify lifecycle behavior, not model improvement. Live-model trials require an explicitly selected runner/model and inference budget; record actual results separately.
 
 The minimum manual smoke test:
 
@@ -66,9 +82,9 @@ For changes to slash commands, install the plugin into a fresh project and exerc
 
 The skill body and references are written in a particular voice and structure. Keep new prose consistent with what's there:
 
-The reference files use prose with minimal bullets — explanations connected by reasoning, not lists of disconnected points. This is deliberate: the LLM reading the skill benefits more from continuous reasoning than from bullet-pointed assertions. If you find yourself writing more than three or four bullets in a row, reconsider whether prose would carry the same content better.
+The reference files use prose with minimal bullets: explanations connected by reasoning, not lists of disconnected points. This is deliberate: the LLM reading the skill benefits more from continuous reasoning than from bullet-pointed assertions. If you find yourself writing more than three or four bullets in a row, reconsider whether prose would carry the same content better.
 
-Imperative voice for instructions ("Read the source", "Check the schema first"), explanatory voice for rationale ("The reason for the size cap is..."). Avoid all-caps MUSTs and NEVERs unless something is genuinely non-negotiable — explain *why* a constraint exists rather than shouting it.
+Imperative voice for instructions ("Read the source", "Check the schema first"), explanatory voice for rationale ("The reason for the size cap is..."). Avoid all-caps MUSTs and NEVERs unless something is genuinely non-negotiable: explain *why* a constraint exists rather than shouting it.
 
 Hedge claims that aren't yet established. "The pattern shines for accumulating textual research and degrades for highly relational data" is a defensible claim. "The pattern is the best knowledge management approach" is not.
 
@@ -76,7 +92,7 @@ Hedge claims that aren't yet established. "The pattern shines for accumulating t
 
 The bundled scripts share a few conventions worth preserving:
 
-Each script has a docstring at the top with its purpose, usage, and an example invocation. New scripts should follow the same pattern — `python script.py --help` should produce useful output.
+Each script has a docstring at the top with its purpose, usage, and an example invocation. New scripts should follow the same pattern: `python script.py --help` should produce useful output.
 
 Output is human-readable by default with an optional `--json` flag for programmatic use (currently `wiki_lint.py` has this; others can add it as needed).
 
@@ -86,13 +102,13 @@ New lifecycle helpers use stdlib. Reuse the existing pinned runtime for dependen
 
 ## Schema and breaking changes
 
-Some changes affect existing wikis users have built — adding a required frontmatter field, renaming a default page type, changing the index format. These are breaking changes and need:
+Some changes affect existing wikis users have built: adding a required frontmatter field, renaming a default page type, changing the index format. These are breaking changes and need:
 
 A migration path documented in the PR (a script, a manual procedure, or both).
 
 A clear note in `CHANGELOG.md` under a `### Changed` or `### Breaking` heading.
 
-A version bump that respects semver — minor bump if backward-compatible with old wikis, major bump if not.
+A version bump that respects semver: minor bump if backward-compatible with old wikis, major bump if not.
 
 If a change can be made backward-compatible (e.g. new frontmatter field is optional with a sensible default), prefer that over the breaking version.
 
@@ -105,29 +121,31 @@ Before opening a PR, verify:
 - [ ] The plugin still loads in Claude Code (`/plugin marketplace add <local-path>`, `/plugin install`, no errors).
 - [ ] `CHANGELOG.md` describes the change under `[Unreleased]`, or the selected release heading when the version is prepared in this PR.
 - [ ] If you changed the skill description in `SKILL.md` frontmatter or `plugin.json`, the description is still under 1024 characters.
-- [ ] If you changed the SKILL.md description, the change clearly improves the trigger surface (more relevant phrasings, fewer false negatives) — descriptions are the primary mechanism that makes Claude reach for the skill, so wording matters.
+- [ ] If you changed the SKILL.md description, the change clearly improves the trigger surface (more relevant phrasings, fewer false negatives): descriptions are the primary mechanism that makes Claude reach for the skill, so wording matters.
 
 ## Issues
 
 For bug reports, the most useful information is: the command or natural-language request that triggered the issue, the relevant slice of the wiki (a couple of pages or the full directory if you're comfortable sharing), and what you expected vs. what happened. If the bug is in a script, the exact command line and the output (or stack trace).
 
-For feature requests, please describe the underlying use case as well as the proposed feature — sometimes the right answer is a different approach to the same problem rather than the requested feature.
+For feature requests, please describe the underlying use case as well as the proposed feature: sometimes the right answer is a different approach to the same problem rather than the requested feature.
 
 ## Releasing (maintainers)
 
 ### Where the version lives
 
-The main release version is declared in four JSON fields and one CHANGELOG heading. **Bump them together**. `claude plugin validate` rejects mismatches between the plugin manifest and marketplace entry, while `package.json` keeps the documentation package aligned with the plugin and skill release.
+The main release version is declared in five JSON fields, one TypeScript constant and one CHANGELOG heading. **Bump them together**. `claude plugin validate` rejects mismatches between the plugin manifest and marketplace entry, while `package.json` keeps the documentation package aligned with the plugin and skill release.
 
 | Location | Field | Notes |
 |----------|-------|-------|
 | `package.json` | `version` | Repository documentation package; keep aligned with the plugin and skill release. |
-| `.claude-plugin/plugin.json` | `version` | Authoritative — Claude Code resolves the installed version from here first. |
+| `.claude-plugin/plugin.json` | `version` | Authoritative: Claude Code resolves the installed version from here first. |
 | `.claude-plugin/marketplace.json` | `metadata.version` | Top-level marketplace version. |
 | `.claude-plugin/marketplace.json` | `plugins[0].version` | Per-plugin entry; must match `plugin.json`. |
-| `CHANGELOG.md` | `## [X.Y.Z] — YYYY-MM-DD` heading + the `[X.Y.Z]: …/releases/tag/vX.Y.Z` link line | Human-facing record. |
+| `server/package.json` | `version` | Hosted server package; keep aligned with the plugin release. |
+| `server/src/types.ts` | `SERVER_VERSION` | Reported by `/healthz` and `wiki_overview`. |
+| `CHANGELOG.md` | `## [X.Y.Z] - YYYY-MM-DD` heading + the `[X.Y.Z]: …/releases/tag/vX.Y.Z` link line | Human-facing record. |
 
-`skills/llm-wiki/SKILL.md` does **not** carry a version field. Skills are versioned by the enclosing plugin's `plugin.json` — leave SKILL.md frontmatter alone unless you're changing `name` or `description`.
+`skills/llm-wiki/SKILL.md` does **not** carry a version field. Skills are versioned by the enclosing plugin's `plugin.json`: leave SKILL.md frontmatter alone unless you're changing `name` or `description`.
 
 The bundled scripts and slash commands also have no version metadata; the plugin version covers them.
 
@@ -141,13 +159,14 @@ If a feature can be made backward-compatible (e.g. a new frontmatter field with 
 
 ### Release checklist
 
-1. **Move `[Unreleased]` entries** in `CHANGELOG.md` under a new `## [X.Y.Z] — YYYY-MM-DD` heading. Add the corresponding `[X.Y.Z]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/vX.Y.Z` line at the bottom and update `[Unreleased]: …/compare/vX.Y.Z...HEAD`.
+1. **Move `[Unreleased]` entries** in `CHANGELOG.md` under a new `## [X.Y.Z] - YYYY-MM-DD` heading. Add the corresponding `[X.Y.Z]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/vX.Y.Z` line at the bottom and update `[Unreleased]: …/compare/vX.Y.Z...HEAD`.
 2. **Bump `version` to `X.Y.Z`** in:
    - `package.json`
    - `.claude-plugin/plugin.json`
    - `.claude-plugin/marketplace.json` (both `metadata.version` and `plugins[0].version`)
+   - `server/package.json` and `SERVER_VERSION` in `server/src/types.ts`
 3. **If the release adds files or schema sections** users on older wikis would otherwise miss, extend `scripts/init_wiki.py`:
-   - Add new template files to `template_map` (idempotent — `init_wiki.py` skips files that already exist).
+   - Add new template files to `template_map` (idempotent: `init_wiki.py` skips files that already exist).
    - Add a marker entry to `SCHEMA_SECTION_MARKERS` for any new SCHEMA.md section so `--upgrade` surfaces it as a manual merge.
    - Update the `/wiki:upgrade` slash command if the manual steps change.
 4. **Validate the manifests** (catches version mismatches and schema errors):
@@ -164,15 +183,15 @@ If a feature can be made backward-compatible (e.g. a new frontmatter field with 
 7. **Push and tag**:
    ```bash
    git push origin main
-   git tag -a vX.Y.Z -m "vX.Y.Z — <one-line summary>"
+   git tag -a vX.Y.Z -m "vX.Y.Z: <one-line summary>"
    git push origin vX.Y.Z
    ```
-   The repo uses simple `vX.Y.Z` tags (matches `v0.1.0` and `v0.2.0`). The `claude plugin tag` command would create `llm-wiki--vX.Y.Z` instead — that's also valid for Claude Code installs, but keep this repo on the `vX.Y.Z` convention for consistency.
+   The repo uses simple `vX.Y.Z` tags (matches `v0.1.0` and `v0.2.0`). The `claude plugin tag` command would create `llm-wiki--vX.Y.Z` instead: that's also valid for Claude Code installs, but keep this repo on the `vX.Y.Z` convention for consistency.
 8. **Create the GitHub Release**:
    ```bash
-   gh release create vX.Y.Z --title "vX.Y.Z — <summary>" \
+   gh release create vX.Y.Z --title "vX.Y.Z: <summary>" \
      --notes "$(cat <<'EOF'
-     <release notes — usually a tightened version of the CHANGELOG entry>
+     <release notes: usually a tightened version of the CHANGELOG entry>
      EOF
      )"
    ```

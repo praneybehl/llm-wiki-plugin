@@ -28,6 +28,9 @@ Options:
     --per-page N            Maximum section results per page (default: 2)
     --json                  Emit structured evidence rows
     --no-embed              Force lexical-only BM25
+    --decide                Keep only rows that a decision model rates relevant (needs LLM_WIKI_DECISIONS)
+    --decide-pool N         Rows to score with --decide (default: 20)
+    --decide-threshold X    P(relevant) needed to keep a row (default: 0.65)
 
 Examples:
     python wiki_search.py "diffusion training stability" --top 5
@@ -657,22 +660,67 @@ def json_result(
     }
 
 
-def emit_json(args, results: list[dict], mode: str = "lexical") -> None:
-    print(json.dumps({
+def emit_json(args, results: list[dict], mode: str = "lexical", decision: dict | None = None) -> None:
+    payload = {
         "query": args.query,
         "wiki": str(args.wiki),
         "granularity": args.granularity,
         "mode": mode,
         "results": results,
-    }, ensure_ascii=False))
+    }
+    if decision is not None:
+        payload["decision"] = decision
+    print(json.dumps(payload, ensure_ascii=False))
 
 
 def emit_empty_json(args, mode: str = "lexical") -> None:
     emit_json(args, [], mode)
 
 
+def result_limit(args) -> int:
+    """Rows to collect before output: the decision pool with --decide, else --top."""
+    return max(args.top, args.decide_pool) if getattr(args, "decide", False) else args.top
+
+
+def decide_gate(args, rows: list[dict], texts: list[str]) -> tuple[list[int], dict[int, dict], dict]:
+    """Run the optional relevance gate (D1). Fails open inside wiki_decide."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import wiki_decide
+
+    try:
+        client = wiki_decide.client_from_config()
+    except wiki_decide.DecisionError as exc:
+        wiki_decide.note(str(exc))
+        client = None
+    threshold = args.decide_threshold
+    if threshold is None:
+        threshold = wiki_decide.QUESTIONS["relevance"]["default_threshold"]
+    kept, row_decisions, decision = wiki_decide.gate_pool(client, args.query, rows, texts, threshold, args.top)
+    if not args.json:
+        state = "failed open" if decision["failed_open"] else f"kept {decision['kept']} of {decision['pool']}"
+        wiki_decide.note(f"relevance gate {state} ({decision['backend']}, threshold {threshold})")
+    return kept, row_decisions, decision
+
+
+def decision_default_threshold(check: str) -> str:
+    """The default threshold of a decision check, read from decision-questions.json."""
+    path = Path(__file__).resolve().parent.parent / "assets" / "decision-questions.json"
+    try:
+        return str(json.loads(path.read_text(encoding="utf-8"))["checks"][check]["default_threshold"])
+    except (OSError, ValueError, KeyError):
+        return f"see {path.name}"
+
+
+def gated_json(args, items: list[tuple], rows: list[dict], texts: list[str]) -> tuple[list[tuple], list[dict], dict]:
+    kept, row_decisions, decision = decide_gate(args, rows, texts)
+    kept_rows = [{**rows[i], "decision": row_decisions[i]} if i in row_decisions else rows[i] for i in kept]
+    return [items[i] for i in kept], kept_rows, decision
+
+
 def cmd_search(args, pages: list[dict]) -> None:
     filtered = [page for page in pages if passes_filters(page, args)]
+    # Programmatic callers may pass a Namespace without the decision flags.
+    decide = getattr(args, "decide", False)
     if not filtered:
         if args.json:
             emit_empty_json(args)
@@ -688,13 +736,22 @@ def cmd_search(args, pages: list[dict]) -> None:
         idx = build_bm25(filtered)
         scored = [(bm25_score(query_tokens, i, idx), i) for i in range(len(filtered))]
         scored.sort(key=lambda item: -item[0])
-        top = [(score, filtered[i]) for score, i in scored[:args.top] if score > 0]
+        top = [(score, filtered[i]) for score, i in scored[:result_limit(args)] if score > 0]
         if not top:
             if args.json:
                 emit_empty_json(args)
             else:
                 print("No matches.", file=sys.stderr)
             return
+        if decide:
+            rows = [json_result(score, page) for score, page in top]
+            top, rows, decision = gated_json(args, top, rows, [cache_page_body(page["sections"]) for _, page in top])
+            if args.json:
+                emit_json(args, rows, decision=decision)
+                return
+            if not top:
+                print("No rows passed the relevance gate. Run again without --decide to see them.", file=sys.stderr)
+                return
         if args.json:
             emit_json(args, [json_result(score, page) for score, page in top])
             return
@@ -771,7 +828,7 @@ def cmd_search(args, pages: list[dict]) -> None:
             continue
         page_counts[rel_path] += 1
         top_sections.append((score, section, retrievers))
-        if len(top_sections) >= args.top:
+        if len(top_sections) >= result_limit(args):
             break
     if not top_sections:
         if args.json:
@@ -779,9 +836,9 @@ def cmd_search(args, pages: list[dict]) -> None:
         else:
             print("No matches.", file=sys.stderr)
         return
-    if args.json:
+    if args.json or decide:
         sections_by_page = {page["rel_path"]: page["sections"] for page in filtered}
-        emit_json(args, [
+        rows = [
             json_result(
                 score,
                 section["page"],
@@ -790,8 +847,16 @@ def cmd_search(args, pages: list[dict]) -> None:
                 retrievers,
             )
             for score, section, retrievers in top_sections
-        ], mode)
-        return
+        ]
+        decision = None
+        if decide:
+            top_sections, rows, decision = gated_json(args, top_sections, rows, [s["text"] for _, s, _ in top_sections])
+        if args.json:
+            emit_json(args, rows, mode, decision)
+            return
+        if not top_sections:
+            print("No rows passed the relevance gate. Run again without --decide to see them.", file=sys.stderr)
+            return
     print(f"Top {len(top_sections)} results for: {args.query!r}")
     print()
     for score, section, _retrievers in top_sections:
@@ -860,6 +925,13 @@ def main():
                         help="Maximum section results per page (default: 2).")
     parser.add_argument("--json", action="store_true", help="Emit structured JSON search results.")
     parser.add_argument("--no-embed", action="store_true", help="Force lexical-only search.")
+    parser.add_argument("--decide", action="store_true",
+                        help="Keep only rows that the decision model rates relevant. Needs LLM_WIKI_DECISIONS.")
+    parser.add_argument("--decide-pool", type=int, default=20,
+                        help="Rows to score with --decide (default: 20).")
+    parser.add_argument("--decide-threshold", type=float, default=None,
+                        help=f"P(relevant) needed to keep a row with --decide "
+                             f"(default: {decision_default_threshold('relevance')}).")
     args = parser.parse_args()
     cache_path = None
     if args.cache:

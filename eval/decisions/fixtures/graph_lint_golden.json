@@ -1,0 +1,22 @@
+{
+ "note": "Captured from wiki_graph_lint.py before the --decide flag existed. Output without --decide must stay byte-identical.",
+ "cases": [
+  {
+   "argv": [
+    "eval/decisions/fixtures/graph_wiki"
+   ],
+   "stdout": "============================================================\nWiki Graph Lint Report\n============================================================\nPages scanned: 4    Nodes: 4\n\nNo graph issues found.\n",
+   "stderr": "",
+   "returncode": 0
+  },
+  {
+   "argv": [
+    "eval/decisions/fixtures/graph_wiki",
+    "--json"
+   ],
+   "stdout": "{\n  \"duplicate_node_ids\": [],\n  \"unknown_predicates\": [],\n  \"broken_object_refs\": [],\n  \"subject_type_mismatch\": [],\n  \"object_type_mismatch\": [],\n  \"missing_evidence\": [],\n  \"missing_source_field\": [],\n  \"broken_source_refs\": [],\n  \"invalid_confidence\": [],\n  \"invalid_status\": [],\n  \"duplicate_canonical\": [],\n  \"alias_collisions\": [],\n  \"broken_contradicts\": [],\n  \"broken_supersedes\": [],\n  \"orphan_typed_nodes\": [],\n  \"summary\": {\n    \"pages_scanned\": 4,\n    \"nodes\": 4,\n    \"duplicate_node_ids\": 0,\n    \"unknown_predicates\": 0,\n    \"broken_object_refs\": 0,\n    \"subject_type_mismatch\": 0,\n    \"object_type_mismatch\": 0,\n    \"missing_evidence\": 0,\n    \"missing_source_field\": 0,\n    \"broken_source_refs\": 0,\n    \"invalid_confidence\": 0,\n    \"invalid_status\": 0,\n    \"duplicate_canonical\": 0,\n    \"alias_collisions\": 0,\n    \"broken_contradicts\": 0,\n    \"broken_supersedes\": 0,\n    \"orphan_typed_nodes\": 0\n  }\n}\n",
+   "stderr": "",
+   "returncode": 0
+  }
+ ]
+}

@@ -20,13 +20,32 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m pip install PyYAML==6.0.3 fastembed==0.8.0 sqlite-vec==0.1.9
-      - run: python -m compileall -q skills/llm-wiki/scripts eval/evolution
+      - run: python -m compileall -q skills/llm-wiki/scripts eval/evolution eval/remote eval/decisions
       - run: python -m unittest discover -s eval/retrieval -p 'test_*.py'
       - run: python skills/llm-wiki/scripts/test_link_resolution.py
       - run: python eval/evolution/test_evolution.py
       - run: python eval/evolution/test_loop.py
       - run: python eval/evolution/test_adapters.py
       - run: python eval/retrieval/run_eval.py --gate
+      - run: python eval/remote/test_remote.py
+      - run: python eval/decisions/test_decisions.py
+      - name: Decision questions are identical in the skill and the server
+        run: cmp skills/llm-wiki/assets/decision-questions.json server/src/decisions/decision-questions.json
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
   docs:
     runs-on: ubuntu-latest
     steps:

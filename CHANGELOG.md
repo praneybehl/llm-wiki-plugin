@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-29
+
+Major release: the Paperclip companion is removed. Local wikis, scripts and command flags need no migration.
+
+### Added
+
+- Optional hosted wiki in `server/`: one Cloudflare Worker that the "Deploy to Cloudflare" button deploys with one secret (`ADMIN_TOKEN`) and no manual step. Each wiki is one SQLite Durable Object. One deployment can hold many wikis. Optional R2, Vectorize and Workers AI bindings degrade without errors when absent.
+- Atomic commits with `create`, `edit`, `append`, `put`, `delete` and `move` operations, per-page revisions, author labels, diffs and revert. `edit` applies on a newer page when its text still occurs once; `append` never conflicts; other conflicts return HTTP 409 with the current revision and a diff.
+- Hosted hybrid search: SQLite FTS5 BM25 plus Workers AI `@cf/baai/bge-small-en-v1.5` vectors in Vectorize, fused with RRF (`k=60`), with `type`, `tag` and `since` filters, the `wiki_search.py --json` row shape, backlinks and top-linked modes. Embeddings run in batches through Durable Object alarms.
+- Server ports of structural lint, graph extraction, graph queries, graph lint and stats that update on each commit.
+- MCP server at `/mcp` (Streamable HTTP) with eight tools: `wiki_overview`, `wiki_read`, `wiki_search`, `wiki_commit`, `wiki_history`, `wiki_graph`, `wiki_lint` and `wiki_raw`. JSON API at `/api/v1`.
+- Per-agent bearer tokens with `read`, `write`, `raw:write` and `admin` scopes, stored as SHA-256 hashes. OAuth on the same Worker with dynamic client registration, client ID metadata documents and owner approval through `ADMIN_TOKEN` or a one-time pairing code.
+- Web UI: `/setup` for wikis, tokens, pairing codes, decision settings and MCP configuration for each client; a read-only reader at `/ui/<wiki>/` with folder tree, search, rendered pages, backlinks, history, diffs and review flags.
+- Raw source storage in R2 with SHA-256 integrity, immutable uploads and range reads.
+- `scripts/wiki_remote.py` (Python standard library only): `login`, `status`, `stats`, wiki and token administration, pairing codes, resumable `import` with dry run and SHA-256 verification, pull-only mirror with optional Git commits, `export`, raw file commands, search, read, commit, history, graph, lint, review, settings and `mcp-config` for Claude Code, Codex, Cursor, Gemini CLI, OpenCode, OMP, Pi and generic clients.
+- Optional decision layer, off by default: `scripts/wiki_decide.py` and server checks for a search relevance gate (D1), graph evidence check (D2), contradiction screen (D3), ingest shortlist (D4) and untrusted-text screen (D5). Backends: local Liquid `d1-2B` through `llama-server`, TypeSafe Jev, OpenRouter, Liquid API and, on the server, Jev on Workers AI. Read paths fail open; write checks only add review flags. `wiki_search.py --decide` and `wiki_graph_lint.py --decide` are opt-in; output without the flag is unchanged.
+- Shared `assets/decision-questions.json` question templates, synthetic decision evals in `eval/decisions/`, and CLI tests in `eval/remote/`.
+- `/wiki:migrate` command and `/wiki:init --hosted <url>`.
+- Documentation: hosted wiki guide (deploy, first run, tokens, OAuth, MCP set-up for each agent, migration, pull mirror, Free and Paid plan limits, costs, security), decision models guide, skill references `hosted-mode.md` and `decision-models.md`, and the v4 upgrade guide.
+- CI: server type check and tests, remote CLI and decision tests, and an equality check for the two copies of the decision questions.
+
+### Changed
+
+- The skill has a "Backends" section: a wiki is a local folder or a hosted URL. The agent selects the backend from the user's instructions, calls `wiki_overview` first in hosted mode, makes surgical changes with `edit` operations, adds log and index lines with `append`, and reads the page again and retries after a conflict.
+- Ingest, query and lint references show the local form and the hosted form of each step once. The agent-memory reference has a hosted-wiki stanza; the retrieval reference describes hosted search.
+- `/wiki:query`, `/wiki:ingest`, `/wiki:lint`, `/wiki:stats`, `/wiki:graph` and `/wiki:upgrade` describe hosted mode. `/wiki:learn` and `/wiki:evolve` stay local and can run on a pull mirror.
+- Local mode is unchanged. Existing wikis, scripts and command flags need no migration.
+
+### Removed
+
+- The Paperclip companion (`integrations/paperclip/`, `paperclip-plugin-llm-wiki`), its CI workflow and its documentation. Its frontmatter, BM25, lint and stats code moved into `server/src/core/`. The npm package was never live on the registry, so no registry action is necessary. Users who need Paperclip can stay on v3.2.x.
+
 ## [3.2.0] - 2026-09-13
 
 ### Added
@@ -211,7 +243,8 @@ Initial release.
 - Chunked source ingestion guidance for large PDFs, transcripts, and long articles.
 
 [2.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v2.0.0
-[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/praneybehl/llm-wiki-plugin/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v4.0.0
 [3.2.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.2.0
 [3.1.1]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.1.1
 [3.1.0]: https://github.com/praneybehl/llm-wiki-plugin/releases/tag/v3.1.0

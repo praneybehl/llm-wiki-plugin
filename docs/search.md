@@ -3,7 +3,7 @@ title: Search & retrieval
 description: Local FastEmbed + sqlite-vec hybrid retrieval, section-level BM25, JSON evidence rows, and incremental caches.
 ---
 
-<!-- Source: v3 local hybrid design — FastEmbed, sqlite-vec, BM25/RRF, JSON evidence, and incremental caches. -->
+<!-- Source: v3 local hybrid design: FastEmbed, sqlite-vec, BM25/RRF, JSON evidence, and incremental caches. -->
 
 # Search & retrieval
 
@@ -34,13 +34,13 @@ flowchart LR
 
 ## Section-level results
 
-By default (`--granularity section`), the script splits every page at its ATX headings and ranks the resulting sections with BM25, keeping at most `--per-page` sections per page (default 2) until `--top` results are collected. Each section is scored over its title, its heading path, and its text — a contextual-BM25 prefix that sharpens matches inside long pages.
+By default (`--granularity section`), the script splits every page at its ATX headings and ranks the resulting sections with BM25, keeping at most `--per-page` sections per page (default 2) until `--top` results are collected. Each section is scored over its title, its heading path, and its text: a contextual-BM25 prefix that sharpens matches inside long pages.
 
-Ranking constants are unchanged from v1 (BM25 with `k1=1.5`, `b=0.75`), and the Paperclip TypeScript port mirrors them exactly, so plugin and agent results stay in lockstep.
+Ranking constants are unchanged from v1 (BM25 with `k1=1.5`, `b=0.75`).
 
 ## JSON evidence rows
 
-The `--json` flag emits one machine-readable object to stdout — ideal for feeding an agent or another tool:
+The `--json` flag emits one machine-readable object to stdout, ideal for feeding an agent or another tool:
 
 ```json
 {
@@ -84,7 +84,7 @@ Without `--json`, results print in the familiar human format, with a `§` line s
 
 ## Whole-page ranking
 
-Pass `--granularity page` to rank whole pages exactly as v1 did — the pre-v2 behavior, byte-for-byte. Page-granularity rows carry an empty `heading_path` and a `null` `section_index`, and are always lexical (embeddings apply only to section granularity).
+Pass `--granularity page` to rank whole pages exactly as v1 did: the pre-v2 behavior, byte-for-byte. Page-granularity rows carry an empty `heading_path` and a `null` `section_index`, and are always lexical (embeddings apply only to section granularity).
 
 ```bash
 python skills/llm-wiki/scripts/wiki_search.py "attention mechanism" --wiki wiki --granularity page --no-embed --json
@@ -116,7 +116,7 @@ uv run --script skills/llm-wiki/scripts/wiki_search.py "attention" --wiki wiki -
 Each file is keyed by the SHA-256 of its raw bytes: unchanged files are reused, changed files are reparsed, deleted files are dropped. A cache that is missing, unparseable, or from an older schema is rebuilt from scratch, with a single `cache: rebuilding (<reason>)` line to stderr. The cache is written atomically.
 
 ::: info Guaranteed identical results
-`--json` output with and without `--cache` is byte-identical for the same query — the cache only changes speed, never ranking. This invariant is checked by the eval harness.
+`--json` output with and without `--cache` is byte-identical for the same query: the cache only changes speed, never ranking. This invariant is checked by the eval harness.
 :::
 
 ## Default local hybrid retrieval
@@ -148,3 +148,33 @@ If FastEmbed is unavailable, model initialization fails, or sqlite-vec cannot lo
 | `embeddings.sqlite` | Section locators, content hashes, and sqlite-vec vectors. |
 
 Both are gitignored and safe to delete. The next query rebuilds what is missing. A model, dimension, or vector-schema change also rebuilds `embeddings.sqlite` automatically. Legacy `embeddings.jsonl` provider caches are ignored and may be removed.
+
+## Optional relevance gate
+
+With the optional [decision layer](/decisions) turned on, `--decide` asks a small decision model whether each of the top 20 sections helps answer the query. Rows below the threshold are removed. An empty result then means that the wiki probably has no answer.
+
+```bash
+uv run --script skills/llm-wiki/scripts/wiki_search.py "query" --wiki wiki --json --decide
+```
+
+The JSON gets a top-level `decision` block (backend, model, threshold, pool, kept, dropped, `failed_open`, latency) and a `decision` field on each row. If the backend fails, the search returns the normal rows with `failed_open: true`. Without `--decide`, the output does not change.
+
+## Hosted search
+
+A [hosted wiki](/hosted) runs the same kind of search on the server. Agents call the `wiki_search` MCP tool or `wiki_remote.py search`.
+
+| | Local | Hosted |
+|---|---|---|
+| Sections | ATX headings outside code fences | Same rules |
+| Keyword leg | Python BM25 (`k1=1.5`, `b=0.75`) | SQLite FTS5 `bm25()` |
+| Semantic leg | FastEmbed `BAAI/bge-small-en-v1.5` in sqlite-vec | Workers AI `@cf/baai/bge-small-en-v1.5` (CLS pooling, L2-normalized) in Vectorize |
+| Fusion | RRF, `k=60` | RRF, `k=60` |
+| Filters | `--type`, `--tag`, `--since` | `type`, `tag`, `since`, applied in the wiki Durable Object |
+| Row shape | `--json` rows | The same rows |
+| When vectors are missing | Lexical fallback | Lexical mode; `vector_lag` shows sections that wait for a vector |
+
+- Hosted results are equivalent to local results, not identical. The BM25 constants, the tokenizer and the embedding runtime are different. Local and hosted vectors are never mixed.
+- A commit is searchable by keyword at once. The server embeds changed sections in batches a few seconds later. `vector_lag` counts the sections that Vectorize does not serve yet. It usually reaches 0 about 30 to 60 seconds after a change. The server checks each vector, and sends a vector again when Vectorize did not store it.
+- Without the Vectorize or Workers AI binding, hosted search is lexical. Send `mode: "lexical"` to force it.
+- A personal wiki fits in the Workers AI free allocation of 10,000 neurons a day. See [Free and Paid plans](/hosted#free-and-paid-plans).
+- `backlinks` and `top_linked` modes replace `--backlinks` and `--top-linked`.

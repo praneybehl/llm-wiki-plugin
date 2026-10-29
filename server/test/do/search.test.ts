@@ -1,4 +1,4 @@
-import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
+import { env, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { FakeVectors, ageSentVectors, attachVectors, failure, freshWiki, importCorpus, sql } from "./helpers";
 import type { WikiDO } from "../../src/do/wiki";
@@ -285,7 +285,8 @@ describe("hybrid search", () => {
   });
 
   it("migrates an object from the build without send times and checks its old vectors", async () => {
-    const { wiki } = await freshWiki();
+    const { id, wiki: before } = await freshWiki();
+    let wiki = before;
     const fake = new FakeVectors();
     await attachVectors(wiki, fake);
     await wiki.commit("a", { message: "c", ops: [{ op: "create", path: "concepts/old.md", content: "# Old\n\nkept\n\n## Lost\n\ndropped\n" }] });
@@ -299,14 +300,16 @@ describe("hybrid search", () => {
       state.storage.sql.exec("ALTER TABLE sections DROP COLUMN vec_checked_at");
       state.storage.sql.exec("UPDATE sections SET vec_state = 1");
     });
-    // Reopen: a new instance runs the constructor (schema plus migration) on the old data.
+    // Reopen: abort the instance; a new stub gets a new instance, whose constructor
+    // runs the schema and the migration on the old data.
     await runInDurableObject(wiki, (_instance: WikiDO, state) => {
       try {
         state.abort("reopen");
       } catch {
-        // abort() throws to end the current request; the next call gets a new instance.
+        // abort() throws to end the current request.
       }
     }).catch(() => undefined);
+    wiki = env.WIKI.get(env.WIKI.idFromName(id));
     await attachVectors(wiki, fake);
     expect(await sql(wiki, "SELECT vec_state, vec_sent_at, vec_checked_at FROM sections ORDER BY section_index")).toEqual([
       { vec_state: 1, vec_sent_at: 0, vec_checked_at: null },

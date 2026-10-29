@@ -401,6 +401,9 @@ export class WikiDO extends DurableObject<Env> {
         "INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', ?)",
         String(WIKI_SCHEMA_VERSION),
       );
+      // Rows left pending or unconfirmed (for example after a schema migration)
+      // need an alarm even when no new commit arrives.
+      await this.afterWrite();
     });
   }
 
@@ -969,7 +972,9 @@ export class WikiDO extends DurableObject<Env> {
    * only through `runDurableObjectAlarm` and never on their own.
    */
   private alarmDelay(base: number): number {
-    const override = Number(this.env.LLM_WIKI_ALARM_DELAY_MS);
+    const raw = this.env.LLM_WIKI_ALARM_DELAY_MS;
+    if (typeof raw !== "string" || raw.trim() === "") return base;
+    const override = Number(raw);
     return Number.isFinite(override) && override >= 0 ? override : base;
   }
 

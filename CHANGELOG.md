@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
-- Deploy button: the form asks for the dimensions and metric of a new Vectorize index and gives no default. `server/package.json` now shows guidance on the form (`384` dimensions, `cosine` metric) and for the KV namespace, R2 bucket and `ADMIN_TOKEN`. The server README and the hosted wiki guide describe each field of the form. A full test deploy with the button passed: resource creation, the `ADMIN_TOKEN` prompt, the build, `/setup` sign-in, import and hybrid search.
+- Deploy button: the form asks for the dimensions and metric of a new Vectorize index and gives no default. `server/package.json` now shows guidance on the form (`384` dimensions, `cosine` metric) and for the KV namespace, R2 bucket and `ADMIN_TOKEN`. The server README and the hosted wiki guide describe the form fields that need input. A full test deploy with the button passed: resource creation, the `ADMIN_TOKEN` prompt, the build, `/setup` sign-in, import and hybrid search.
 - Correct the 4.0.0 claim that the button needs no input other than `ADMIN_TOKEN`: a new Vectorize index also needs the two values above.
 - Tests read the server and CLI versions from their constants.
 

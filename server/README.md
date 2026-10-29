@@ -43,7 +43,7 @@ npx wrangler secret put ADMIN_TOKEN
 
 A new secret signs out all web sessions. Agent tokens and OAuth grants stay valid.
 
-Wrangler writes the id of the new `OAUTH_KV` namespace into `wrangler.jsonc` on the first deploy. Keep that change. If a later deploy from a new copy stops with `a namespace with this account ID and title already exists`, run `npx wrangler kv namespace list` and put the `id` of `<worker-name>-oauth-kv` in the `OAUTH_KV` entry.
+Later deploys reuse the KV namespace, R2 bucket and Vectorize index of the deployed Worker. If you delete the Worker but keep its KV namespace, the next deploy stops with `a namespace with this account ID and title already exists`. Then run `npx wrangler kv namespace list` and put the `id` of `<worker-name>-oauth-kv` in the `OAUTH_KV` entry of `wrangler.jsonc`, or delete that namespace.
 
 ## First run
 
